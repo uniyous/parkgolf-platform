@@ -248,7 +248,7 @@ export const useGenerateTimeSlotsMutation = () => {
     onSuccess: (data, { gameId }) => {
       queryClient.invalidateQueries({ queryKey: gameKeys.timeSlots(companyId, gameId, undefined) });
       queryClient.invalidateQueries({ queryKey: gameKeys.timeSlotStats(companyId) });
-      showSuccessToast(`${data?.length || 0}개의 타임슬롯이 자동 생성되었습니다.`);
+      showSuccessToast(`${data?.created ?? 0}개의 타임슬롯이 자동 생성되었습니다.`);
     },
   });
 };

@@ -66,24 +66,27 @@ fun UserProfileDto.toDomain(): User {
 
 fun BookingDto.toDomain(): Booking {
     return Booking(
-        id = id,
+        id = id?.toString() ?: "",
         bookingNumber = bookingNumber,
-        gameId = gameId,
-        gameTimeSlotId = gameTimeSlotId,
+        gameId = gameId ?: 0,
+        gameTimeSlotId = gameTimeSlotId ?: 0,
         gameName = gameName,
-        clubName = clubName,
+        clubName = clubName ?: "",
         courseName = courseName,
-        bookingDate = parseDate(bookingDate),
-        startTime = startTime,
-        endTime = endTime,
-        playerCount = playerCount,
-        status = BookingStatus.fromValue(status),
-        totalPrice = totalPrice,
+        bookingDate = bookingDate?.let { parseDate(it) } ?: java.time.LocalDate.now(),
+        startTime = startTime ?: "",
+        endTime = endTime ?: "",
+        playerCount = playerCount ?: 0,
+        status = BookingStatus.fromValue(status ?: "pending"),
+        totalPrice = totalPrice ?: 0,
         paymentMethod = paymentMethod,
         specialRequests = specialRequests,
         userEmail = userEmail,
         userName = userName,
-        userPhone = userPhone
+        userPhone = userPhone,
+        // AGENT_PAY.md §11.3
+        myRole = myRole,
+        myParticipantStatus = myParticipantStatus
     )
 }
 
@@ -323,7 +326,13 @@ fun ClubDetailDto.toDomain(): ClubDetail {
         latitude = latitude,
         longitude = longitude,
         operatingHours = operatingHours?.let {
-            ClubDetail.OperatingHours(open = it.open, close = it.close)
+            // weekday 우선, 없으면 weekend, 그것도 없으면 옛 평면 구조(open/close) fallback
+            val hours = it.weekday ?: it.weekend
+            val open = hours?.start ?: it.open
+            val close = hours?.end ?: it.close
+            if (open != null && close != null) {
+                ClubDetail.OperatingHours(open = open, close = close)
+            } else null
         },
         seasonInfo = seasonInfo?.let {
             ClubDetail.SeasonInfo(type = it.type, startDate = it.startDate, endDate = it.endDate)

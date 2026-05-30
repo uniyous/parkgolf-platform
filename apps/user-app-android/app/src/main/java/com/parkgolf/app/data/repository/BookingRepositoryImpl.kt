@@ -8,6 +8,7 @@ import com.parkgolf.app.domain.model.Booking
 import com.parkgolf.app.domain.model.BookingStatus
 import com.parkgolf.app.domain.model.CreateBookingParams
 import com.parkgolf.app.domain.repository.BookingRepository
+import com.parkgolf.app.domain.repository.CancelParticipantResult
 import com.parkgolf.app.util.PaginatedData
 import com.parkgolf.app.util.safeApiCall
 import com.parkgolf.app.util.toResult
@@ -111,5 +112,18 @@ class BookingRepositoryImpl @Inject constructor(
     override suspend fun cancelBooking(id: String, reason: String?): Result<Unit> = safeApiCall {
         val request = reason?.let { CancelBookingRequest(it) }
         bookingApi.cancelBooking(id, request).toUnitResult("예약 취소에 실패했습니다")
+    }
+
+    override suspend fun cancelParticipant(id: String, reason: String?): Result<CancelParticipantResult> = safeApiCall {
+        val request = reason?.let { CancelBookingRequest(it) }
+        bookingApi.cancelParticipant(id, request).toResult("내 자리 취소에 실패했습니다") { dto ->
+            CancelParticipantResult(
+                previousStatus = dto.previousStatus,
+                newStatus = dto.newStatus,
+                refundedAmount = dto.refundedAmount,
+                bookingCancelled = dto.bookingCancelled,
+                remainingParticipants = dto.remainingParticipants
+            )
+        }
     }
 }

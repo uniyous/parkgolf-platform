@@ -128,6 +128,35 @@ class MyBookingsViewModel @Inject constructor(
         }
     }
 
+    // AGENT_PAY.md §11.4 — 더치페이 본인 자리만 취소
+    fun cancelParticipant(bookingId: String, reason: String? = null) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+
+            bookingRepository.cancelParticipant(bookingId, reason)
+                .onSuccess { result ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            successMessage = if (result.bookingCancelled)
+                                "예약이 취소되었습니다"
+                            else
+                                "내 자리가 취소되었습니다"
+                        )
+                    }
+                    loadBookings(refresh = true)
+                }
+                .onFailure { exception ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = exception.message ?: "내 자리 취소 실패"
+                        )
+                    }
+                }
+        }
+    }
+
     fun loadMore() {
         if (_uiState.value.hasMore && !_uiState.value.isLoading) {
             _uiState.update { it.copy(currentPage = it.currentPage + 1) }

@@ -5,24 +5,27 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 data class Booking(
-    val id: String,
+    val id: String = "",
     val bookingNumber: String? = null,
-    val gameId: Int,
-    val gameTimeSlotId: Int,
+    val gameId: Int = 0,
+    val gameTimeSlotId: Int = 0,
     val gameName: String? = null,
-    val clubName: String,
+    val clubName: String = "",
     val courseName: String? = null,
-    val bookingDate: LocalDate,
-    val startTime: String,
-    val endTime: String,
-    val playerCount: Int,
-    val status: BookingStatus,
-    val totalPrice: Int,
+    val bookingDate: LocalDate = LocalDate.now(),
+    val startTime: String = "",
+    val endTime: String = "",
+    val playerCount: Int = 0,
+    val status: BookingStatus = BookingStatus.PENDING,
+    val totalPrice: Int = 0,
     val paymentMethod: String? = null,
     val specialRequests: String? = null,
     val userEmail: String? = null,
     val userName: String? = null,
-    val userPhone: String? = null
+    val userPhone: String? = null,
+    // AGENT_PAY.md §11.3 — 마이페이지 노출용 파생 필드
+    val myRole: String? = null,                  // "BOOKER" | "MEMBER"
+    val myParticipantStatus: String? = null      // "PENDING" | "PAID" | "CANCELLED" | "REFUNDED"
 ) {
     val priceText: String
         get() = "${String.format("%,d", totalPrice)}원"
@@ -41,6 +44,16 @@ data class Booking(
 
     val canCancel: Boolean
         get() = status.canCancel
+
+    // AGENT_PAY.md §11.4 — 더치페이 본인 자리 취소 분기
+    val isDutchpay: Boolean
+        get() = paymentMethod == "dutchpay"
+
+    val isMemberRole: Boolean
+        get() = myRole == "MEMBER"
+
+    val isMyParticipantCancelled: Boolean
+        get() = myParticipantStatus == "CANCELLED" || myParticipantStatus == "REFUNDED"
 }
 
 enum class BookingStatus(

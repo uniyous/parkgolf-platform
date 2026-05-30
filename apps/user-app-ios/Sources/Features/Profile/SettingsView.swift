@@ -122,6 +122,7 @@ struct ChangePasswordView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
+        .subScreenTabBarHidden()
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("비밀번호 변경")
@@ -363,6 +364,7 @@ struct DeleteAccountView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
+        .subScreenTabBarHidden()
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("계정 삭제")
@@ -643,6 +645,7 @@ struct TermsView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
+        .subScreenTabBarHidden()
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("이용약관")
@@ -681,6 +684,7 @@ struct PrivacyPolicyView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
+        .subScreenTabBarHidden()
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("개인정보처리방침")

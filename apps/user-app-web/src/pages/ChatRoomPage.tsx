@@ -313,7 +313,7 @@ export const ChatRoomPage: React.FC = () => {
       case 'CONFIRMING': return '예약 확인 중...';
       case 'BOOKING': return '예약 처리 중...';
       case 'SETTLING': return '정산 처리 중...';
-      case 'TEAM_COMPLETE': return '다음 팀 준비 중...';
+      case 'TEAM_COMPLETE': return '예약 완료 중...';
       default: return '생각 중...';
     }
   }, [conversationState]);
@@ -772,18 +772,6 @@ export const ChatRoomPage: React.FC = () => {
                         teamMembers: members,
                       });
                     }}
-                    onNextTeam={() => {
-                      handleAiFollowUp({
-                        message: '다음 팀',
-                        nextTeam: true,
-                      });
-                    }}
-                    onFinishGroup={() => {
-                      handleAiFollowUp({
-                        message: '종료',
-                        finishGroup: true,
-                      });
-                    }}
                     onSendReminder={() => {
                       handleAiFollowUp({
                         message: '리마인더',
@@ -799,7 +787,7 @@ export const ChatRoomPage: React.FC = () => {
                     onSplitPaymentComplete={(success: boolean, orderId: string) => {
                       handleAiFollowUp({
                         message: success ? '결제 완료' : '결제 실패',
-                        splitPaymentComplete: true,
+                        splitPaymentComplete: success,
                         splitOrderId: orderId,
                       });
                     }}
@@ -809,6 +797,24 @@ export const ChatRoomPage: React.FC = () => {
 
               // AI 모드 사용자 메시지는 AiUserMessageBubble로 렌더링
               if (message.messageType === 'AI_USER') {
+                // 개인 AI 대화: targetUserIds 필터링 (요청자 본인만 표시)
+                if (message.metadata) {
+                  try {
+                    const parsedMeta = typeof message.metadata === 'string'
+                      ? JSON.parse(message.metadata)
+                      : message.metadata;
+                    if (parsedMeta?.targetUserIds) {
+                      const targetIds = parsedMeta.targetUserIds as number[];
+                      const myId = Number(currentUserId);
+                      if (!targetIds.includes(myId)) {
+                        return null;
+                      }
+                    }
+                  } catch {
+                    // metadata 파싱 실패 시 그냥 표시
+                  }
+                }
+
                 return (
                   <AiUserMessageBubble
                     key={message.id}
@@ -871,6 +877,8 @@ export const ChatRoomPage: React.FC = () => {
       <div className="border-t border-white/10">
         <div className="w-full max-w-screen-xl mx-auto px-4 py-3">
           <div className="flex items-center gap-2">
+            {/* AI 모드 토글 — 입력바 좌측 */}
+            <AiButton active={isAiMode} onClick={handleToggleAiMode} />
             <input
               ref={inputRef}
               type="text"
@@ -887,7 +895,6 @@ export const ChatRoomPage: React.FC = () => {
                   : 'border border-white/10 focus:border-emerald-500/50'
               )}
             />
-            <AiButton active={isAiMode} onClick={handleToggleAiMode} />
             <button
               onClick={handleSendMessage}
               disabled={!inputText.trim() || sendMessageMutation.isPending || isAiLoading}

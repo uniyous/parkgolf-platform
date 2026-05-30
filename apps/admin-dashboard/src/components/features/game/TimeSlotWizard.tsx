@@ -28,12 +28,13 @@ export const TimeSlotWizard: React.FC<TimeSlotWizardProps> = ({
   onSuccess,
 }) => {
   const today = new Date();
+  const tomorrow = new Date(today.getTime() + 1 * 24 * 60 * 60 * 1000);
   const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
   const [step, setStep] = useState<WizardStep>('dates');
   const [selectedPreset, setSelectedPreset] = useState<string>('1month');
-  const [startDate, setStartDate] = useState(formatDate(today));
-  const [endDate, setEndDate] = useState(formatDate(new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)));
+  const [startDate, setStartDate] = useState(formatDate(tomorrow));
+  const [endDate, setEndDate] = useState(formatDate(new Date(tomorrow.getTime() + 30 * 24 * 60 * 60 * 1000)));
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<{ success: boolean; count?: number; error?: string } | null>(null);
@@ -130,8 +131,8 @@ export const TimeSlotWizard: React.FC<TimeSlotWizardProps> = ({
   const handleClose = () => {
     setStep('dates');
     setSelectedPreset('1month');
-    setStartDate(formatDate(today));
-    setEndDate(formatDate(new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)));
+    setStartDate(formatDate(tomorrow));
+    setEndDate(formatDate(new Date(tomorrow.getTime() + 30 * 24 * 60 * 60 * 1000)));
     setProgress(0);
     setResult(null);
     onClose();

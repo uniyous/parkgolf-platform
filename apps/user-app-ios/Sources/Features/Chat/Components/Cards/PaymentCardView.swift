@@ -6,7 +6,10 @@ struct PaymentCardView: View {
     var onPaymentComplete: ((Bool) -> Void)?
     var onRequestPayment: ((String, String, Int) -> Void)?
 
-    @State private var remainingSeconds: Int = 600
+    // 백엔드 saga가 3분 후 PAYMENT_TIMEOUT 트리거하므로 10초 버퍼 (이중 결제 방지)
+    private static let PAYMENT_TIMEOUT_SECONDS = 2 * 60 + 50  // 2분 50초
+
+    @State private var remainingSeconds: Int = PaymentCardView.PAYMENT_TIMEOUT_SECONDS
     @State private var isExpired = false
     @State private var startDate = Date()
 
@@ -123,7 +126,7 @@ struct PaymentCardView: View {
         }
         .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
             let elapsed = Int(Date().timeIntervalSince(startDate))
-            let remaining = max(0, 600 - elapsed)
+            let remaining = max(0, PaymentCardView.PAYMENT_TIMEOUT_SECONDS - elapsed)
             remainingSeconds = remaining
             if remaining <= 0 {
                 isExpired = true

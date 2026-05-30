@@ -169,3 +169,11 @@ export class CancelBookingDto {
   @IsString()
   reason?: string;
 }
+
+// AGENT_PAY.md §11.4 — 더치페이 본인 자리 취소 요청 본문
+export class CancelParticipantDto {
+  @ApiProperty({ description: '취소 사유', required: false })
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}

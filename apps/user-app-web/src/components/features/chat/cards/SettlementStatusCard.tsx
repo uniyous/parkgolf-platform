@@ -15,6 +15,8 @@ interface SettlementStatusCardProps {
   onSplitPaymentComplete?: (success: boolean, orderId: string) => void;
   onSendReminder?: () => void;
   onRefresh?: () => void;
+  /** 이전 메시지의 카드 — 결제 버튼 비활성화 */
+  completed?: boolean;
 }
 
 const formatPrice = (price: number) =>
@@ -62,12 +64,12 @@ const BookerDashboardView: React.FC<{
   };
 
   return (
-    <div className="rounded-xl border border-violet-500/20 bg-violet-500/10 p-4 mt-2 space-y-3">
+    <div className="rounded-xl border border-violet-500/20 bg-violet-500/10 p-4 mt-2 space-y-3 w-full min-w-[260px] max-w-[420px]">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h4 className="text-lg font-semibold text-white flex items-center gap-2">
           <Users className="w-4 h-4 text-violet-400" />
-          {data.teamNumber ? `팀${data.teamNumber} 정산 현황` : '정산 현황'}
+          정산 현황
         </h4>
         <span className={cn(
           'text-base font-medium px-2 py-0.5 rounded-full',
@@ -275,7 +277,7 @@ const ParticipantPaymentView: React.FC<{
   const amount = participant.amount || 0;
 
   return (
-    <div className="rounded-xl border border-violet-500/20 bg-violet-500/10 p-4 mt-2 space-y-3">
+    <div className="rounded-xl border border-violet-500/20 bg-violet-500/10 p-4 mt-2 space-y-3 w-full min-w-[260px] max-w-[420px]">
       <div className="flex items-center gap-2">
         <CreditCard className="w-4 h-4 text-violet-400" />
         <h4 className="text-lg font-semibold text-white">결제 요청</h4>
@@ -375,10 +377,28 @@ export const SettlementStatusCard: React.FC<SettlementStatusCardProps> = ({
   onSplitPaymentComplete,
   onSendReminder,
   onRefresh,
+  completed,
 }) => {
   // currentUserId가 없는 경우 → 대시보드
   if (!currentUserId) {
-    return <BookerDashboardView data={data} onSendReminder={onSendReminder} onRefresh={onRefresh} />;
+    return <BookerDashboardView data={data} onSendReminder={completed ? undefined : onSendReminder} onRefresh={completed ? undefined : onRefresh} />;
+  }
+
+  // 이전 메시지의 카드 → 결제 완료/대시보드만 표시
+  if (completed) {
+    const myParticipant = data.participants.find((p) => p.userId === currentUserId);
+    if (currentUserId === data.bookerId) {
+      return (
+        <>
+          <BookerDashboardView data={data} />
+          {myParticipant && <ParticipantPaidView participant={myParticipant} />}
+        </>
+      );
+    }
+    if (myParticipant) {
+      return <ParticipantPaidView participant={myParticipant} />;
+    }
+    return <BookerDashboardView data={data} />;
   }
 
   // 부커(진행자)인 경우: 대시보드 + 본인 결제 카드 (참여자이기도 한 경우)

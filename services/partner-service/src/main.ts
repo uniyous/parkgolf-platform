@@ -1,3 +1,4 @@
+import './common/observability/tracing';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { INestApplication, ValidationPipe, Logger } from '@nestjs/common';

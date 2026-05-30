@@ -67,6 +67,7 @@ data class ChatUiState(
 ) {
     val aiLoadingText: String
         get() = when (aiConversationState) {
+            ConversationState.ANALYZING -> "분석 중..."
             ConversationState.COLLECTING -> "검색 중..."
             ConversationState.CONFIRMING -> "예약 확인 중..."
             ConversationState.BOOKING -> "예약 처리 중..."
@@ -91,6 +92,9 @@ class ChatViewModel @Inject constructor(
 
     private var currentRoomId: String? = null
     private var savedToken: String? = null
+
+    // 최초 연결 여부 — 재연결 시에만 놓친 메시지 백필 (초기 로드 중복 방지, iOS reconnected와 동일)
+    private var hasConnectedOnce = false
 
     private var typingClearJob: kotlinx.coroutines.Job? = null
 
@@ -143,8 +147,16 @@ class ChatViewModel @Inject constructor(
                 if (isConnected && wasDisconnected) {
                     currentRoomId?.let { roomId ->
                         chatRepository.joinRoom(roomId)
-                        Log.d(TAG, "Joined room on socket connected: $roomId")
+                        if (hasConnectedOnce) {
+                            // 재연결: 끊긴 동안 놓친 메시지 REST 백필 (iOS reconnected 핸들러와 동일)
+                            loadMessages(roomId)
+                            Log.d(TAG, "Rejoined room + reloaded messages after socket reconnect: $roomId")
+                        } else {
+                            // 최초 연결: loadRoom()에서 이미 메시지 로드하므로 중복 호출 안 함
+                            Log.d(TAG, "Joined room on socket connected: $roomId")
+                        }
                     }
+                    hasConnectedOnce = true
                 }
             }
         }
@@ -761,7 +773,7 @@ class ChatViewModel @Inject constructor(
         if (type == "split") {
             sendAiFollowUp(AiChatRequest(
                 message = "결제 실패",
-                splitPaymentComplete = true,
+                splitPaymentComplete = false,
                 splitOrderId = orderId
             ))
         } else {

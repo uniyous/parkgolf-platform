@@ -44,6 +44,9 @@ export class BookingSagaStepService {
       teamSelectionId?: number;
       gameId?: number;
       bookingDate?: string;
+      // 더치페이용 — agent가 채팅방 팀 멤버 정보 전달
+      teamMembers?: Array<{ userId: number; userName?: string; userEmail?: string }>;
+      chatRoomId?: string;
     };
 
     // 멱등성 체크
@@ -76,6 +79,24 @@ export class BookingSagaStepService {
     if (!slotCache.isAvailable || slotCache.availablePlayers < dto.playerCount) {
       throw new AppException(Errors.Booking.INSUFFICIENT_CAPACITY,
         `예약 가능 인원이 부족합니다. 가능: ${slotCache.availablePlayers}, 요청: ${dto.playerCount}`);
+    }
+
+    // 동일 유저 + 동일 날짜 + 시간 중복 체크
+    if (dto.userId) {
+      const overlapping = await this.prisma.booking.findFirst({
+        where: {
+          userId: dto.userId,
+          bookingDate: slotCache.date,
+          status: { in: [BookingStatus.PENDING, BookingStatus.SLOT_RESERVED, BookingStatus.CONFIRMED] },
+          startTime: { lt: slotCache.endTime },
+          endTime: { gt: slotCache.startTime },
+        },
+      });
+
+      if (overlapping) {
+        throw new AppException(Errors.Booking.TIME_OVERLAP,
+          `${slotCache.startTime}~${slotCache.endTime} 시간대에 이미 예약(${overlapping.bookingNumber})이 있습니다`);
+      }
     }
 
     let gameInfo = await this.prisma.gameCache.findUnique({
@@ -161,11 +182,45 @@ export class BookingSagaStepService {
         },
       });
 
+      // 더치페이용: teamMembers가 있으면 BookingParticipant 미리 생성
+      // booker는 BOOKER role, 나머지는 MEMBER role
+      if (dto.paymentMethod === 'dutchpay' && Array.isArray(dto.teamMembers) && dto.teamMembers.length > 0) {
+        const sharePerPerson = Math.round(totalPrice / dto.teamMembers.length);
+        await prisma.bookingParticipant.createMany({
+          data: dto.teamMembers.map((m) => ({
+            bookingId: newBooking.id,
+            userId: m.userId,
+            userName: m.userName || '',
+            userEmail: m.userEmail || '',
+            role: m.userId === dto.userId ? ParticipantRole.BOOKER : ParticipantRole.MEMBER,
+            status: ParticipantStatus.PENDING,
+            amount: sharePerPerson,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
       return newBooking;
     });
 
     this.logger.log(`Booking ${booking.bookingNumber} created (PENDING) via saga-service`);
-    return this.toSagaResponse(booking);
+
+    // 더치페이일 때 participants/chatRoomId 응답에 포함 → saga의 PREPARE_SPLIT step에서 사용
+    const baseResponse = this.toSagaResponse(booking);
+    if (dto.paymentMethod === 'dutchpay' && Array.isArray(dto.teamMembers) && dto.teamMembers.length > 0) {
+      const sharePerPerson = Math.round(totalPrice / dto.teamMembers.length);
+      return {
+        ...baseResponse,
+        chatRoomId: dto.chatRoomId,
+        participants: dto.teamMembers.map((m) => ({
+          userId: m.userId,
+          userName: m.userName || '',
+          userEmail: m.userEmail || '',
+          amount: sharePerPerson,
+        })),
+      };
+    }
+    return baseResponse;
   }
 
   /**
@@ -287,7 +342,7 @@ export class BookingSagaStepService {
             },
           });
 
-          await prisma.outboxEvent.create({
+          await prisma.bookingOutboxEvent.create({
             data: {
               aggregateType: 'Booking',
               aggregateId: String(data.bookingId),
@@ -303,10 +358,20 @@ export class BookingSagaStepService {
       }
 
       this.logger.warn(`Booking ${data.bookingId} is ${booking.status}, expected SLOT_RESERVED`);
+      // 이미 CONFIRMED (e.g. 더치페이 markParticipantPaid에서 선전이) 인 경우에도
+      // 후속 saga step(SEND_CONFIRMATION, REGISTER_COMPANY_MEMBER)이 동작하도록
+      // 풀 필드 반환.
       return {
         bookingId: booking.id,
         status: booking.status,
         bookingNumber: booking.bookingNumber,
+        gameName: booking.gameName,
+        bookingDate: booking.bookingDate?.toISOString(),
+        startTime: booking.startTime,
+        clubId: booking.clubId,
+        userEmail: booking.userEmail,
+        userName: booking.userName,
+        paymentMethod: booking.paymentMethod,
       };
     }
 
@@ -695,6 +760,32 @@ export class BookingSagaStepService {
   }
 
   /**
+   * 만료된 SLOT_RESERVED 예약 후보 조회만 수행 (saga-scheduler 1차 방어용)
+   * 실제 정리는 saga-scheduler가 PAYMENT_TIMEOUT Saga로 처리.
+   */
+  async findExpiredSlotReservedBookings(timeoutMinutes: number) {
+    const threshold = new Date(Date.now() - timeoutMinutes * 60 * 1000);
+
+    const expired = await this.prisma.booking.findMany({
+      where: {
+        status: BookingStatus.SLOT_RESERVED,
+        createdAt: { lt: threshold },
+      },
+      select: {
+        id: true,
+        bookingNumber: true,
+        gameTimeSlotId: true,
+        playerCount: true,
+        userId: true,
+        clubId: true,
+        paymentMethod: true,
+      },
+    });
+
+    return expired;
+  }
+
+  /**
    * 외부 파트너 예약 생성 (Inbound: 외부 → 내부)
    * Saga를 경유하지 않고 직접 CONFIRMED 상태로 생성
    */
@@ -849,22 +940,41 @@ export class BookingSagaStepService {
 
   private toSagaResponse(booking: Record<string, unknown>) {
     return {
+      id: booking.id,
       bookingId: booking.id,
       bookingNumber: booking.bookingNumber,
+      gameId: booking.gameId,
       gameTimeSlotId: booking.gameTimeSlotId,
-      playerCount: booking.playerCount,
-      paymentMethod: booking.paymentMethod,
-      clubId: booking.clubId,
-      userId: booking.userId,
       gameName: booking.gameName,
+      gameCode: booking.gameCode,
+      frontNineCourseId: booking.frontNineCourseId,
+      frontNineCourseName: booking.frontNineCourseName,
+      backNineCourseId: booking.backNineCourseId,
+      backNineCourseName: booking.backNineCourseName,
+      clubId: booking.clubId,
+      clubName: booking.clubName,
       bookingDate: booking.bookingDate instanceof Date
-        ? booking.bookingDate.toISOString()
+        ? booking.bookingDate.toISOString().split('T')[0]
         : booking.bookingDate,
       startTime: booking.startTime,
+      endTime: booking.endTime || '',
+      playerCount: booking.playerCount,
+      pricePerPerson: booking.pricePerPerson != null ? Math.round(Number(String(booking.pricePerPerson))) : 0,
+      serviceFee: booking.serviceFee != null ? Math.round(Number(String(booking.serviceFee))) : 0,
+      totalPrice: booking.totalPrice != null ? Math.round(Number(String(booking.totalPrice))) : 0,
+      status: booking.status,
+      paymentMethod: booking.paymentMethod,
+      specialRequests: booking.specialRequests,
+      userId: booking.userId,
       userEmail: booking.userEmail,
       userName: booking.userName,
-      totalPrice: booking.totalPrice != null ? Number(booking.totalPrice) : undefined,
-      pricePerPerson: booking.pricePerPerson != null ? Number(booking.pricePerPerson) : undefined,
+      userPhone: booking.userPhone,
+      createdAt: booking.createdAt instanceof Date
+        ? (booking.createdAt as Date).toISOString()
+        : booking.createdAt,
+      updatedAt: booking.updatedAt instanceof Date
+        ? (booking.updatedAt as Date).toISOString()
+        : booking.updatedAt,
     };
   }
 

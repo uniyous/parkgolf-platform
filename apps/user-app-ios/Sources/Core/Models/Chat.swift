@@ -285,6 +285,7 @@ struct InviteMembersRequest: Codable, Sendable {
 
 enum ConversationState: String, Codable, Sendable {
     case idle = "IDLE"
+    case analyzing = "ANALYZING"
     case collecting = "COLLECTING"
     case confirming = "CONFIRMING"
     case booking = "BOOKING"
@@ -300,13 +301,14 @@ enum ActionType: String, Codable, Sendable {
     case showSlots = "SHOW_SLOTS"
     case showWeather = "SHOW_WEATHER"
     case confirmBooking = "CONFIRM_BOOKING"
-    case bookingComplete = "BOOKING_COMPLETE"
     case showPayment = "SHOW_PAYMENT"
     case confirmGroup = "CONFIRM_GROUP"
     case selectMembers = "SELECT_MEMBERS"
     case splitPayment = "SPLIT_PAYMENT"
     case settlementStatus = "SETTLEMENT_STATUS"
     case teamComplete = "TEAM_COMPLETE"
+    case bookingFailed = "BOOKING_FAILED"
+    case bookingExpired = "BOOKING_EXPIRED"
 }
 
 struct ChatAction: Codable, Sendable {
@@ -390,8 +392,6 @@ struct AiChatRequest: Codable, Sendable {
     // 그룹 후속 액션
     var chatRoomId: String?
     var teamMembers: [TeamMemberDto]?
-    var nextTeam: Bool?
-    var finishGroup: Bool?
     var sendReminder: Bool?
 }
 

@@ -70,15 +70,22 @@ export class BookingService {
   }
 
   async getBookingsByUserId(userId: number): Promise<BookingResponseDto[]> {
+    // AGENT_PAY.md §11.3 — booker + 더치페이 참여자 모두 포함
     const bookings = await this.prisma.booking.findMany({
-      where: { userId },
+      where: {
+        OR: [
+          { userId },
+          { participants: { some: { userId } } },
+        ],
+      },
       orderBy: { createdAt: 'desc' },
       include: {
-        payments: true
-      }
+        payments: true,
+        participants: { orderBy: { id: 'asc' } },
+      },
     });
 
-    return bookings.map(booking => BookingResponseDto.fromEntity(booking));
+    return bookings.map((booking) => BookingResponseDto.fromEntity(booking, false, userId));
   }
 
   async searchBookings(searchDto: SearchBookingDto): Promise<{
@@ -100,7 +107,8 @@ export class BookingService {
       endDate,
       sortBy = 'bookingDate',
       sortOrder = 'desc',
-      timeFilter = 'all'
+      timeFilter = 'all',
+      includeAsParticipant = false,
     } = searchDto;
     const skip = (page - 1) * limit;
 
@@ -132,7 +140,15 @@ export class BookingService {
       }
     }
     if (userId) {
-      where.userId = userId;
+      // AGENT_PAY.md §11.3 — 마이페이지(includeAsParticipant=true)는 booker+더치페이 참여자 모두 노출
+      if (includeAsParticipant) {
+        where.OR = [
+          { userId },
+          { participants: { some: { userId } } },
+        ];
+      } else {
+        where.userId = userId;
+      }
     }
     if (paymentMethod) {
       where.paymentMethod = paymentMethod;
@@ -168,14 +184,19 @@ export class BookingService {
         take: limit,
         orderBy,
         include: {
-          payments: true
-        }
+          payments: true,
+          // AGENT_PAY.md §11.3 — 마이페이지에서 myRole/myParticipantStatus 계산용
+          participants: includeAsParticipant ? { orderBy: { id: 'asc' } } : false,
+        },
       }),
       this.prisma.booking.count({ where }),
     ]);
 
+    // includeAsParticipant=true 호출이면 userId를 currentUserId로 사용해 파생 필드 계산
+    const currentUserId = includeAsParticipant ? userId : undefined;
+
     return {
-      bookings: BookingResponseDto.fromEntities(bookings, true),
+      bookings: BookingResponseDto.fromEntities(bookings, true, currentUserId),
       total,
       page,
       limit
@@ -270,7 +291,7 @@ export class BookingService {
 
     // 카드/더치페이인 경우 환불 OutboxEvent 생성
     if (existingBooking.paymentMethod === 'card' || existingBooking.paymentMethod === 'dutchpay') {
-      await prisma.outboxEvent.create({
+      await prisma.bookingOutboxEvent.create({
         data: {
           aggregateType: 'Booking',
           aggregateId: String(existingBooking.id),
@@ -939,6 +960,7 @@ export class BookingService {
     const allPaid = paidCount === totalCount && totalCount >= booking.playerCount;
 
     // 전원 결제 완료 → SLOT_RESERVED → CONFIRMED
+    // 알림/CompanyMember 등록은 PAYMENT_CONFIRMED saga가 일관 처리 (SAGA.md §6.6)
     if (allPaid && booking.status === BookingStatus.SLOT_RESERVED) {
       await this.prisma.$transaction(async (prisma) => {
         await prisma.booking.update({
@@ -978,48 +1000,8 @@ export class BookingService {
         `Booking ${bookingId} CONFIRMED — all ${totalCount} participants paid (split payment)`,
       );
 
-      // 예약 확정 이벤트 발행 (알림용)
-      if (this.notificationPublisher) {
-        this.notificationPublisher.emit('booking.confirmed', {
-          bookingId: booking.id,
-          bookingNumber: booking.bookingNumber,
-          userId: booking.userId,
-          gameId: booking.gameId,
-          gameName: booking.gameName,
-          bookingDate: booking.bookingDate.toISOString(),
-          timeSlot: booking.startTime,
-          confirmedAt: new Date().toISOString(),
-          userEmail: booking.userEmail,
-          userName: booking.userName,
-          paymentMethod: booking.paymentMethod,
-        });
-      }
-
-      // CompanyMember 자동 등록
-      if (booking.clubId && booking.userId && this.courseServiceClient && this.iamService) {
-        try {
-          const clubResponse = await firstValueFrom(
-            this.courseServiceClient.send('club.findOne', { id: booking.clubId }).pipe(
-              timeout(NATS_TIMEOUTS.DEFAULT),
-              catchError(() => of(null)),
-            ),
-          );
-          const companyId = clubResponse?.data?.companyId;
-          if (companyId) {
-            await firstValueFrom(
-              this.iamService.send('iam.companyMembers.addByBooking', {
-                companyId,
-                userId: booking.userId,
-              }).pipe(
-                timeout(NATS_TIMEOUTS.DEFAULT),
-                catchError(() => of(null)),
-              ),
-            );
-          }
-        } catch (err) {
-          this.logger.warn(`CompanyMember registration failed: ${err?.message}`);
-        }
-      }
+      // 결제 완료 outbox는 payment-service가 발행 (단건/더치 일관).
+      // 본 메서드는 응답(settled=true)으로 호출자에게 allPaid를 알린다.
     }
 
     const settlementStatus =

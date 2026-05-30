@@ -1,0 +1,50 @@
+{{- /*
+  Service별 HPA (Horizontal Pod Autoscaler).
+  values.yaml의 services 항목에 hpa: { enabled: true, min, max, cpu, memory } 있을 때만 생성.
+*/ -}}
+{{- $namespace := .Values.global.namespace -}}
+{{- range .Values.services }}
+{{- if and .hpa .hpa.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .name }}
+  namespace: {{ $namespace }}
+  labels:
+    app: {{ .name }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .name }}
+  minReplicas: {{ .hpa.min | default 2 }}
+  maxReplicas: {{ .hpa.max | default 10 }}
+  metrics:
+{{- if .hpa.cpu }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .hpa.cpu }}
+{{- end }}
+{{- if .hpa.memory }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .hpa.memory }}
+{{- end }}
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - { type: Pods, value: 2, periodSeconds: 60 }
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - { type: Pods, value: 1, periodSeconds: 120 }
+{{- end }}
+{{- end }}

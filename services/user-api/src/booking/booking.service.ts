@@ -1,7 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { NatsClientService, NATS_TIMEOUTS } from '../common/nats';
-import { ApiResponse } from '../common/types';
+import { ApiResponse, SagaMeta } from '../common/types';
 import {
   CreateBookingDto,
   SearchBookingDto,
@@ -38,8 +38,22 @@ export interface BookingResponseDto {
   userName?: string;
   userPhone?: string;
   canCancel?: boolean;
+  // AGENT_PAY.md §11.3 — 마이페이지 노출용 파생 필드
+  myRole?: 'BOOKER' | 'MEMBER';
+  myParticipantStatus?: 'PENDING' | 'PAID' | 'CANCELLED' | 'REFUNDED';
   createdAt: string;
   updatedAt: string;
+}
+
+/** AGENT_PAY.md §11.4 — 더치페이 본인 자리 취소 응답 */
+export interface CancelParticipantResponse {
+  bookingId: number;
+  userId: number;
+  previousStatus: string;
+  newStatus: string;
+  refundedAmount: number;
+  bookingCancelled: boolean;
+  remainingParticipants: number;
 }
 
 /** Booking 목록 응답 타입 */
@@ -82,15 +96,15 @@ export class BookingService {
   /**
    * 예약 생성 (Saga Orchestrator)
    *
-   * 멱등성 키를 생성하여 saga-service로 전달
-   * saga-service에서 예약 생성 → 슬롯 예약 → 상태 업데이트 → 알림 Saga를 오케스트레이션
+   * saga-service로 트랜잭션 위임 후, 성공 시 bookingId로 재조회하여 표준 BookingResponseDto shape로 반환.
+   * 응답 구조: { success, data: BookingResponseDto, saga: SagaMeta }
+   * 실패 시 BadRequestException → 표준 4xx 에러 응답.
    */
   async createBooking(userId: number, dto: CreateBookingDto): Promise<ApiResponse<BookingResponseDto>> {
-    // 멱등성 키 생성 (클라이언트가 제공하지 않은 경우 서버에서 생성)
     const idempotencyKey = dto.idempotencyKey || randomUUID();
     this.logger.log(`Creating booking for user ${userId} with idempotencyKey: ${idempotencyKey}`);
 
-    const result = await this.natsClient.send<ApiResponse<BookingResponseDto>>('saga.booking.create', {
+    const result = await this.natsClient.send<ApiResponse<Record<string, unknown>>>('saga.booking.create', {
       idempotencyKey,
       userId,
       gameId: dto.gameId,
@@ -104,10 +118,7 @@ export class BookingService {
       userPhone: dto.userPhone,
     });
 
-    if (result.success && result.data) {
-      this.logger.log(`Booking request submitted: ${result.data.bookingNumber} (status: ${result.data.status})`);
-    }
-    return result;
+    return this.resolveSagaResponse(result, '예약 처리에 실패했습니다');
   }
 
   async getBookingById(id: number): Promise<ApiResponse<BookingResponseDto>> {
@@ -123,7 +134,12 @@ export class BookingService {
   }
 
   async searchBookings(searchDto: SearchBookingDto): Promise<ApiResponse<BookingListResponse>> {
-    return this.natsClient.send('booking.search', searchDto, NATS_TIMEOUTS.LIST_QUERY);
+    // AGENT_PAY.md §11.3 — user-api는 본인 예약 조회이므로 더치페이 참여자도 항상 포함
+    return this.natsClient.send(
+      'booking.search',
+      { ...searchDto, includeAsParticipant: true },
+      NATS_TIMEOUTS.LIST_QUERY,
+    );
   }
 
   async updateBooking(id: number, dto: UpdateBookingDto): Promise<ApiResponse<BookingResponseDto>> {
@@ -131,7 +147,92 @@ export class BookingService {
   }
 
   async cancelBooking(id: number, userId: number, reason?: string): Promise<ApiResponse<BookingResponseDto>> {
-    return this.natsClient.send('saga.booking.cancel', { id, userId, reason }, NATS_TIMEOUTS.QUICK);
+    const result = await this.natsClient.send<ApiResponse<Record<string, unknown>>>(
+      'saga.booking.cancel',
+      { id, userId, reason },
+      NATS_TIMEOUTS.DEFAULT,
+    );
+
+    return this.resolveSagaResponse(result, '예약 취소에 실패했습니다');
+  }
+
+  /**
+   * 더치페이 본인 자리 취소 — AGENT_PAY.md §11.4
+   *
+   * booking-service `booking.cancelParticipant`를 호출.
+   * 호출자가 JWT userId를 전달하므로 booking-service는 해당 participant만 취소.
+   */
+  async cancelParticipant(
+    bookingId: number,
+    userId: number,
+    reason?: string,
+  ): Promise<ApiResponse<CancelParticipantResponse>> {
+    return this.natsClient.send(
+      'booking.cancelParticipant',
+      { bookingId, userId, reason },
+      NATS_TIMEOUTS.DEFAULT,
+    );
+  }
+
+  /**
+   * Saga 응답을 표준 BookingResponseDto 형태로 정규화.
+   * - 성공: bookingId로 booking.findById 재조회 → {success, data, saga}
+   * - 실패: BadRequestException (HTTP 400 + UnifiedExceptionFilter로 표준 에러 응답)
+   */
+  private async resolveSagaResponse(
+    result: ApiResponse<Record<string, unknown>>,
+    fallbackErrorMessage: string,
+  ): Promise<ApiResponse<BookingResponseDto>> {
+    const sagaMeta = result.saga;
+    const sagaStatus = sagaMeta?.status;
+    const isFailure = sagaStatus === 'FAILED' || sagaStatus === 'COMPENSATED' || sagaStatus === 'REQUIRES_MANUAL';
+
+    if (isFailure) {
+      const failReason = sagaMeta?.failReason || fallbackErrorMessage;
+      this.logger.warn(`Booking saga ${sagaStatus}: ${failReason}`);
+      throw new BadRequestException({
+        code: 'SAGA_FAILED',
+        message: failReason,
+        saga: sagaMeta,
+      });
+    }
+
+    // bookingId 추출 (data 내부에 있을 수도, legacy shape에 있을 수도)
+    const payload = (result.data ?? {}) as Record<string, unknown>;
+    const bookingId = (payload.bookingId as number) ?? (payload.id as number);
+
+    if (!bookingId) {
+      this.logger.error(`Saga success but bookingId missing in payload: ${JSON.stringify(payload).slice(0, 300)}`);
+      throw new BadRequestException({
+        code: 'SAGA_RESPONSE_INVALID',
+        message: 'Saga 응답에서 예약 ID를 찾을 수 없습니다',
+        saga: sagaMeta,
+      });
+    }
+
+    // 표준 shape로 재조회
+    const refetch = await this.natsClient.send<ApiResponse<BookingResponseDto>>(
+      'booking.findById',
+      { id: bookingId },
+      NATS_TIMEOUTS.QUICK,
+    );
+
+    if (!refetch?.success || !refetch.data) {
+      this.logger.error(`Failed to refetch booking ${bookingId} after saga success`);
+      throw new BadRequestException({
+        code: 'BOOKING_REFETCH_FAILED',
+        message: '예약 정보 조회에 실패했습니다',
+        saga: sagaMeta,
+      });
+    }
+
+    this.logger.log(`Booking ${refetch.data.bookingNumber} (status: ${refetch.data.status}) returned with saga meta`);
+
+    return {
+      success: true,
+      data: refetch.data,
+      saga: sagaMeta,
+    };
   }
 
   async getTimeSlotAvailability(gameId: number, date: string): Promise<ApiResponse<TimeSlotAvailabilityDto[]>> {

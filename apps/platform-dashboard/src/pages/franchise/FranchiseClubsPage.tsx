@@ -82,9 +82,25 @@ const SYNC_MODE_LABELS: Record<SyncMode, string> = {
 export const FranchiseClubsPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const limit = 20;
-  const { data: clubsResponse, isLoading } = useAllClubsQuery({ page, limit });
+
+  // Local UI State
+  const [filters, setFilters] = useState<FilterState>({
+    search: '',
+    bookingMode: 'ALL',
+  });
+  const [selectedClubId, setSelectedClubId] = useState<number | undefined>();
+
+  // 서버 사이드 검색/필터링
+  const queryParams: Record<string, string | number | undefined> = {
+    page,
+    limit,
+    ...(filters.search && { search: filters.search }),
+    ...(filters.bookingMode !== 'ALL' && { bookingMode: filters.bookingMode }),
+  };
+  const { data: clubsResponse, isLoading } = useAllClubsQuery(queryParams);
   const { data: partnersResponse } = usePartnersQuery();
   const allClubs = clubsResponse?.data || [];
+  const filteredClubs = allClubs;
   const pagination = clubsResponse?.pagination ?? { total: 0, page: 1, limit, totalPages: 0 };
   const partners = partnersResponse?.data || [];
 
@@ -96,34 +112,6 @@ export const FranchiseClubsPage: React.FC = () => {
     }
     return map;
   }, [partners]);
-
-  // Local UI State
-  const [filters, setFilters] = useState<FilterState>({
-    search: '',
-    bookingMode: 'ALL',
-  });
-  const [selectedClubId, setSelectedClubId] = useState<number | undefined>();
-
-  // Filtered Data
-  const filteredClubs = useMemo(() => {
-    let result = [...allClubs];
-
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
-      result = result.filter(
-        (c) =>
-          c.name?.toLowerCase().includes(searchLower) ||
-          c.address?.toLowerCase().includes(searchLower) ||
-          c.location?.toLowerCase().includes(searchLower),
-      );
-    }
-
-    if (filters.bookingMode !== 'ALL') {
-      result = result.filter((c) => c.bookingMode === filters.bookingMode);
-    }
-
-    return result;
-  }, [allClubs, filters]);
 
   // Stats
   const stats = useMemo(

@@ -107,14 +107,6 @@ export class ChatRequestDto {
 
   @IsOptional()
   @IsBoolean()
-  nextTeam?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
-  finishGroup?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
   sendReminder?: boolean;
 
   // ── 분할결제 완료 필드 ──
@@ -133,6 +125,7 @@ export class ChatRequestDto {
  */
 export type ConversationState =
   | 'IDLE'                    // 초기 상태
+  | 'ANALYZING'               // 의도 분석 중
   | 'COLLECTING'              // 정보 수집 중
   | 'SELECTING_MEMBERS'       // 팀 멤버 선택 중
   | 'CONFIRMING'              // 예약 확인 중
@@ -154,8 +147,9 @@ export type ActionType =
   | 'SHOW_PAYMENT'            // 결제 카드 표시 (카드결제)
   | 'SPLIT_PAYMENT'           // 더치페이 결제 상태
   | 'SETTLEMENT_STATUS'       // 정산 현황
-  | 'TEAM_COMPLETE'           // 팀 완료 카드
-  | 'BOOKING_COMPLETE';       // 예약 완료
+  | 'TEAM_COMPLETE'           // 팀 완료 카드 (부킹 현황)
+  | 'BOOKING_FAILED'          // 예약 실패 (대안 제시)
+  | 'BOOKING_EXPIRED';        // 결제 타임아웃
 
 /**
  * UI 액션
@@ -226,22 +220,20 @@ export interface BookingSlots {
   totalPrice?: number;
   slotPrice?: number;
 
-  // 팀 예약 (모든 예약에 적용)
+  // Phase 2 — Episodic Memory: 한 conversation 내 최근 부킹 prefill 1회 실행 표시
+  episodicPrefilled?: boolean;
+
+  // Phase 3 — Semantic Memory: 한 conversation 내 사용자 프로파일 prefill 1회 실행 표시
+  semanticPrefilled?: boolean;
+
+  // 직전 턴에 사용자에게 안내한 골프장 목록(순번→실제 clubId 매핑용).
+  // 후속 턴에서 "N번"/이름 지칭 시 실제 clubId 사용하도록 컨텍스트 주입
+  recentClubs?: Array<{ id: number; name: string }>;
+
+  // 예약 참여자 (1예약 = 최대 4명, UNI-36)
   chatRoomId?: string;
   bookerId?: number;
   paymentMethod?: string;
-  groupMode?: boolean;
-  currentTeamNumber?: number;
+  groupMode?: boolean;            // 멤버 선택 단계를 거쳤는지
   currentTeamMembers?: Array<{ userId: number; userName: string; userEmail: string }>;
-  completedTeams?: Array<{
-    teamNumber: number;
-    bookingId: number;
-    bookingNumber: string;
-    slotId: string;
-    slotTime: string;
-    gameName: string;
-    members: Array<{ userId: number; userName: string }>;
-    totalPrice: number;
-    paymentMethod: string;
-  }>;
 }

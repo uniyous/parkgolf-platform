@@ -46,6 +46,12 @@ struct PaymentStatusResponse: Codable, Sendable {
     let bookingId: Int?
 }
 
+struct AbandonPaymentRequest: Codable, Sendable {
+    let reason: String  // "failed" | "cancelled"
+    let errorCode: String?
+    let errorMessage: String?
+}
+
 // MARK: - Payment Service
 
 actor PaymentService {
@@ -97,6 +103,18 @@ actor PaymentService {
         let endpoint = Endpoint(
             path: "/api/user/payments/order/\(orderId)",
             method: .get
+        )
+
+        return try await apiClient.request(endpoint, responseType: PaymentStatusResponse.self)
+    }
+
+    // MARK: - Abandon Payment (결제 실패/취소 통지)
+    // payment.status=ABORTED + outbox booking.paymentFailed → PAYMENT_FAILED Saga
+    func abandonPayment(orderId: String, request: AbandonPaymentRequest) async throws -> PaymentStatusResponse {
+        let endpoint = Endpoint(
+            path: "/api/user/payments/\(orderId)/abandon",
+            method: .post,
+            body: request
         )
 
         return try await apiClient.request(endpoint, responseType: PaymentStatusResponse.self)

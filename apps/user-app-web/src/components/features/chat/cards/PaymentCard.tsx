@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { CreditCard, MapPin, Calendar, Clock, Users, Banknote, Timer, Loader2 } from 'lucide-react';
+import { CreditCard, MapPin, Calendar, Clock, Users, Banknote, Timer, Loader2, AlertCircle } from 'lucide-react';
 import { loadTossPayments, type TossPaymentsInstance } from '@tosspayments/payment-sdk';
 import { cn } from '@/lib/utils';
 import type { PaymentCardData } from '@/lib/api/chatApi';
@@ -17,12 +17,15 @@ interface PaymentCardProps {
   completed?: boolean;
 }
 
-const PAYMENT_TIMEOUT_SECONDS = 10 * 60; // 10분
+// 백엔드 saga가 3분 후 PAYMENT_TIMEOUT 트리거하므로 10초 버퍼를 두고 종료
+// (이중 결제 / 결제-환불 race condition 방지)
+const PAYMENT_TIMEOUT_SECONDS = 2 * 60 + 50; // 2분 50초
 
 export const PaymentCard: React.FC<PaymentCardProps> = ({ data, roomId, conversationId, onPaymentComplete, completed }) => {
   const [remainingSeconds, setRemainingSeconds] = useState(PAYMENT_TIMEOUT_SECONDS);
   const [isPaying, setIsPaying] = useState(false);
   const [isExpired, setIsExpired] = useState(false);
+  const [paymentResult, setPaymentResult] = useState<'success' | 'failed' | null>(null);
   const tossRef = useRef<TossPaymentsInstance | null>(null);
 
   const formatPrice = (price: number) =>
@@ -121,13 +124,14 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({ data, roomId, conversa
   }, [isPaying, isExpired, data, roomId, conversationId, onPaymentComplete]);
 
   const handleCancel = useCallback(() => {
+    setPaymentResult('failed');
     onPaymentComplete?.(false);
   }, [onPaymentComplete]);
 
   const isUrgent = remainingSeconds < 60;
 
   return (
-    <div className="mt-2 bg-violet-500/10 rounded-xl p-4 border border-violet-500/20">
+    <div className="mt-2 w-full min-w-[260px] max-w-[420px] bg-violet-500/10 rounded-xl p-4 border border-violet-500/20">
         <div className="flex items-center gap-2 mb-3">
           <CreditCard className="w-4 h-4 text-blue-400" />
           <span className="text-lg font-semibold text-white">카드결제</span>
@@ -153,11 +157,18 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({ data, roomId, conversa
         </div>
 
         {/* 타이머 / 완료 상태 */}
-        {completed ? (
-          <div className="flex items-center gap-2 mt-3 px-3 py-2 rounded-lg text-base bg-emerald-500/10 text-emerald-400">
-            <CreditCard className="w-3.5 h-3.5 shrink-0" />
-            <span>결제 완료</span>
-          </div>
+        {(completed || paymentResult) ? (
+          paymentResult === 'failed' ? (
+            <div className="flex items-center gap-2 mt-3 px-3 py-2 rounded-lg text-base bg-red-500/10 text-red-400">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              <span>결제 취소됨</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 mt-3 px-3 py-2 rounded-lg text-base bg-white/5 text-white/40">
+              <CreditCard className="w-3.5 h-3.5 shrink-0" />
+              <span>결제 처리됨</span>
+            </div>
+          )
         ) : (
           <>
             <div className={cn(

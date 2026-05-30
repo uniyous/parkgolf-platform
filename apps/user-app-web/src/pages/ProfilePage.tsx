@@ -17,6 +17,7 @@ import {
   Megaphone,
   MessageSquare,
   Star,
+  Sparkles,
 } from 'lucide-react';
 import { AppLayout, Container } from '@/components/layout';
 import { GlassCard, SectionHeader } from '@/components/ui';
@@ -189,6 +190,11 @@ export function ProfilePage() {
                 icon={<Bell className="w-5 h-5" />}
                 label="알림 설정"
                 onClick={() => navigate('/settings/notifications')}
+              />
+              <MenuItem
+                icon={<Sparkles className="w-5 h-5" />}
+                label="AI 비서 메모리"
+                onClick={() => navigate('/settings/agent-memory')}
               />
             </div>
           </GlassCard>

@@ -18,16 +18,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.parkgolf.app.domain.model.ActionType
 import com.parkgolf.app.domain.model.ChatAction
-import com.parkgolf.app.presentation.feature.chat.components.cards.BookingCompleteCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.ClubCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.ConfirmBookingCard
-import com.parkgolf.app.presentation.feature.chat.components.cards.ConfirmGroupCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.PaymentCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.SelectParticipantsCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.SettlementStatusCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.SlotCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.TeamCompleteCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.TeamConfirmData
+import com.parkgolf.app.presentation.feature.chat.components.cards.BookingFailedCard
+import com.parkgolf.app.presentation.feature.chat.components.cards.BookingExpiredCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.WeatherCard
 import com.parkgolf.app.presentation.theme.ParkOnPrimary
 import com.parkgolf.app.presentation.theme.ParkPrimary
@@ -47,13 +47,10 @@ fun AiMessageBubble(
     onCancelBooking: (() -> Unit)? = null,
     onPaymentComplete: ((Boolean) -> Unit)? = null,
     onRequestPayment: ((orderId: String, orderName: String, amount: Int) -> Unit)? = null,
-    onConfirmGroup: ((String) -> Unit)? = null,
     onCancelGroup: (() -> Unit)? = null,
     onTeamConfirm: ((List<TeamConfirmData>) -> Unit)? = null,
     onSplitPaymentComplete: ((Boolean, String) -> Unit)? = null,
     onRequestSplitPayment: ((orderId: String, amount: Int) -> Unit)? = null,
-    onNextTeam: (() -> Unit)? = null,
-    onFinish: (() -> Unit)? = null,
     onSendReminder: (() -> Unit)? = null,
     onRefresh: (() -> Unit)? = null,
     selectedClubId: String? = null,
@@ -62,7 +59,9 @@ fun AiMessageBubble(
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(end = 40.dp),
         horizontalAlignment = Alignment.Start
     ) {
         // AI label (hidden for consecutive AI messages)
@@ -99,103 +98,102 @@ fun AiMessageBubble(
             }
         }
 
-        // Message bubble with left accent border
-        Surface(
-            shape = RoundedCornerShape(
-                topStart = 16.dp,
-                topEnd = 16.dp,
-                bottomStart = 4.dp,
-                bottomEnd = 16.dp
-            ),
-            color = ParkPrimary.copy(alpha = 0.10f)
+        // Message bubble + time (iOS style: time to the right, bottom-aligned)
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Row(modifier = Modifier.height(IntrinsicSize.Min)) {
-                // Left accent border
-                Box(
-                    modifier = Modifier
-                        .width(3.dp)
-                        .fillMaxHeight()
-                        .background(ParkPrimary)
-                )
+            Surface(
+                shape = RoundedCornerShape(
+                    topStart = 16.dp,
+                    topEnd = 16.dp,
+                    bottomStart = 4.dp,
+                    bottomEnd = 16.dp
+                ),
+                color = ParkPrimary.copy(alpha = 0.10f),
+                modifier = Modifier.weight(1f, fill = false)
+            ) {
+                Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+                    // Left accent border
+                    Box(
+                        modifier = Modifier
+                            .width(3.dp)
+                            .fillMaxHeight()
+                            .background(ParkPrimary)
+                    )
 
-                Column(
-                    modifier = Modifier.padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (content.isNotEmpty()) {
-                        Text(
-                            text = content,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = ParkOnPrimary
-                        )
-                    }
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (content.isNotEmpty()) {
+                            Text(
+                                text = content,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = ParkOnPrimary
+                            )
+                        }
 
-                    // Action cards
-                    actions.forEach { action ->
-                        when (action.type) {
-                            ActionType.SHOW_CLUBS -> ClubCard(
-                                data = action.data,
-                                onSelect = onClubSelect,
-                                selectedClubId = selectedClubId
-                            )
-                            ActionType.SHOW_SLOTS -> SlotCard(
-                                data = action.data,
-                                onSelect = { slotId, time, price, gameName ->
-                                    val clubId = action.data["clubId"]?.toString()
-                                    val clubName = action.data["clubName"]?.toString()
-                                    onSlotSelect?.invoke(slotId, time, price, clubId, clubName, gameName)
-                                },
-                                selectedSlotId = selectedSlotId
-                            )
-                            ActionType.SHOW_WEATHER -> WeatherCard(data = action.data)
-                            ActionType.CONFIRM_BOOKING -> ConfirmBookingCard(
-                                data = action.data,
-                                onConfirm = onConfirmBooking,
-                                onCancel = onCancelBooking
-                            )
-                            ActionType.SHOW_PAYMENT -> PaymentCard(
-                                data = action.data,
-                                onPaymentComplete = onPaymentComplete,
-                                onRequestPayment = onRequestPayment
-                            )
-                            ActionType.BOOKING_COMPLETE -> BookingCompleteCard(data = action.data)
-                            ActionType.CONFIRM_GROUP -> ConfirmGroupCard(
-                                data = action.data,
-                                onConfirm = onConfirmGroup,
-                                onCancel = onCancelGroup
-                            )
-                            ActionType.SELECT_MEMBERS -> SelectParticipantsCard(
-                                data = action.data,
-                                onConfirm = onTeamConfirm,
-                                onCancel = onCancelGroup
-                            )
-                            ActionType.SETTLEMENT_STATUS -> SettlementStatusCard(
-                                data = action.data,
-                                currentUserId = currentUserId,
-                                onSplitPaymentComplete = onSplitPaymentComplete,
-                                onRequestSplitPayment = onRequestSplitPayment,
-                                onSendReminder = onSendReminder,
-                                onRefresh = onRefresh
-                            )
-                            ActionType.TEAM_COMPLETE -> TeamCompleteCard(
-                                data = action.data,
-                                onNextTeam = onNextTeam,
-                                onFinish = onFinish
-                            )
-                            ActionType.SPLIT_PAYMENT -> { /* handled by settlement status */ }
+                        // Action cards
+                        actions.forEach { action ->
+                            when (action.type) {
+                                ActionType.SHOW_CLUBS -> ClubCard(
+                                    data = action.data,
+                                    onSelect = onClubSelect,
+                                    selectedClubId = selectedClubId
+                                )
+                                ActionType.SHOW_SLOTS -> SlotCard(
+                                    data = action.data,
+                                    onSelect = { slotId, time, price, gameName ->
+                                        val clubId = action.data["clubId"]?.toString()
+                                        val clubName = action.data["clubName"]?.toString()
+                                        onSlotSelect?.invoke(slotId, time, price, clubId, clubName, gameName)
+                                    },
+                                    selectedSlotId = selectedSlotId
+                                )
+                                ActionType.SHOW_WEATHER -> WeatherCard(data = action.data)
+                                ActionType.CONFIRM_BOOKING -> ConfirmBookingCard(
+                                    data = action.data,
+                                    onConfirm = onConfirmBooking,
+                                    onCancel = onCancelBooking
+                                )
+                                ActionType.SHOW_PAYMENT -> PaymentCard(
+                                    data = action.data,
+                                    onPaymentComplete = onPaymentComplete,
+                                    onRequestPayment = onRequestPayment
+                                )
+                                ActionType.CONFIRM_GROUP -> { /* deprecated - 1팀 예약 플로우로 통일 */ }
+                                ActionType.SELECT_MEMBERS -> SelectParticipantsCard(
+                                    data = action.data,
+                                    onConfirm = onTeamConfirm,
+                                    onCancel = onCancelGroup
+                                )
+                                ActionType.SETTLEMENT_STATUS -> SettlementStatusCard(
+                                    data = action.data,
+                                    currentUserId = currentUserId,
+                                    onSplitPaymentComplete = onSplitPaymentComplete,
+                                    onRequestSplitPayment = onRequestSplitPayment,
+                                    onSendReminder = onSendReminder,
+                                    onRefresh = onRefresh
+                                )
+                                ActionType.TEAM_COMPLETE -> TeamCompleteCard(
+                                    data = action.data
+                                )
+                                ActionType.SPLIT_PAYMENT -> { /* handled by settlement status */ }
+                                ActionType.BOOKING_FAILED -> BookingFailedCard(data = action.data)
+                                ActionType.BOOKING_EXPIRED -> BookingExpiredCard(data = action.data)
+                            }
                         }
                     }
                 }
             }
-        }
 
-        // Time
-        Text(
-            text = createdAt.format(timeFormatter),
-            style = MaterialTheme.typography.labelSmall,
-            color = ParkOnPrimary.copy(alpha = 0.5f),
-            modifier = Modifier.padding(start = 8.dp, top = 2.dp)
-        )
+            Text(
+                text = createdAt.format(timeFormatter),
+                style = MaterialTheme.typography.labelSmall,
+                color = ParkOnPrimary.copy(alpha = 0.5f)
+            )
+        }
     }
 }
 
@@ -211,49 +209,48 @@ fun AiUserMessageBubble(
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.End
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 40.dp),
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.Bottom
     ) {
-        Column(
-            horizontalAlignment = Alignment.End
+        Text(
+            text = createdAt.format(timeFormatter),
+            style = MaterialTheme.typography.labelSmall,
+            color = ParkOnPrimary.copy(alpha = 0.5f),
+            modifier = Modifier.padding(end = 6.dp)
+        )
+
+        Surface(
+            shape = RoundedCornerShape(
+                topStart = 16.dp,
+                topEnd = 16.dp,
+                bottomStart = 16.dp,
+                bottomEnd = 4.dp
+            ),
+            color = ParkPrimary.copy(alpha = 0.15f)
         ) {
-            Surface(
-                shape = RoundedCornerShape(
-                    topStart = 16.dp,
-                    topEnd = 16.dp,
-                    bottomStart = 16.dp,
-                    bottomEnd = 4.dp
-                ),
-                color = ParkPrimary.copy(alpha = 0.15f)
-            ) {
-                Row(modifier = Modifier.height(IntrinsicSize.Min)) {
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(12.dp)
-                    ) {
-                        Text(
-                            text = content,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = ParkOnPrimary
-                        )
-                    }
-                    // Right accent border
-                    Box(
-                        modifier = Modifier
-                            .width(3.dp)
-                            .fillMaxHeight()
-                            .background(ParkPrimary)
+            Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(12.dp)
+                ) {
+                    Text(
+                        text = content,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = ParkOnPrimary
                     )
                 }
+                // Right accent border
+                Box(
+                    modifier = Modifier
+                        .width(3.dp)
+                        .fillMaxHeight()
+                        .background(ParkPrimary)
+                )
             }
-
-            Text(
-                text = createdAt.format(timeFormatter),
-                style = MaterialTheme.typography.labelSmall,
-                color = ParkOnPrimary.copy(alpha = 0.5f),
-                modifier = Modifier.padding(end = 8.dp, top = 2.dp)
-            )
         }
     }
 }

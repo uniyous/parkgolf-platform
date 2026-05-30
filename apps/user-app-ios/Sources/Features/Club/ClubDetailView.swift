@@ -28,6 +28,7 @@ struct ClubDetailView: View {
         .background(LinearGradient.parkBackground)
         .navigationTitle(viewModel.club?.name ?? "골프장 정보")
         .navigationBarTitleDisplayMode(.inline)
+        .subScreenTabBarHidden()
         .task {
             await viewModel.loadData()
         }
@@ -89,8 +90,8 @@ struct ClubDetailView: View {
                     }
                 }
 
-                // Operating Hours
-                if let hours = club.operatingHours {
+                // Operating Hours (평일 우선, 없으면 주말)
+                if let hours = club.operatingHours?.displayHours {
                     Label("\(hours.open) ~ \(hours.close)", systemImage: "clock.fill")
                         .font(.parkBodySmall)
                         .foregroundStyle(.white.opacity(0.7))
@@ -170,6 +171,7 @@ struct ClubDetailView: View {
                         RoundBookingView(showTitle: false)
                             .navigationTitle("라운드 예약")
                             .navigationBarTitleDisplayMode(.inline)
+                            .subScreenTabBarHidden()
                     } label: {
                         GameCardContent(game: game)
                     }

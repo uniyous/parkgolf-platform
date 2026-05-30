@@ -340,10 +340,22 @@ class BookingFormViewModel @Inject constructor(
         _uiState.update {
             it.copy(error = errorMessage ?: "결제에 실패했습니다 ($errorCode)")
         }
+        notifyPaymentAbandoned(reason = "failed", errorCode = errorCode, errorMessage = errorMessage)
     }
 
     fun handlePaymentCancelled() {
-        // Do nothing - user stays on the form
+        notifyPaymentAbandoned(reason = "cancelled", errorCode = null, errorMessage = null)
+    }
+
+    /**
+     * 결제 실패/취소를 백엔드에 통지 → PAYMENT_FAILED Saga로 booking 자동 정리.
+     * 실패해도 UI에는 영향 없음 (saga-scheduler 백업이 처리).
+     */
+    private fun notifyPaymentAbandoned(reason: String, errorCode: String?, errorMessage: String?) {
+        val orderId = _uiState.value.paymentPrepareData?.orderId ?: return
+        viewModelScope.launch {
+            paymentRepository.abandonPayment(orderId, reason, errorCode, errorMessage)
+        }
     }
 
     fun resetForm() {

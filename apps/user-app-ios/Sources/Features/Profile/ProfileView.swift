@@ -205,6 +205,14 @@ struct ProfileView: View {
                 ) {
                     NotificationSettingsView()
                 }
+
+                ProfileMenuRow(
+                    icon: "sparkles",
+                    iconColor: .parkPrimary,
+                    title: "AI 비서 메모리"
+                ) {
+                    AgentMemorySettingsView()
+                }
             }
         }
     }

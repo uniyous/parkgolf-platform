@@ -95,10 +95,25 @@ export interface BookingResponse {
   idempotencyKey?: string;
   sagaFailReason?: string;
   payments: unknown[];
+  participants?: unknown[];
   histories: unknown[];
   canCancel?: boolean;
+  // AGENT_PAY.md §11.3 — 마이페이지 노출용 파생 필드 (BFF가 currentUser 기준으로 계산)
+  myRole?: 'BOOKER' | 'MEMBER';
+  myParticipantStatus?: 'PENDING' | 'PAID' | 'CANCELLED' | 'REFUNDED';
   createdAt: string;
   updatedAt: string;
+}
+
+/** AGENT_PAY.md §11.4 — 더치페이 본인 자리 취소 응답 */
+export interface CancelParticipantResponse {
+  bookingId: number;
+  userId: number;
+  previousStatus: string;
+  newStatus: string;
+  refundedAmount: number;
+  bookingCancelled: boolean;
+  remainingParticipants: number;
 }
 
 export interface BookingWithCancel extends BookingResponse {
@@ -217,11 +232,23 @@ export const bookingApi = {
   },
 
   /**
-   * 예약 취소
+   * 예약 취소 (단일 결제 — booker 전체 취소)
    */
   cancelBooking: async (id: number, reason?: string): Promise<BookingResponse> => {
     const response = await apiClient.delete<BffResponse<BookingResponse>>(
       `/api/user/bookings/${id}`,
+      { reason }
+    );
+    return unwrapResponse(response.data);
+  },
+
+  /**
+   * 더치페이 본인 자리 취소 — AGENT_PAY.md §11.4
+   * JWT userId가 곧 취소 대상 participant.userId
+   */
+  cancelParticipant: async (id: number, reason?: string): Promise<CancelParticipantResponse> => {
+    const response = await apiClient.delete<BffResponse<CancelParticipantResponse>>(
+      `/api/user/bookings/${id}/participant`,
       { reason }
     );
     return unwrapResponse(response.data);

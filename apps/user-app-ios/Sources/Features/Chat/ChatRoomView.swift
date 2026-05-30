@@ -51,6 +51,7 @@ struct ChatRoomView: View {
         }
         .navigationTitle(room.displayName(currentUserId: viewModel.currentUserId))
         .navigationBarTitleDisplayMode(.inline)
+        .subScreenTabBarHidden()
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
@@ -229,7 +230,9 @@ struct ChatRoomView: View {
     private var messageList: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: ParkSpacing.sm) {
+                // alignment .leading — child(메시지 버블)의 폭이 부모 콘텐츠 폭을 초과해도
+                // center align으로 인해 좌측이 화면을 벗어나지 않게 강제.
+                LazyVStack(alignment: .leading, spacing: ParkSpacing.sm) {
                     // 이전 메시지 로드 버튼/인디케이터
                     if viewModel.hasMoreMessages {
                         loadMoreButton
@@ -305,9 +308,6 @@ struct ChatRoomView: View {
                                     aiViewModel.savePendingPayment(payment)
                                     showPaymentSheet = true
                                 },
-                                onConfirmGroup: { paymentMethod in
-                                    sendAiFollowUp("그룹 예약 확인", request: AiChatRequest(message: "그룹 예약 확인", paymentMethod: paymentMethod, confirmGroupBooking: true))
-                                },
                                 onCancelGroup: {
                                     sendAiFollowUp("예약 취소", request: AiChatRequest(message: "예약 취소", cancelBooking: true))
                                 },
@@ -323,12 +323,6 @@ struct ChatRoomView: View {
                                     aiViewModel.pendingPayment = payment
                                     aiViewModel.savePendingPayment(payment)
                                     showPaymentSheet = true
-                                },
-                                onNextTeam: {
-                                    sendAiFollowUp("다음 팀 예약", request: AiChatRequest(message: "다음 팀 예약", nextTeam: true))
-                                },
-                                onFinish: {
-                                    sendAiFollowUp("예약 종료", request: AiChatRequest(message: "예약 종료", finishGroup: true))
                                 },
                                 onSendReminder: {
                                     sendAiFollowUp("리마인더 전송", request: AiChatRequest(message: "리마인더 전송", sendReminder: true))
@@ -613,7 +607,7 @@ struct ChatRoomView: View {
     private func notifyPaymentFailed(_ payment: AiChatViewModel.PendingPayment) {
         aiViewModel.clearPendingPayment()
         if payment.type == "split" {
-            sendAiFollowUp("결제 실패", request: AiChatRequest(message: "결제 실패", splitPaymentComplete: true, splitOrderId: payment.orderId))
+            sendAiFollowUp("결제 실패", request: AiChatRequest(message: "결제 실패", splitPaymentComplete: false, splitOrderId: payment.orderId))
         } else {
             sendAiFollowUp("결제 취소", request: AiChatRequest(message: "결제 취소", paymentComplete: true, paymentSuccess: false))
         }
@@ -627,6 +621,13 @@ struct ChatRoomView: View {
                 .background(Color.white.opacity(0.1))
 
             HStack(spacing: ParkSpacing.xs) {
+                // AI 모드 토글 — 입력바 좌측
+                AiButton(isActive: aiViewModel.isAiMode) {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        aiViewModel.toggleAiMode()
+                    }
+                }
+
                 TextField(
                     aiViewModel.isAiMode ? "AI에게 예약 요청하기..." : "메시지 입력...",
                     text: $viewModel.inputText,
@@ -663,12 +664,6 @@ struct ChatRoomView: View {
                             viewModel.sendTypingIndicator(!viewModel.inputText.isEmpty)
                         }
                     }
-
-                AiButton(isActive: aiViewModel.isAiMode) {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        aiViewModel.toggleAiMode()
-                    }
-                }
 
                 Button {
                     if aiViewModel.isAiMode {

@@ -47,7 +47,7 @@ export function BottomSheet({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50">
+    <div className="fixed inset-0 z-[60]">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"
@@ -83,7 +83,7 @@ export function BottomSheet({
         )}
 
         {/* Content */}
-        <div className={cn('flex-1 overflow-y-auto p-4', className)}>
+        <div className={cn('flex-1 overflow-y-auto p-4 pb-safe', className)}>
           {children}
         </div>
       </div>

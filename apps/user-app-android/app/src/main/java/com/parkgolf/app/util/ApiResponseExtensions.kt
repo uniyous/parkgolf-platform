@@ -103,7 +103,7 @@ inline fun <T, R> PaginatedResponse<T>.toPaginatedResult(
             )
         )
     } else {
-        Result.failure(Exception(errorMessage))
+        Result.failure(Exception(error?.message ?: errorMessage))
     }
 }
 

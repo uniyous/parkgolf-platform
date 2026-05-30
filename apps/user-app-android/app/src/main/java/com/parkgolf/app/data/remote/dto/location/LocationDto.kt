@@ -63,10 +63,22 @@ data class ClubDetailDto(
     val isActive: Boolean = true
 )
 
+/**
+ * 서버 응답: { weekday: { start, end }, weekend: { start, end } }
+ * 옛 평면 구조 { open, close } 도 호환을 위해 nullable로 수용.
+ */
 @Serializable
 data class OperatingHoursDto(
-    val open: String,
-    val close: String
+    val weekday: HoursDto? = null,
+    val weekend: HoursDto? = null,
+    val open: String? = null,
+    val close: String? = null
+)
+
+@Serializable
+data class HoursDto(
+    val start: String,
+    val end: String
 )
 
 @Serializable

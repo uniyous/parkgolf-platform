@@ -1,10 +1,11 @@
 import React from 'react';
 import { Sparkles } from 'lucide-react';
-import type { ChatAction, ClubCardData, SlotCardData, WeatherCardData, BookingCompleteData, ConfirmBookingData, PaymentCardData, SelectMembersData, TeamCompleteData, SettlementStatusData } from '@/lib/api/chatApi';
+import type { ChatAction, ClubCardData, SlotCardData, WeatherCardData, ConfirmBookingData, PaymentCardData, SelectMembersData, TeamCompleteData, SettlementStatusData } from '@/lib/api/chatApi';
 import { ClubCard } from './cards/ClubCard';
 import { SlotCard } from './cards/SlotCard';
 import { WeatherCard } from './cards/WeatherCard';
-import { BookingCompleteCard } from './cards/BookingCompleteCard';
+import { BookingFailedCard } from './cards/BookingFailedCard';
+import { BookingExpiredCard } from './cards/BookingExpiredCard';
 import { ConfirmBookingCard } from './cards/ConfirmBookingCard';
 import { PaymentCard } from './cards/PaymentCard';
 import { SelectMembersCard } from './cards/SelectMembersCard';
@@ -25,8 +26,6 @@ interface AiMessageBubbleProps {
   onCancelBooking?: () => void;
   onPaymentComplete?: (success: boolean) => void;
   onTeamMemberSelect?: (members: Array<{ userId: number; userName: string; userEmail: string }>) => void;
-  onNextTeam?: () => void;
-  onFinishGroup?: () => void;
   onSendReminder?: () => void;
   onRefreshSettlement?: () => void;
   onSplitPaymentComplete?: (success: boolean, orderId: string) => void;
@@ -50,8 +49,6 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
   onCancelBooking,
   onPaymentComplete,
   onTeamMemberSelect,
-  onNextTeam,
-  onFinishGroup,
   onSendReminder,
   onRefreshSettlement,
   onSplitPaymentComplete,
@@ -119,9 +116,6 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
                     completed={!isLatestAiMessage}
                   />
                 )}
-                {action.type === 'BOOKING_COMPLETE' && (
-                  <BookingCompleteCard data={action.data as BookingCompleteData} />
-                )}
                 {action.type === 'SELECT_MEMBERS' && (
                   <SelectMembersCard
                     data={action.data as SelectMembersData}
@@ -133,10 +127,14 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
                 {action.type === 'TEAM_COMPLETE' && (
                   <TeamCompleteCard
                     data={action.data as TeamCompleteData}
-                    onNextTeam={onNextTeam}
-                    onFinish={onFinishGroup}
                     completed={!isLatestAiMessage}
                   />
+                )}
+                {action.type === 'BOOKING_FAILED' && (
+                  <BookingFailedCard data={action.data as Record<string, unknown>} />
+                )}
+                {action.type === 'BOOKING_EXPIRED' && (
+                  <BookingExpiredCard data={action.data as Record<string, unknown>} />
                 )}
                 {action.type === 'SETTLEMENT_STATUS' && (
                   <SettlementStatusCard
@@ -144,9 +142,10 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
                     currentUserId={currentUserId}
                     roomId={roomId}
                     conversationId={conversationId}
-                    onSplitPaymentComplete={onSplitPaymentComplete}
-                    onSendReminder={onSendReminder}
-                    onRefresh={onRefreshSettlement}
+                    onSplitPaymentComplete={isLatestAiMessage ? onSplitPaymentComplete : undefined}
+                    onSendReminder={isLatestAiMessage ? onSendReminder : undefined}
+                    onRefresh={isLatestAiMessage ? onRefreshSettlement : undefined}
+                    completed={!isLatestAiMessage}
                   />
                 )}
               </div>

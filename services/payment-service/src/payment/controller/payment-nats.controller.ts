@@ -68,6 +68,25 @@ export class PaymentNatsController {
   }
 
   /**
+   * 결제 중단 (실패/취소) - orderId 기반
+   * 클라이언트가 결제창 실패/취소 시 호출. payment.status=ABORTED + outbox booking.paymentFailed 발행
+   */
+  @MessagePattern('payment.markAborted')
+  async markPaymentAborted(
+    @Payload()
+    data: {
+      orderId: string;
+      reason: 'failed' | 'cancelled';
+      errorCode?: string;
+      errorMessage?: string;
+    },
+  ) {
+    this.logger.log(`Marking payment ABORTED: ${data.orderId} (reason=${data.reason})`);
+    const result = await this.paymentService.abandonPaymentByOrderId(data);
+    return NatsResponse.success(result);
+  }
+
+  /**
    * 결제 조회 (paymentKey)
    */
   @MessagePattern('payment.get')
@@ -159,6 +178,40 @@ export class PaymentNatsController {
   async confirmSplit(@Payload() data: SplitConfirmDto) {
     this.logger.log(`Confirming split payment: ${data.orderId}`);
     const result = await this.splitService.confirmSplit(data);
+    return NatsResponse.success(result);
+  }
+
+  /**
+   * 분할결제 일괄 환불 (PAYMENT_TIMEOUT Saga의 REFUND_PAID_SPLITS step)
+   * - PAID split을 모두 Toss 환불 → status=REFUNDED
+   * - PENDING split은 EXPIRED로 일괄 변경
+   */
+  @MessagePattern('payment.refundPaidSplits')
+  async refundPaidSplits(@Payload() data: { bookingId: number; reason?: string }) {
+    this.logger.log(`Refunding paid splits for booking ${data.bookingId}`);
+    const result = await this.splitService.refundPaidSplitsByBooking(data);
+    return NatsResponse.success(result);
+  }
+
+  /**
+   * 단일 분할결제 환불 — AGENT_PAY.md §11.4 (마이페이지 본인 자리 취소)
+   * booking-service `booking.cancelParticipant`가 PAID split에 대해 호출.
+   * policy.refund.resolve로 환불률 결정 후 Toss 부분 환불.
+   */
+  @MessagePattern('payment.refundSplit')
+  async refundSplit(@Payload() data: {
+    bookingId: number;
+    userId: number;
+    reason?: string;
+    clubId?: number | null;
+    companyId?: number | null;
+    bookingDate?: string | Date;
+    startTime?: string;
+  }) {
+    this.logger.log(
+      `refundSplit: booking=${data.bookingId} user=${data.userId}`,
+    );
+    const result = await this.splitService.refundSingleSplit(data);
     return NatsResponse.success(result);
   }
 

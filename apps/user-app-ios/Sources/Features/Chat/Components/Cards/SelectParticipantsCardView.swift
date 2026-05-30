@@ -29,7 +29,7 @@ struct SelectParticipantsCardView: View {
             HStack(spacing: 8) {
                 Image(systemName: "person.3.sequence.fill")
                     .foregroundColor(Color.parkPrimary)
-                Text("팀 편성")
+                Text("멤버 선택")
                     .font(.title3)
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
@@ -43,10 +43,6 @@ struct SelectParticipantsCardView: View {
             ForEach(Array(teams.enumerated()), id: \.element.id) { teamIndex, team in
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
-                        Text("팀\(team.teamNumber)")
-                            .font(.body)
-                            .fontWeight(.semibold)
-                            .foregroundColor(Color.parkPrimary)
                         if !team.slotTime.isEmpty {
                             Text("\(team.slotTime) · \(team.gameName)")
                                 .font(.subheadline)
@@ -114,7 +110,7 @@ struct SelectParticipantsCardView: View {
                                     Button {
                                         addMember(member, toTeamAt: teamIndex)
                                     } label: {
-                                        Text("팀\(team.teamNumber)")
+                                        Text("추가")
                                             .font(.subheadline)
                                             .foregroundColor(Color.parkPrimary)
                                             .padding(.horizontal, 8)
@@ -202,30 +198,43 @@ struct SelectParticipantsCardView: View {
     // MARK: - Data Parsing
 
     private func parseData() {
-        guard let teamsData = dict["teams"] as? [[String: Any]] else { return }
+        // 서버(agent-service ui-card.helper.ts)가 카드 데이터에 모든 필요 정보를 내려준다:
+        //   - assignedTeams: 완료된 팀들
+        //   - currentTeam:   지금 채우는 팀 (자연어로 사전 추출된 멤버가 미리 채워질 수 있음)
+        //   - availableMembers: 채팅방 전체 멤버 중 미배정자
+        // iOS는 자체 멤버 조회/빈 팀 생성 로직 없음 — 서버 데이터를 그대로 렌더링.
+        let assignedData = (dict["assignedTeams"] as? [[String: Any]])
+            ?? (dict["teams"] as? [[String: Any]])
+            ?? []
 
-        teams = teamsData.enumerated().map { index, teamDict in
-            let teamNumber = teamDict["teamNumber"] as? Int ?? (index + 1)
-            let slotId = teamDict["slotId"] as? String ?? ""
-            let slotTime = teamDict["slotTime"] as? String ?? ""
-            let gameName = teamDict["gameName"] as? String ?? ""
-            let maxPlayers = teamDict["maxPlayers"] as? Int ?? 4
-            let membersData = teamDict["members"] as? [[String: Any]] ?? []
-            let members = membersData.map { parseMember($0) }
+        var parsedTeams: [EditableTeam] = assignedData.map { parseTeam($0) }
 
-            return EditableTeam(
-                teamNumber: teamNumber,
-                slotId: slotId,
-                slotTime: slotTime,
-                gameName: gameName,
-                maxPlayers: maxPlayers,
-                members: members
-            )
+        if let currentDict = dict["currentTeam"] as? [String: Any] {
+            parsedTeams.append(parseTeam(currentDict))
         }
+        teams = parsedTeams
 
-        if let unassignedData = dict["unassigned"] as? [[String: Any]] {
-            unassigned = unassignedData.map { parseMember($0) }
-        }
+        let availableData = (dict["availableMembers"] as? [[String: Any]])
+            ?? (dict["unassigned"] as? [[String: Any]])
+            ?? []
+        unassigned = availableData.map { parseMember($0) }
+    }
+
+    private func parseTeam(_ teamDict: [String: Any]) -> EditableTeam {
+        let teamNumber = teamDict["teamNumber"] as? Int ?? 1
+        let slotId = teamDict["slotId"] as? String ?? ""
+        let slotTime = teamDict["slotTime"] as? String ?? ""
+        let gameName = teamDict["gameName"] as? String ?? ""
+        let maxPlayers = teamDict["maxPlayers"] as? Int ?? 4
+        let membersData = teamDict["members"] as? [[String: Any]] ?? []
+        return EditableTeam(
+            teamNumber: teamNumber,
+            slotId: slotId,
+            slotTime: slotTime,
+            gameName: gameName,
+            maxPlayers: maxPlayers,
+            members: membersData.map { parseMember($0) }
+        )
     }
 
     private func parseMember(_ dict: [String: Any]) -> MemberInfo {

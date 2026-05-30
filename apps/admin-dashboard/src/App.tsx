@@ -21,7 +21,6 @@ import { GameDetailPage } from './pages/game/GameDetailPage';
 import { PaymentManagementPage } from './pages/payment/PaymentManagementPage';
 import { NotificationManagementPage } from './pages/notification/NotificationManagementPage';
 import { SelectCompanyPage } from './pages/SelectCompanyPage';
-import { PartnerStatusPage } from './pages/partner/PartnerStatusPage';
 import { useAuthInitialize } from './hooks/useAuth';
 
 function App() {
@@ -74,7 +73,8 @@ function App() {
           <Route path="/bookings/cancellations" element={<CancellationManagementPage />} />
           <Route path="/payments" element={<PaymentManagementPage />} />
           <Route path="/notifications" element={<NotificationManagementPage />} />
-          <Route path="/partner-status" element={<PartnerStatusPage />} />
+          {/* /partner-status는 ClubDetailPage 탭(/clubs/:id)으로 통합. 하위 호환 redirect */}
+          <Route path="/partner-status" element={<Navigate to="/clubs" replace />} />
           <Route path="/profile" element={
             <div className="text-center py-12">
               <h1 className="text-2xl font-bold text-white mb-4">프로필 설정</h1>

@@ -1,15 +1,22 @@
-# Infrastructure CD Pipeline
-# Manages network infrastructure (Terraform) and GKE cluster
+# Infrastructure CD Pipeline (GitOps)
+# Manages network (Terraform) and GKE Standard cluster + ArgoCD + External Secrets bootstrap.
 #
 # Actions:
-#   - status: Check infrastructure status
-#   - network-apply: Create/update VPC and subnets (Terraform)
-#   - gke-setup: Create GKE cluster with PostgreSQL and NATS
-#   - gke-update: Update secrets and configmaps
-#   - gke-destroy: Delete GKE cluster
+#   - status:          Check infrastructure status
+#   - network-apply:   Create/update VPC and subnets (Terraform)
+#   - gke-setup:       Create GKE Standard cluster, install ArgoCD + ESO,
+#                      seed GCP Secret Manager, apply ArgoCD Application
+#                      (Helm chart at k8s/charts/parkgolf is then auto-synced)
+#   - gke-update:      Re-seed GCP Secret Manager (rotate keys) and
+#                      trigger ESO refresh + ArgoCD hard-refresh
+#   - gke-destroy:     Delete GKE cluster (preserves Artifact Registry, VPC, GCP Secret Manager)
 #   - network-destroy: Delete VPC and subnets (Terraform)
 
 name: CD Infrastructure
+
+concurrency:
+  group: cd-infra-${{ github.event.inputs.environment }}
+  cancel-in-progress: false
 
 on:
   workflow_dispatch:
@@ -59,6 +66,16 @@ jobs:
       cluster_name: ${{ steps.env.outputs.cluster_name }}
       namespace: ${{ steps.env.outputs.namespace }}
       tf_dir: ${{ steps.env.outputs.tf_dir }}
+      # 환경별 클러스터 사양 (dev: zonal 단일 / prod: regional HA)
+      location_flag: ${{ steps.env.outputs.location_flag }}    # --zone or --region
+      location_value: ${{ steps.env.outputs.location_value }}  # asia-northeast3-a or asia-northeast3
+      machine_type: ${{ steps.env.outputs.machine_type }}
+      num_nodes: ${{ steps.env.outputs.num_nodes }}
+      min_nodes: ${{ steps.env.outputs.min_nodes }}
+      max_nodes: ${{ steps.env.outputs.max_nodes }}
+      disk_size: ${{ steps.env.outputs.disk_size }}
+      disk_type: ${{ steps.env.outputs.disk_type }}
+      argocd_app: ${{ steps.env.outputs.argocd_app }}
     steps:
       - name: Determine environment settings
         id: env
@@ -68,6 +85,29 @@ jobs:
           echo "cluster_name=parkgolf-${ENV}-cluster" >> $GITHUB_OUTPUT
           echo "namespace=parkgolf-${ENV}" >> $GITHUB_OUTPUT
           echo "tf_dir=infra/environments/${ENV}" >> $GITHUB_OUTPUT
+          echo "argocd_app=k8s/argocd/application-${ENV}.yaml" >> $GITHUB_OUTPUT
+
+          if [ "$ENV" = "prod" ]; then
+            # prod: regional 3-zone HA
+            echo "location_flag=--region" >> $GITHUB_OUTPUT
+            echo "location_value=asia-northeast3" >> $GITHUB_OUTPUT
+            echo "machine_type=e2-standard-4" >> $GITHUB_OUTPUT
+            echo "num_nodes=1" >> $GITHUB_OUTPUT     # per zone (regional 3 zone = 3 nodes)
+            echo "min_nodes=1" >> $GITHUB_OUTPUT
+            echo "max_nodes=2" >> $GITHUB_OUTPUT     # per zone (max 6 nodes total)
+            echo "disk_size=100" >> $GITHUB_OUTPUT
+            echo "disk_type=pd-ssd" >> $GITHUB_OUTPUT
+          else
+            # dev: zonal 단일
+            echo "location_flag=--zone" >> $GITHUB_OUTPUT
+            echo "location_value=asia-northeast3-a" >> $GITHUB_OUTPUT
+            echo "machine_type=e2-standard-2" >> $GITHUB_OUTPUT
+            echo "num_nodes=1" >> $GITHUB_OUTPUT
+            echo "min_nodes=1" >> $GITHUB_OUTPUT
+            echo "max_nodes=3" >> $GITHUB_OUTPUT
+            echo "disk_size=50" >> $GITHUB_OUTPUT
+            echo "disk_type=pd-standard" >> $GITHUB_OUTPUT
+          fi
 
   # ============================================================================
   # Status Check
@@ -100,11 +140,11 @@ jobs:
         run: |
           CLUSTER="${{ needs.setup.outputs.cluster_name }}"
           echo "=== GKE Cluster ==="
-          if gcloud container clusters describe $CLUSTER --region=${{ env.REGION }} 2>/dev/null; then
+          if gcloud container clusters describe $CLUSTER ${{ needs.setup.outputs.location_flag }}=${{ needs.setup.outputs.location_value }} 2>/dev/null; then
             echo "Cluster exists"
 
             # Get credentials and show resources
-            gcloud container clusters get-credentials $CLUSTER --region=${{ env.REGION }}
+            gcloud container clusters get-credentials $CLUSTER ${{ needs.setup.outputs.location_flag }}=${{ needs.setup.outputs.location_value }}
 
             echo ""
             echo "=== Nodes ==="
@@ -144,7 +184,7 @@ jobs:
           fi
 
           # Check GKE
-          if gcloud container clusters describe ${{ needs.setup.outputs.cluster_name }} --region=${{ env.REGION }} 2>/dev/null; then
+          if gcloud container clusters describe ${{ needs.setup.outputs.cluster_name }} ${{ needs.setup.outputs.location_flag }}=${{ needs.setup.outputs.location_value }} 2>/dev/null; then
             echo "| GKE Cluster | Running |" >> $GITHUB_STEP_SUMMARY
           else
             echo "| GKE Cluster | Not Found |" >> $GITHUB_STEP_SUMMARY
@@ -221,6 +261,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ needs.setup.outputs.environment }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
       - name: Google Auth
         uses: google-github-actions/auth@v3
         with:
@@ -233,12 +276,13 @@ jobs:
 
       - name: Validate Secrets
         run: |
-          if [ -z "${{ secrets.DB_PASSWORD }}" ]; then
-            echo "::error::DB_PASSWORD secret is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.JWT_SECRET }}" ]; then
-            echo "::error::JWT_SECRET secret is not set"
+          MISSING=()
+          for KEY in DB_PASSWORD JWT_SECRET JWT_REFRESH_SECRET TOSS_SECRET_KEY TOSS_SECURITY_KEY KMA_API_KEY KAKAO_API_KEY DEEPSEEK_API_KEY PARTNER_ENCRYPTION_KEY; do
+            VAL=$(jq -r --arg k "$KEY" '.[$k] // ""' <<< '${{ toJSON(secrets) }}')
+            [ -z "$VAL" ] && MISSING+=("$KEY")
+          done
+          if [ ${#MISSING[@]} -gt 0 ]; then
+            echo "::error::Missing GitHub Secrets: ${MISSING[*]}"
             exit 1
           fi
           echo "All required secrets are configured"
@@ -261,392 +305,229 @@ jobs:
               --description="Parkgolf container images"
           fi
 
-      - name: Check/Create GKE Cluster
+      - name: Apply Artifact Registry cleanup policies
+        run: |
+          # 정책 (멱등 — 매 실행마다 갱신)
+          #   Delete: untagged 7일 경과
+          #   (tagged 이미지는 보존 — 운영 안전 우선)
+          cat > /tmp/ar-cleanup-policy.json <<'EOF'
+          [
+            {
+              "name": "delete-untagged-after-7d",
+              "action": {"type": "Delete"},
+              "condition": {
+                "tagState": "UNTAGGED",
+                "olderThan": "604800s"
+              }
+            }
+          ]
+          EOF
+          gcloud artifacts repositories set-cleanup-policies parkgolf \
+            --location=${{ env.REGION }} \
+            --policy=/tmp/ar-cleanup-policy.json
+
+      - name: Check/Create GKE Standard Cluster
         run: |
           CLUSTER="${{ needs.setup.outputs.cluster_name }}"
           ENV="${{ needs.setup.outputs.environment }}"
+          LOC_FLAG="${{ needs.setup.outputs.location_flag }}"
+          LOC_VAL="${{ needs.setup.outputs.location_value }}"
 
-          if gcloud container clusters describe $CLUSTER --region=${{ env.REGION }} 2>/dev/null; then
-            echo "Cluster already exists"
+          if gcloud container clusters describe $CLUSTER $LOC_FLAG=$LOC_VAL 2>/dev/null; then
+            echo "Cluster already exists — ensuring logging/monitoring config"
+            # workload 로그 수집 활성 (멱등, 변경 없으면 즉시 종료)
+            gcloud container clusters update $CLUSTER $LOC_FLAG=$LOC_VAL \
+              --logging=SYSTEM,WORKLOAD \
+              --monitoring=SYSTEM \
+              || echo "(no-op or already configured)"
           else
-            echo "Creating GKE Autopilot cluster..."
-            gcloud container clusters create-auto $CLUSTER \
-              --region=${{ env.REGION }} \
-              --release-channel=regular \
+            echo "Creating GKE Standard cluster ($ENV, $LOC_FLAG=$LOC_VAL)..."
+            gcloud container clusters create $CLUSTER \
+              $LOC_FLAG=$LOC_VAL \
+              --machine-type=${{ needs.setup.outputs.machine_type }} \
+              --num-nodes=${{ needs.setup.outputs.num_nodes }} \
+              --enable-autoscaling \
+              --min-nodes=${{ needs.setup.outputs.min_nodes }} \
+              --max-nodes=${{ needs.setup.outputs.max_nodes }} \
+              --disk-size=${{ needs.setup.outputs.disk_size }} \
+              --disk-type=${{ needs.setup.outputs.disk_type }} \
               --network=parkgolf-${ENV} \
-              --subnetwork=parkgolf-private-${ENV}
+              --subnetwork=parkgolf-private-${ENV} \
+              --release-channel=regular \
+              --workload-pool=${{ env.PROJECT_ID }}.svc.id.goog \
+              --enable-ip-alias \
+              --logging=SYSTEM,WORKLOAD \
+              --monitoring=SYSTEM
           fi
 
       - name: Wait for Cluster Ready
         run: |
           CLUSTER="${{ needs.setup.outputs.cluster_name }}"
-          echo "Waiting for cluster to be ready..."
+          LOC_FLAG="${{ needs.setup.outputs.location_flag }}"
+          LOC_VAL="${{ needs.setup.outputs.location_value }}"
           for i in {1..40}; do
             STATUS=$(gcloud container clusters describe $CLUSTER \
-              --region=${{ env.REGION }} \
+              $LOC_FLAG=$LOC_VAL \
               --format="value(status)" 2>/dev/null || echo "PROVISIONING")
             echo "[$i/40] Cluster status: $STATUS"
-            if [ "$STATUS" = "RUNNING" ]; then
-              echo "Cluster is ready!"
-              break
-            fi
+            [ "$STATUS" = "RUNNING" ] && { echo "Cluster is ready!"; break; }
             sleep 30
           done
 
       - name: Get GKE Credentials
         run: |
           gcloud container clusters get-credentials ${{ needs.setup.outputs.cluster_name }} \
-            --region=${{ env.REGION }}
+            ${{ needs.setup.outputs.location_flag }}=${{ needs.setup.outputs.location_value }}
 
       - name: Create Namespace
         run: |
           kubectl create namespace ${{ needs.setup.outputs.namespace }} \
             --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Create Secrets
+      - name: ESO Workload Identity Service Account
         run: |
-          kubectl create secret generic parkgolf-secrets \
-            --namespace=${{ needs.setup.outputs.namespace }} \
-            --from-literal=POSTGRES_USER=parkgolf \
-            --from-literal=POSTGRES_PASSWORD='${{ secrets.DB_PASSWORD }}' \
-            --from-literal=JWT_SECRET='${{ secrets.JWT_SECRET }}' \
-            --from-literal=JWT_REFRESH_SECRET='${{ secrets.JWT_REFRESH_SECRET }}' \
-            --from-literal=KMA_API_KEY='${{ secrets.KMA_API_KEY }}' \
-            --from-literal=KAKAO_API_KEY='${{ secrets.KAKAO_API_KEY }}' \
-            --from-literal=TOSS_SECRET_KEY='${{ secrets.TOSS_SECRET_KEY }}' \
-            --from-literal=TOSS_SECURITY_KEY='${{ secrets.TOSS_SECURITY_KEY }}' \
-            --from-literal=DEEPSEEK_API_KEY='${{ secrets.DEEPSEEK_API_KEY }}' \
-            --from-literal=PARTNER_ENCRYPTION_KEY='${{ secrets.PARTNER_ENCRYPTION_KEY }}' \
-            --dry-run=client -o yaml | kubectl apply -f -
+          PROJECT_ID=$(gcloud config get-value project)
+          SA_EMAIL="parkgolf-eso@${PROJECT_ID}.iam.gserviceaccount.com"
 
-      - name: Create ConfigMap
-        run: |
-          cat <<EOF | kubectl apply -f -
-          apiVersion: v1
-          kind: ConfigMap
-          metadata:
-            name: parkgolf-config
-            namespace: ${{ needs.setup.outputs.namespace }}
-          data:
-            NODE_ENV: "${{ needs.setup.outputs.environment == 'prod' && 'production' || 'development' }}"
-            NATS_URL: "nats://nats:4222"
-            DB_HOST: "postgres"
-            DB_PORT: "5432"
-            KMA_API_URL: "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0"
-            TOSS_API_URL: "https://api.tosspayments.com/v1"
-            DEEPSEEK_API_URL: "https://api.deepseek.com"
-            DEEPSEEK_MODEL: "deepseek-chat"
-            CONVERSATION_TTL: "1800"
-            MAX_HISTORY_TURNS: "10"
-          EOF
-
-      - name: Deploy PostgreSQL
-        run: |
-          ENV="${{ needs.setup.outputs.environment }}"
-
-          # 환경별 스토리지 클래스 설정 (dev: standard-rwo, prod: premium-rwo SSD)
-          if [ "$ENV" == "prod" ]; then
-            STORAGE_CLASS="premium-rwo"
-            SAFE_TO_EVICT="false"
-          else
-            STORAGE_CLASS="standard-rwo"
-            SAFE_TO_EVICT="true"
+          # SA 존재 확인 후 생성
+          if ! gcloud iam service-accounts describe $SA_EMAIL 2>/dev/null; then
+            gcloud iam service-accounts create parkgolf-eso \
+              --display-name="External Secrets Operator"
+            sleep 15  # SA 전파 대기
           fi
-          echo "Using storage class: $STORAGE_CLASS, safe-to-evict: $SAFE_TO_EVICT"
 
-          cat <<EOF | kubectl apply -f -
-          apiVersion: v1
-          kind: Service
-          metadata:
-            name: postgres
-            namespace: ${{ needs.setup.outputs.namespace }}
-          spec:
-            ports:
-            - port: 5432
-              targetPort: 5432
-            selector:
-              app: postgres
-            clusterIP: None
-          ---
-          apiVersion: apps/v1
-          kind: StatefulSet
-          metadata:
-            name: postgres
-            namespace: ${{ needs.setup.outputs.namespace }}
-          spec:
-            serviceName: postgres
-            replicas: 1
-            selector:
-              matchLabels:
-                app: postgres
-            template:
-              metadata:
-                labels:
-                  app: postgres
-                annotations:
-                  cluster-autoscaler.kubernetes.io/safe-to-evict: "$SAFE_TO_EVICT"
-              spec:
-                containers:
-                - name: postgres
-                  image: postgres:15-alpine
-                  ports:
-                  - containerPort: 5432
-                  env:
-                  - name: POSTGRES_USER
-                    valueFrom:
-                      secretKeyRef:
-                        name: parkgolf-secrets
-                        key: POSTGRES_USER
-                  - name: POSTGRES_PASSWORD
-                    valueFrom:
-                      secretKeyRef:
-                        name: parkgolf-secrets
-                        key: POSTGRES_PASSWORD
-                  - name: PGDATA
-                    value: /var/lib/postgresql/data/pgdata
-                  resources:
-                    requests:
-                      cpu: "100m"
-                      memory: "256Mi"
-                    limits:
-                      cpu: "500m"
-                      memory: "512Mi"
-                  volumeMounts:
-                  - name: postgres-data
-                    mountPath: /var/lib/postgresql/data
-                  readinessProbe:
-                    exec:
-                      command: ["pg_isready", "-U", "parkgolf"]
-                    initialDelaySeconds: 10
-                    periodSeconds: 5
-                  livenessProbe:
-                    exec:
-                      command: ["pg_isready", "-U", "parkgolf"]
-                    initialDelaySeconds: 30
-                    periodSeconds: 10
-            volumeClaimTemplates:
-            - metadata:
-                name: postgres-data
-              spec:
-                accessModes: ["ReadWriteOnce"]
-                storageClassName: $STORAGE_CLASS
-                resources:
-                  requests:
-                    storage: 10Gi
-          EOF
+          # Secret Manager 접근 권한
+          gcloud projects add-iam-policy-binding $PROJECT_ID \
+            --member="serviceAccount:$SA_EMAIL" \
+            --role="roles/secretmanager.secretAccessor" \
+            --condition=None
 
-      - name: Wait for PostgreSQL
+          # Workload Identity 바인딩 (KSA external-secrets/external-secrets → GCP SA)
+          gcloud iam service-accounts add-iam-policy-binding $SA_EMAIL \
+            --role="roles/iam.workloadIdentityUser" \
+            --member="serviceAccount:${PROJECT_ID}.svc.id.goog[external-secrets/external-secrets]"
+
+      - name: Enable Secret Manager API
         run: |
-          echo "Waiting for PostgreSQL..."
-          NAMESPACE=${{ needs.setup.outputs.namespace }}
+          gcloud services enable secretmanager.googleapis.com
 
-          # Wait for StatefulSet to be created
-          for i in {1..30}; do
-            if kubectl get statefulset postgres -n $NAMESPACE &>/dev/null; then
-              echo "PostgreSQL StatefulSet found"
-              break
+      - name: Seed GCP Secret Manager
+        run: |
+          ENV=${{ needs.setup.outputs.environment }}
+
+          # GitHub Secrets → GCP Secret Manager (있으면 새 버전 추가, 없으면 생성)
+          declare -A SECRETS=(
+            [POSTGRES_USER]="parkgolf"
+            [POSTGRES_PASSWORD]="${{ secrets.DB_PASSWORD }}"
+            [JWT_SECRET]="${{ secrets.JWT_SECRET }}"
+            [JWT_REFRESH_SECRET]="${{ secrets.JWT_REFRESH_SECRET }}"
+            [TOSS_SECRET_KEY]="${{ secrets.TOSS_SECRET_KEY }}"
+            [TOSS_SECURITY_KEY]="${{ secrets.TOSS_SECURITY_KEY }}"
+            [KMA_API_KEY]="${{ secrets.KMA_API_KEY }}"
+            [KAKAO_API_KEY]="${{ secrets.KAKAO_API_KEY }}"
+            [DEEPSEEK_API_KEY]="${{ secrets.DEEPSEEK_API_KEY }}"
+            [PARTNER_ENCRYPTION_KEY]="${{ secrets.PARTNER_ENCRYPTION_KEY }}"
+          )
+
+          for KEY in "${!SECRETS[@]}"; do
+            VALUE="${SECRETS[$KEY]}"
+            SECRET_NAME="parkgolf-${ENV}-${KEY}"
+            if [ -z "$VALUE" ]; then
+              echo "::warning::$KEY is empty, skipping"
+              continue
             fi
-            echo "Waiting for StatefulSet... ($i/30)"
-            sleep 5
+            if gcloud secrets describe $SECRET_NAME 2>/dev/null > /dev/null; then
+              printf "%s" "$VALUE" | gcloud secrets versions add $SECRET_NAME --data-file=-
+              echo "Updated: $SECRET_NAME"
+            else
+              printf "%s" "$VALUE" | gcloud secrets create $SECRET_NAME --data-file=-
+              echo "Created: $SECRET_NAME"
+            fi
           done
 
-          # Wait for rollout
-          kubectl rollout status statefulset/postgres -n $NAMESPACE --timeout=300s
-          echo "PostgreSQL is ready"
-
-      - name: Initialize Databases
+      - name: Install ArgoCD
         run: |
-          echo "Initializing databases..."
-          kubectl run postgres-init-${{ github.run_id }} \
-            --rm -i --restart=Never \
-            --namespace=${{ needs.setup.outputs.namespace }} \
-            --image=postgres:15-alpine \
-            --env="PGHOST=postgres" \
-            --env="PGUSER=parkgolf" \
-            --env="PGPASSWORD=${{ secrets.DB_PASSWORD }}" \
-            -- sh -c "
-              until pg_isready -h postgres; do sleep 2; done
-              for db in iam_db course_db booking_db chat_db notify_db payment_db partner_db; do
-                if psql -h postgres -tAc \"SELECT 1 FROM pg_database WHERE datname='\$db'\" | grep -q 1; then
-                  echo \"\$db already exists, skipping\"
-                else
-                  psql -h postgres -c \"CREATE DATABASE \$db;\"
-                  echo \"\$db created\"
-                fi
-              done
-              echo 'Databases initialized'
-            "
+          kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+          # CRD 어노테이션 사이즈 한계 회피 — server-side apply 강제
+          kubectl apply -n argocd \
+            -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml \
+            --server-side --force-conflicts
 
-      - name: Deploy NATS
+      - name: Install External Secrets Operator
         run: |
-          ENV="${{ needs.setup.outputs.environment }}"
-          if [ "$ENV" == "prod" ]; then
-            SAFE_TO_EVICT="false"
+          kubectl create namespace external-secrets --dry-run=client -o yaml | kubectl apply -f -
+
+          # Helm 설치 (ubuntu runner에 기본 포함)
+          helm repo add external-secrets https://charts.external-secrets.io
+          helm repo update
+
+          helm upgrade --install external-secrets external-secrets/external-secrets \
+            -n external-secrets \
+            --set installCRDs=true \
+            --wait --timeout=5m
+
+          # KSA Workload Identity annotation
+          PROJECT_ID=$(gcloud config get-value project)
+          kubectl annotate serviceaccount external-secrets \
+            -n external-secrets \
+            iam.gke.io/gcp-service-account=parkgolf-eso@${PROJECT_ID}.iam.gserviceaccount.com \
+            --overwrite
+
+      - name: Create Global Static IP for Ingress
+        run: |
+          # Helm chart의 ingress.staticIpName과 일치해야 함
+          IP_NAME="parkgolf-${{ needs.setup.outputs.cluster_name }}-ip"
+          if gcloud compute addresses describe $IP_NAME --global 2>/dev/null; then
+            echo "Static IP already exists: $IP_NAME"
           else
-            SAFE_TO_EVICT="true"
+            gcloud compute addresses create $IP_NAME --global
+            echo "Created: $IP_NAME"
           fi
+          IP=$(gcloud compute addresses describe $IP_NAME --global --format="value(address)")
+          echo "Reserved IP: $IP"
+          echo "::notice::Configure DNS A record for ${{ needs.setup.outputs.environment == 'prod' && 'api' || 'dev-api' }}.parkgolfmate.com → $IP"
 
-          cat <<EOF | kubectl apply -f -
-          apiVersion: v1
-          kind: Service
-          metadata:
-            name: nats
-            namespace: ${{ needs.setup.outputs.namespace }}
-          spec:
-            ports:
-            - name: client
-              port: 4222
-              targetPort: 4222
-            - name: monitor
-              port: 8222
-              targetPort: 8222
-            selector:
-              app: nats
-          ---
-          apiVersion: apps/v1
-          kind: Deployment
-          metadata:
-            name: nats
-            namespace: ${{ needs.setup.outputs.namespace }}
-          spec:
-            replicas: 1
-            selector:
-              matchLabels:
-                app: nats
-            template:
-              metadata:
-                labels:
-                  app: nats
-                annotations:
-                  cluster-autoscaler.kubernetes.io/safe-to-evict: "$SAFE_TO_EVICT"
-              spec:
-                containers:
-                - name: nats
-                  image: nats:2.10-alpine
-                  args: ["-js", "-m", "8222"]
-                  ports:
-                  - containerPort: 4222
-                    name: client
-                  - containerPort: 8222
-                    name: monitor
-                  resources:
-                    requests:
-                      cpu: "50m"
-                      memory: "64Mi"
-                    limits:
-                      cpu: "200m"
-                      memory: "128Mi"
-                  readinessProbe:
-                    httpGet:
-                      path: /healthz
-                      port: 8222
-                    initialDelaySeconds: 5
-                    periodSeconds: 5
-                  livenessProbe:
-                    httpGet:
-                      path: /healthz
-                      port: 8222
-                    initialDelaySeconds: 10
-                    periodSeconds: 10
-          EOF
-
-      - name: Wait for NATS
+      - name: Apply ArgoCD Application
         run: |
-          echo "Waiting for NATS deployment..."
-          NAMESPACE=${{ needs.setup.outputs.namespace }}
-
-          # Wait for deployment to be created
-          for i in {1..30}; do
-            if kubectl get deployment nats -n $NAMESPACE &>/dev/null; then
-              echo "NATS deployment found"
-              break
-            fi
-            echo "Waiting for deployment... ($i/30)"
-            sleep 5
-          done
-
-          # Wait for rollout
-          kubectl rollout status deployment/nats -n $NAMESPACE --timeout=120s
-          echo "NATS is ready"
-
-      - name: Deploy PodDisruptionBudgets
-        run: |
-          ENV="${{ needs.setup.outputs.environment }}"
-
-          if [ "$ENV" == "prod" ]; then
-            # prod: replica 2개 운영 시 최소 1개 유지
-            cat <<EOF | kubectl apply -f -
-          apiVersion: policy/v1
-          kind: PodDisruptionBudget
-          metadata:
-            name: postgres-pdb
-            namespace: ${{ needs.setup.outputs.namespace }}
-          spec:
-            minAvailable: 1
-            selector:
-              matchLabels:
-                app: postgres
-          ---
-          apiVersion: policy/v1
-          kind: PodDisruptionBudget
-          metadata:
-            name: nats-pdb
-            namespace: ${{ needs.setup.outputs.namespace }}
-          spec:
-            minAvailable: 1
-            selector:
-              matchLabels:
-                app: nats
-          EOF
-          else
-            # dev: replica 1개이므로 maxUnavailable=1 (유지보수 허용)
-            cat <<EOF | kubectl apply -f -
-          apiVersion: policy/v1
-          kind: PodDisruptionBudget
-          metadata:
-            name: postgres-pdb
-            namespace: ${{ needs.setup.outputs.namespace }}
-          spec:
-            maxUnavailable: 1
-            selector:
-              matchLabels:
-                app: postgres
-          ---
-          apiVersion: policy/v1
-          kind: PodDisruptionBudget
-          metadata:
-            name: nats-pdb
-            namespace: ${{ needs.setup.outputs.namespace }}
-          spec:
-            maxUnavailable: 1
-            selector:
-              matchLabels:
-                app: nats
-          EOF
-          fi
+          # ArgoCD application server가 ready될 때까지 대기
+          kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=5m
+          kubectl apply -f ${{ needs.setup.outputs.argocd_app }}
 
       - name: Summary
         run: |
-          echo ""
+          ENV=${{ needs.setup.outputs.environment }}
+          IP_NAME="parkgolf-${{ needs.setup.outputs.cluster_name }}-ip"
+          IP=$(gcloud compute addresses describe $IP_NAME --global --format="value(address)" 2>/dev/null || echo "N/A")
+          DOMAIN=$([ "$ENV" = "prod" ] && echo "api.parkgolfmate.com" || echo "dev-api.parkgolfmate.com")
+
           echo "=========================================="
-          echo "       GKE Infrastructure Ready           "
+          echo "  GKE + ArgoCD Bootstrap Complete ($ENV)  "
           echo "=========================================="
+          echo "Cluster:    ${{ needs.setup.outputs.cluster_name }}"
+          echo "Namespace:  ${{ needs.setup.outputs.namespace }}"
+          echo "Static IP:  $IP_NAME ($IP)"
+          echo "Domain:     $DOMAIN"
           echo ""
-          echo "Cluster: ${{ needs.setup.outputs.cluster_name }}"
-          echo "Namespace: ${{ needs.setup.outputs.namespace }}"
+          echo "=== argocd / external-secrets / parkgolf-${ENV} ==="
+          kubectl get pods -n argocd 2>/dev/null | head -20 || true
+          echo "---"
+          kubectl get pods -n external-secrets 2>/dev/null | head -10 || true
+          echo "---"
+          kubectl get application parkgolf-${ENV} -n argocd 2>/dev/null || true
           echo ""
-          echo "=== Resources ==="
-          kubectl get all -n ${{ needs.setup.outputs.namespace }}
-          echo ""
-          echo "=== Next Steps ==="
-          echo "Run 'CD Services' workflow to deploy backend services"
+          echo "=== Next steps ==="
+          echo "1. DNS A record:   $DOMAIN  →  $IP"
+          echo "2. ArgoCD UI:      kubectl port-forward svc/argocd-server -n argocd 8080:443"
+          echo "   admin pw:       kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d"
+          echo "3. CD Services:    image build + tag commit"
+          echo "4. ArgoCD auto-sync (≤5분, prod는 수동 SYNC 필요)"
           echo "=========================================="
 
   # ============================================================================
   # GKE Update (Secrets/ConfigMap)
   # ============================================================================
   gke-update:
-    name: GKE Update
+    name: GKE Update (rotate secrets + ArgoCD refresh)
     needs: setup
     if: github.event.inputs.action == 'gke-update'
     runs-on: ubuntu-latest
@@ -662,77 +543,53 @@ jobs:
         with:
           install_components: 'gke-gcloud-auth-plugin'
 
+      - name: Re-seed GCP Secret Manager
+        run: |
+          ENV=${{ needs.setup.outputs.environment }}
+          declare -A SECRETS=(
+            [POSTGRES_USER]="parkgolf"
+            [POSTGRES_PASSWORD]="${{ secrets.DB_PASSWORD }}"
+            [JWT_SECRET]="${{ secrets.JWT_SECRET }}"
+            [JWT_REFRESH_SECRET]="${{ secrets.JWT_REFRESH_SECRET }}"
+            [TOSS_SECRET_KEY]="${{ secrets.TOSS_SECRET_KEY }}"
+            [TOSS_SECURITY_KEY]="${{ secrets.TOSS_SECURITY_KEY }}"
+            [KMA_API_KEY]="${{ secrets.KMA_API_KEY }}"
+            [KAKAO_API_KEY]="${{ secrets.KAKAO_API_KEY }}"
+            [DEEPSEEK_API_KEY]="${{ secrets.DEEPSEEK_API_KEY }}"
+            [PARTNER_ENCRYPTION_KEY]="${{ secrets.PARTNER_ENCRYPTION_KEY }}"
+          )
+
+          for KEY in "${!SECRETS[@]}"; do
+            VALUE="${SECRETS[$KEY]}"
+            SECRET_NAME="parkgolf-${ENV}-${KEY}"
+            [ -z "$VALUE" ] && { echo "::warning::$KEY empty, skip"; continue; }
+
+            if gcloud secrets describe $SECRET_NAME 2>/dev/null > /dev/null; then
+              printf "%s" "$VALUE" | gcloud secrets versions add $SECRET_NAME --data-file=-
+              echo "Updated: $SECRET_NAME"
+            else
+              printf "%s" "$VALUE" | gcloud secrets create $SECRET_NAME --data-file=-
+              echo "Created: $SECRET_NAME"
+            fi
+          done
+
       - name: Get GKE Credentials
         run: |
           gcloud container clusters get-credentials ${{ needs.setup.outputs.cluster_name }} \
-            --region=${{ env.REGION }}
+            ${{ needs.setup.outputs.location_flag }}=${{ needs.setup.outputs.location_value }}
 
-      - name: Update Secrets
+      - name: Trigger ESO refresh
         run: |
-          kubectl create secret generic parkgolf-secrets \
-            --namespace=${{ needs.setup.outputs.namespace }} \
-            --from-literal=POSTGRES_USER=parkgolf \
-            --from-literal=POSTGRES_PASSWORD='${{ secrets.DB_PASSWORD }}' \
-            --from-literal=JWT_SECRET='${{ secrets.JWT_SECRET }}' \
-            --from-literal=JWT_REFRESH_SECRET='${{ secrets.JWT_REFRESH_SECRET }}' \
-            --from-literal=KMA_API_KEY='${{ secrets.KMA_API_KEY }}' \
-            --from-literal=KAKAO_API_KEY='${{ secrets.KAKAO_API_KEY }}' \
-            --from-literal=TOSS_SECRET_KEY='${{ secrets.TOSS_SECRET_KEY }}' \
-            --from-literal=TOSS_SECURITY_KEY='${{ secrets.TOSS_SECURITY_KEY }}' \
-            --from-literal=DEEPSEEK_API_KEY='${{ secrets.DEEPSEEK_API_KEY }}' \
-            --from-literal=PARTNER_ENCRYPTION_KEY='${{ secrets.PARTNER_ENCRYPTION_KEY }}' \
-            --dry-run=client -o yaml | kubectl apply -f -
-          echo "Secrets updated"
+          # ExternalSecret refreshInterval은 1h. 즉시 재동기화하려면 controller 재시작.
+          kubectl rollout restart deployment/external-secrets -n external-secrets
+          kubectl rollout status deployment/external-secrets -n external-secrets --timeout=2m
 
-      - name: Initialize Databases
+      - name: Trigger ArgoCD hard-refresh
         run: |
-          echo "Ensuring all databases exist..."
-          kubectl run postgres-init-${{ github.run_id }} \
-            --rm -i --restart=Never \
-            --namespace=${{ needs.setup.outputs.namespace }} \
-            --image=postgres:15-alpine \
-            --env="PGHOST=postgres" \
-            --env="PGUSER=parkgolf" \
-            --env="PGPASSWORD=${{ secrets.DB_PASSWORD }}" \
-            -- sh -c "
-              until pg_isready -h postgres; do sleep 2; done
-              for db in iam_db course_db booking_db chat_db notify_db payment_db partner_db; do
-                if psql -h postgres -tAc \"SELECT 1 FROM pg_database WHERE datname='\$db'\" | grep -q 1; then
-                  echo \"\$db already exists, skipping\"
-                else
-                  psql -h postgres -c \"CREATE DATABASE \$db;\"
-                  echo \"\$db created\"
-                fi
-              done
-              echo 'Databases initialized'
-            "
-
-      - name: Update ConfigMap
-        run: |
-          cat <<EOF | kubectl apply -f -
-          apiVersion: v1
-          kind: ConfigMap
-          metadata:
-            name: parkgolf-config
-            namespace: ${{ needs.setup.outputs.namespace }}
-          data:
-            NODE_ENV: "${{ needs.setup.outputs.environment == 'prod' && 'production' || 'development' }}"
-            NATS_URL: "nats://nats:4222"
-            DB_HOST: "postgres"
-            DB_PORT: "5432"
-            KMA_API_URL: "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0"
-            TOSS_API_URL: "https://api.tosspayments.com/v1"
-            DEEPSEEK_API_URL: "https://api.deepseek.com"
-            DEEPSEEK_MODEL: "deepseek-chat"
-            CONVERSATION_TTL: "1800"
-            MAX_HISTORY_TURNS: "10"
-          EOF
-          echo "ConfigMap updated"
-
-      - name: Restart Deployments
-        run: |
-          echo "Restarting deployments to pick up new config..."
-          kubectl rollout restart deployment -n ${{ needs.setup.outputs.namespace }} || true
+          # 새 Secret이 K8s에 동기화되면 envFrom secretKeyRef로 노출.
+          # ArgoCD가 변경을 감지해 자동 sync. 즉시 sync 원하면 hard-refresh.
+          kubectl annotate application parkgolf -n argocd \
+            argocd.argoproj.io/refresh=hard --overwrite || true
 
   # ============================================================================
   # GKE Destroy
@@ -768,10 +625,10 @@ jobs:
       - name: Delete GKE Cluster
         run: |
           CLUSTER="${{ needs.setup.outputs.cluster_name }}"
-          if gcloud container clusters describe $CLUSTER --region=${{ env.REGION }} 2>/dev/null; then
+          if gcloud container clusters describe $CLUSTER ${{ needs.setup.outputs.location_flag }}=${{ needs.setup.outputs.location_value }} 2>/dev/null; then
             echo "Deleting GKE cluster: $CLUSTER"
             gcloud container clusters delete $CLUSTER \
-              --region=${{ env.REGION }} \
+              ${{ needs.setup.outputs.location_flag }}=${{ needs.setup.outputs.location_value }} \
               --quiet
             echo "Cluster deleted"
           else
@@ -790,28 +647,26 @@ jobs:
 
       - name: Delete Orphaned PVC Disks
         run: |
-          echo "Checking for orphaned PVC disks..."
-          ZONES=("asia-northeast3-a" "asia-northeast3-b" "asia-northeast3-c")
-          DELETED_COUNT=0
+          # dev: zonal asia-northeast3-a / prod: regional 3-zone
+          ENV=${{ needs.setup.outputs.environment }}
+          if [ "$ENV" = "prod" ]; then
+            ZONES="asia-northeast3-a asia-northeast3-b asia-northeast3-c"
+          else
+            ZONES="asia-northeast3-a"
+          fi
 
-          for ZONE in "${ZONES[@]}"; do
-            # Find PVC disks (they start with 'pvc-')
+          DELETED=0
+          for ZONE in $ZONES; do
             DISKS=$(gcloud compute disks list \
               --filter="name~^pvc- AND zone:$ZONE" \
               --format="value(name)" 2>/dev/null || true)
-
             for DISK in $DISKS; do
               echo "Deleting orphaned disk: $DISK in $ZONE"
               gcloud compute disks delete $DISK --zone=$ZONE --quiet || true
-              DELETED_COUNT=$((DELETED_COUNT + 1))
+              DELETED=$((DELETED + 1))
             done
           done
-
-          if [ $DELETED_COUNT -eq 0 ]; then
-            echo "No orphaned PVC disks found"
-          else
-            echo "Deleted $DELETED_COUNT orphaned disk(s)"
-          fi
+          echo "Deleted $DELETED orphaned disk(s)"
 
       - name: Summary
         run: |

@@ -19,4 +19,16 @@ interface BookingRepository {
     suspend fun getBookingByNumber(bookingNumber: String): Result<Booking>
 
     suspend fun cancelBooking(id: String, reason: String?): Result<Unit>
+
+    // AGENT_PAY.md §11.4 — 더치페이 본인 자리만 취소
+    suspend fun cancelParticipant(id: String, reason: String?): Result<CancelParticipantResult>
 }
+
+// AGENT_PAY.md §11.4 — 본인 자리 취소 결과
+data class CancelParticipantResult(
+    val previousStatus: String,
+    val newStatus: String,
+    val refundedAmount: Int,
+    val bookingCancelled: Boolean,
+    val remainingParticipants: Int
+)

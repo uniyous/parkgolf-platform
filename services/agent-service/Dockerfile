@@ -3,11 +3,15 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files first for better caching
+# Copy package files + prisma schema first for better caching
 COPY package*.json ./
+COPY prisma ./prisma/
 
 # Install all dependencies (including devDependencies for build)
 RUN npm ci
+
+# Generate Prisma client (agent_db / UserMemory — Phase 3 Semantic Memory)
+RUN npx prisma generate
 
 # Copy source code
 COPY . .
@@ -23,11 +27,14 @@ WORKDIR /app
 # Install dumb-init for proper signal handling
 RUN apk add --no-cache dumb-init
 
-# Copy package files
+# Copy package files + prisma schema
 COPY package*.json ./
+COPY prisma ./prisma/
 
 # Install production dependencies only
-RUN npm ci --only=production && npm cache clean --force
+RUN npm ci --only=production && \
+    npx prisma generate && \
+    npm cache clean --force
 
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist
@@ -47,5 +54,6 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8088/health || exit 1
 
 # Start the application
+# prisma 폴더 추가 후 nest build 출력 경로가 dist/src/main.js로 변경됨 (tsconfig rootDir 확장)
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]

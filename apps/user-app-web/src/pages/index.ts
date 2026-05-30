@@ -12,5 +12,6 @@ export { ChatRoomPage } from './ChatRoomPage';
 export { ChangePasswordPage } from './ChangePasswordPage';
 export { EditProfilePage } from './EditProfilePage';
 export { NotificationSettingsPage } from './NotificationSettingsPage';
+export { AgentMemorySettingsPage } from './AgentMemorySettingsPage';
 export { DeleteAccountPage } from './DeleteAccountPage';
 export { ClubDetailPage } from './ClubDetailPage';

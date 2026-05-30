@@ -6,10 +6,9 @@ import {
   Clock,
   Users,
   ChevronRight,
-  ArrowLeft,
   Layers,
 } from 'lucide-react';
-import { AppLayout, Container } from '@/components/layout';
+import { SubPageHeader, Container } from '@/components/layout';
 import { GlassCard, LoadingView, EmptyState, Button } from '@/components/ui';
 import { useClubDetailQuery } from '@/hooks/queries/club';
 import { useGamesByClubQuery } from '@/hooks/queries/club';
@@ -25,17 +24,19 @@ export function ClubDetailPage() {
 
   if (isLoadingClub) {
     return (
-      <AppLayout title="골프장 정보">
+      <div className="min-h-screen bg-[var(--color-bg-primary)]">
+      <SubPageHeader title="골프장 정보" />
         <Container className="py-4 md:py-6">
           <LoadingView message="골프장 정보를 불러오는 중..." />
         </Container>
-      </AppLayout>
+      </div>
     );
   }
 
   if (clubError || !club) {
     return (
-      <AppLayout title="골프장 정보">
+      <div className="min-h-screen bg-[var(--color-bg-primary)]">
+      <SubPageHeader title="골프장 정보" />
         <Container className="py-4 md:py-6">
           <GlassCard>
             <EmptyState
@@ -47,22 +48,14 @@ export function ClubDetailPage() {
             />
           </GlassCard>
         </Container>
-      </AppLayout>
+      </div>
     );
   }
 
   return (
-    <AppLayout title={club.name}>
+    <div className="min-h-screen bg-[var(--color-bg-primary)]">
+      <SubPageHeader title={club.name} />
       <Container className="py-4 md:py-6 space-y-4">
-        {/* Back Button */}
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-1 text-sm text-[var(--color-text-secondary)] hover:text-white transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          뒤로가기
-        </button>
-
         {/* Club Info Header */}
         <GlassCard>
           <div className="space-y-4">
@@ -171,7 +164,7 @@ export function ClubDetailPage() {
           )}
         </div>
       </Container>
-    </AppLayout>
+    </div>
   );
 }
 

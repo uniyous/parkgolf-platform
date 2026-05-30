@@ -336,7 +336,7 @@ enum PaymentStatus {
 // =====================================================
 
 // Transactional Outbox 패턴: 이벤트 발행 보장
-model OutboxEvent {
+model BookingOutboxEvent {
   id            Int      @id @default(autoincrement())
 
   // 이벤트 정보
@@ -356,7 +356,7 @@ model OutboxEvent {
 
   @@index([status, createdAt])
   @@index([aggregateType, aggregateId])
-  @@map("outbox_events")
+  @@map("booking_outbox_events")
 }
 
 enum OutboxStatus {

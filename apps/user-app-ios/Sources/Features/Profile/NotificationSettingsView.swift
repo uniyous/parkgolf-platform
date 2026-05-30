@@ -34,6 +34,7 @@ struct NotificationSettingsView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
+        .subScreenTabBarHidden()
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("알림 설정")

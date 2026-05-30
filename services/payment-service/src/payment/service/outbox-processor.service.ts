@@ -1,71 +1,65 @@
 import { Injectable, Logger, Inject, OnModuleInit } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { Cron, CronExpression } from '@nestjs/schedule';
 import { OutboxStatus } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { firstValueFrom, timeout } from 'rxjs';
+import type { Job } from 'pg-boss';
+import { PgBossService } from '../../common/pgboss/pgboss.service';
+
+const OUTBOX_QUEUE = 'payment-outbox-publish';
+
+interface OutboxJobData {
+  outboxEventId: number;
+}
 
 /**
  * Outbox 이벤트 프로세서
- * 결제 이벤트를 다른 서비스로 안정적으로 전달
+ *
+ * 처리 경로:
+ *   - createOutboxEvent에서 pg-boss로 즉시 트리거 → worker가 NATS 발행
+ *
+ * 멀티 pod 안전:
+ *   - pg-boss는 SELECT FOR UPDATE SKIP LOCKED 내장
  */
 @Injectable()
 export class OutboxProcessorService implements OnModuleInit {
   private readonly logger = new Logger(OutboxProcessorService.name);
   private readonly maxRetries = 5;
-  private readonly batchSize = 10;
   private readonly sendTimeoutMs = 10_000;
-  private isProcessing = false;
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly pgboss: PgBossService,
     @Inject('BOOKING_SERVICE') private readonly bookingClient: ClientProxy,
     @Inject('NOTIFICATION_SERVICE') private readonly notificationClient: ClientProxy,
   ) {}
 
   async onModuleInit() {
-    // 서비스 시작 시 NATS 클라이언트 연결
+    // NATS 클라이언트 연결
     await this.bookingClient.connect();
     await this.notificationClient.connect();
-    this.logger.log('Outbox processor initialized');
+
+    // pg-boss worker 등록
+    await this.pgboss.createQueue(OUTBOX_QUEUE);
+    await this.pgboss.work<OutboxJobData>(OUTBOX_QUEUE, (job) => this.handleOutboxJob(job));
+
+    this.logger.log('Outbox processor initialized (pg-boss worker)');
   }
 
   /**
-   * 5초마다 미처리 이벤트 처리
+   * pg-boss worker — outbox event id로 단건 처리
    */
-  @Cron(CronExpression.EVERY_5_SECONDS)
-  async processOutboxEvents() {
-    if (this.isProcessing) {
-      return;
+  private async handleOutboxJob(job: Job<OutboxJobData>): Promise<unknown> {
+    const event = await this.prisma.paymentOutboxEvent.findUnique({
+      where: { id: job.data.outboxEventId },
+    });
+    if (!event) {
+      return { skipped: true, reason: 'not_found' };
     }
-
-    this.isProcessing = true;
-
-    try {
-      // 처리 대기중인 이벤트 조회
-      const events = await this.prisma.paymentOutboxEvent.findMany({
-        where: {
-          status: OutboxStatus.PENDING,
-          retryCount: { lt: this.maxRetries },
-        },
-        orderBy: { createdAt: 'asc' },
-        take: this.batchSize,
-      });
-
-      if (events.length === 0) {
-        return;
-      }
-
-      this.logger.log(`Processing ${events.length} outbox events`);
-
-      for (const event of events) {
-        await this.processEvent(event);
-      }
-    } catch (error) {
-      this.logger.error('Outbox processing error', error);
-    } finally {
-      this.isProcessing = false;
+    if (event.status !== OutboxStatus.PENDING) {
+      return { skipped: true, currentStatus: event.status };
     }
+    return this.processEvent(event);
   }
 
   /**
@@ -134,6 +128,7 @@ export class OutboxProcessorService implements OnModuleInit {
       'payment.confirmed': 'booking.paymentConfirmed',
       'payment.canceled': 'booking.paymentCanceled',
       'payment.deposited': 'booking.paymentDeposited',
+      'payment.failed': 'booking.paymentFailed',
     };
     return patternMap[eventType] || eventType;
   }

@@ -145,6 +145,11 @@ actor APIClient {
         } catch let error as APIError {
             throw error
         } catch {
+            #if DEBUG
+            let rawJson = String(data: data, encoding: .utf8) ?? "nil"
+            print("❌ [APIClient] Decoding failed for \(T.self): \(error)")
+            print("❌ [APIClient] Raw JSON: \(rawJson.prefix(1000))")
+            #endif
             throw APIError.decodingError
         }
     }
@@ -377,11 +382,21 @@ struct APIResponse<T: Decodable & Sendable>: Decodable, Sendable {
     let success: Bool
     let data: T?
     let error: APIErrorResponse?
+    /// saga 트랜잭션을 경유한 응답에만 포함됨
+    let saga: SagaMeta?
 }
 
 struct APIErrorResponse: Decodable, Sendable {
     let code: String
     let message: String
+}
+
+/// Saga 트랜잭션 메타데이터
+struct SagaMeta: Decodable, Sendable {
+    let executionId: Int
+    let status: String
+    let failReason: String?
+    let duplicate: Bool?
 }
 
 struct ErrorOnlyResponse: Decodable, Sendable {

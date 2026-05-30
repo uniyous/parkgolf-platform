@@ -1,0 +1,209 @@
+global:
+  namespace: parkgolf-dev
+  image:
+    registry: asia-northeast3-docker.pkg.dev/parkgolf-uniyous/parkgolf
+    # services-all 빌드 시 자동 갱신되는 fallback tag.
+    # 개별 service 빌드 시에는 serviceImageTags의 해당 항목만 갱신되고 이 값은 유지됨.
+    tag: 27494d8ecbca49cd89bd3dba18c46fdcd16c077e
+    pullPolicy: IfNotPresent
+  domain: dev-api.parkgolfmate.com
+
+# 서비스별 image tag override.
+# cd-services workflow가 빌드된 service의 항목만 갱신.
+# 비어있거나 특정 service가 누락되면 global.image.tag로 fallback.
+# 예: { agent-service: <sha>, chat-service: <sha>, ... }
+serviceImageTags: {}
+
+# 공통 ConfigMap (parkgolf-config) — 모든 서비스가 envFrom로 사용 가능
+config:
+  NODE_ENV: development
+  NATS_URL: nats://nats:4222
+  REDIS_URL: redis://parkgolf-redis:6379
+  TOSS_API_URL: https://api.tosspayments.com/v1
+  KMA_API_URL: http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0
+  DEEPSEEK_API_URL: https://api.deepseek.com/v1
+  DEEPSEEK_MODEL: deepseek-chat
+  CONVERSATION_TTL: "1800"
+  MAX_HISTORY_TURNS: "10"
+
+# External Secrets — GCP Secret Manager 동기화
+externalSecrets:
+  enabled: true
+  secretStoreName: gcp-secret-store
+  gcpProjectId: parkgolf-uniyous
+  clusterName: parkgolf-dev-cluster
+  clusterLocation: asia-northeast3-a
+  # GCP SM 키 prefix: parkgolf-dev-{KEY}
+  keys:
+    - POSTGRES_USER
+    - POSTGRES_PASSWORD
+    - JWT_SECRET
+    - JWT_REFRESH_SECRET
+    - TOSS_SECRET_KEY
+    - TOSS_SECURITY_KEY
+    - KMA_API_KEY
+    - KAKAO_API_KEY
+    - DEEPSEEK_API_KEY
+    - PARTNER_ENCRYPTION_KEY
+
+# In-cluster PostgreSQL (StatefulSet)
+postgres:
+  enabled: true
+  image: postgres:15.17
+  storage: 10Gi
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 1Gi }
+  databases:
+    - iam_db
+    - course_db
+    - booking_db
+    - payment_db
+    - saga_db
+    - chat_db
+    - notify_db
+    - partner_db
+    - agent_db
+
+# In-cluster NATS
+nats:
+  enabled: true
+  image: nats:2.10-alpine
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits:   { cpu: 250m, memory: 256Mi }
+
+# In-cluster Redis (StatefulSet)
+# 용도: agent-service Working Memory (ConversationContext, per-conv distributed lock)
+# 키 패턴: agent:conv:{userId}:{convId} (TTL 30분), lock:conv:{userId}:{convId} (TTL 8초)
+# 자세한 설계: docs/workflow/AGENT_MEMORY.md §3
+redis:
+  enabled: true
+  image: redis:7-alpine
+  maxmemory: 256mb
+  maxmemoryPolicy: allkeys-lru
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits:   { cpu: 250m, memory: 512Mi }
+
+# 공통 probe / 리소스 기본값
+# cpu request 30m: dev 환경 실측 CPU 사용량 22% 기반 — autoscaler가 1노드로 압축 가능
+# (limits 250m은 그대로 → 필요 시 burst 가능)
+defaults:
+  resources:
+    requests: { cpu: 30m, memory: 128Mi }
+    limits:   { cpu: 250m, memory: 384Mi }
+  startupProbe:
+    httpGet: { path: /health, port: 8080 }
+    failureThreshold: 12
+    periodSeconds: 5
+  readinessProbe:
+    httpGet: { path: /health/ready, port: 8080 }
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    failureThreshold: 3
+  livenessProbe:
+    httpGet: { path: /health/live, port: 8080 }
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    failureThreshold: 3
+
+# 서비스 정의
+# - db: 지정하면 DATABASE_URL ExternalSecret 자동 생성
+# - extraEnv: 추가 환경변수 (secretRef / configRef / value)
+# - replicas / resources: defaults 오버라이드
+services:
+  - name: iam-service
+    db: iam_db
+  - name: course-service
+    db: course_db
+  - name: booking-service
+    db: booking_db
+  - name: payment-service
+    db: payment_db
+    extraEnv:
+      - { name: TOSS_SECRET_KEY,   secretRef: { name: parkgolf-secrets, key: TOSS_SECRET_KEY } }
+      - { name: TOSS_SECURITY_KEY, secretRef: { name: parkgolf-secrets, key: TOSS_SECURITY_KEY } }
+      - { name: TOSS_API_URL,      configRef: { name: parkgolf-config,  key: TOSS_API_URL } }
+      # e2e용 토스 API 우회 (paymentKey "e2e_test_*"만 해당)
+      # 서비스 내부에서 NODE_ENV=production이면 자동 무력화 — 이중 안전장치
+      - { name: TOSS_TEST_BYPASS,  value: "true" }
+  - name: saga-service
+    db: saga_db
+  - name: chat-service
+    db: chat_db
+  - name: notify-service
+    db: notify_db
+  - name: partner-service
+    db: partner_db
+    extraEnv:
+      - { name: PARTNER_ENCRYPTION_KEY, secretRef: { name: parkgolf-secrets, key: PARTNER_ENCRYPTION_KEY } }
+  - name: chat-gateway
+    replicas: 2
+    strategy:
+      type: RollingUpdate
+      rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }
+    pdb: { maxUnavailable: 1 }
+    backendConfig: websocket
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits:   { cpu: 300m, memory: 384Mi }
+  - name: job-service
+    resources:
+      requests: { cpu: 50m, memory: 64Mi }
+      limits:   { cpu: 200m, memory: 256Mi }
+  - name: weather-service
+    extraEnv:
+      - { name: KMA_API_KEY, secretRef: { name: parkgolf-secrets, key: KMA_API_KEY } }
+      - { name: KMA_API_URL, configRef: { name: parkgolf-config,  key: KMA_API_URL } }
+  - name: location-service
+    extraEnv:
+      - { name: KAKAO_API_KEY, secretRef: { name: parkgolf-secrets, key: KAKAO_API_KEY } }
+  - name: agent-service
+    # multi-pod 운영 — Redis Working Memory + per-conversation lock으로 동시성 안전
+    # 설계: docs/workflow/AGENT_MEMORY.md §3.5, §8
+    replicas: 2
+    db: agent_db
+    hpa:
+      enabled: true
+      min: 2
+      max: 10
+      cpu: 70
+      memory: 75
+    extraEnv:
+      - { name: DEEPSEEK_API_KEY,    secretRef: { name: parkgolf-secrets, key: DEEPSEEK_API_KEY } }
+      - { name: DEEPSEEK_API_URL,    configRef: { name: parkgolf-config,  key: DEEPSEEK_API_URL } }
+      - { name: DEEPSEEK_MODEL,      configRef: { name: parkgolf-config,  key: DEEPSEEK_MODEL } }
+      - { name: CONVERSATION_TTL,    configRef: { name: parkgolf-config,  key: CONVERSATION_TTL } }
+      - { name: MAX_HISTORY_TURNS,   configRef: { name: parkgolf-config,  key: MAX_HISTORY_TURNS } }
+      - { name: REDIS_URL,           configRef: { name: parkgolf-config,  key: REDIS_URL } }
+  - name: admin-api
+  - name: user-api
+    backendConfig: user-api
+
+# Ingress (GKE managed cert + global static IP)
+ingress:
+  enabled: true
+  staticIpName: parkgolf-parkgolf-dev-cluster-ip
+  managedCert: parkgolf-cert
+  rules:
+    - { path: /api/admin,    service: admin-api }
+    - { path: /api/user,     service: user-api }
+    - { path: /socket.io,    service: chat-gateway }
+    - { path: /chat,         service: chat-gateway }
+    - { path: /notification, service: chat-gateway }
+    - { path: /webhook,      service: payment-service }
+
+# BackendConfig 정의
+backendConfigs:
+  websocket:
+    timeoutSec: 3600
+    sessionAffinity:
+      affinityType: GENERATED_COOKIE
+      affinityCookieTtlSec: 3600
+    connectionDraining:
+      drainingTimeoutSec: 60
+  user-api:
+    timeoutSec: 120
+    connectionDraining:
+      drainingTimeoutSec: 30

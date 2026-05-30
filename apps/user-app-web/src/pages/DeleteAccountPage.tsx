@@ -9,7 +9,7 @@ import {
   ShieldAlert,
   X,
 } from 'lucide-react';
-import { AppLayout, Container } from '@/components/layout';
+import { SubPageHeader, Container } from '@/components/layout';
 import { GlassCard, Button } from '@/components/ui';
 import {
   useDeletionStatusQuery,
@@ -72,20 +72,22 @@ export function DeleteAccountPage() {
 
   if (isLoading) {
     return (
-      <AppLayout title="계정 삭제">
+      <div className="min-h-screen bg-[var(--color-bg-primary)]">
+      <SubPageHeader title="계정 삭제" />
         <Container className="py-4 md:py-6">
           <div className="flex justify-center py-12">
             <div className="w-8 h-8 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
           </div>
         </Container>
-      </AppLayout>
+      </div>
     );
   }
 
   // 유예 기간 중인 경우
   if (status?.isDeletionRequested) {
     return (
-      <AppLayout title="계정 삭제">
+      <div className="min-h-screen bg-[var(--color-bg-primary)]">
+      <SubPageHeader title="계정 삭제" />
         <Container className="py-4 md:py-6 space-y-4">
           <GlassCard>
             <div className="flex items-center gap-3 mb-4">
@@ -147,13 +149,14 @@ export function DeleteAccountPage() {
             돌아가기
           </button>
         </Container>
-      </AppLayout>
+      </div>
     );
   }
 
   // 삭제 요청 폼
   return (
-    <AppLayout title="계정 삭제">
+    <div className="min-h-screen bg-[var(--color-bg-primary)]">
+      <SubPageHeader title="계정 삭제" />
       <Container className="py-4 md:py-6 space-y-4">
         {/* 경고 안내 */}
         <GlassCard>
@@ -254,7 +257,7 @@ export function DeleteAccountPage() {
           돌아가기
         </button>
       </Container>
-    </AppLayout>
+    </div>
   );
 }
 

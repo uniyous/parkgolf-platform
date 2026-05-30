@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:e2e": "VITE_API_URL=https://dev-api.parkgolfmate.com vite --port 3002",
+    "dev:e2e": "vite --mode e2e --port 3002",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",

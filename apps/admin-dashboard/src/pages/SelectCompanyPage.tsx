@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2, Search, MapPin } from 'lucide-react';
 import { useCompaniesQuery } from '@/hooks/queries/company';
 import { useSupportStore } from '@/stores/support.store';
 import type { Company } from '@/types/company';
+
+const SEARCH_MIN_LENGTH = 2;
+const SEARCH_DEBOUNCE_MS = 200;
 
 /**
  * 본사/협회 관리자가 가맹점을 선택하는 페이지
@@ -12,10 +15,22 @@ import type { Company } from '@/types/company';
 export const SelectCompanyPage: React.FC = () => {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const { setSelectedCompany } = useSupportStore();
 
+  // 2글자 이상 + 200ms debounce — 무분별한 fetch 차단 (서킷브레이크)
+  useEffect(() => {
+    const trimmed = search.trim();
+    if (trimmed.length < SEARCH_MIN_LENGTH) {
+      if (debouncedSearch !== '') setDebouncedSearch('');
+      return;
+    }
+    const t = setTimeout(() => setDebouncedSearch(trimmed), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [search, debouncedSearch]);
+
   const { data: companiesData, isLoading } = useCompaniesQuery(
-    { search: search || undefined, status: 'ACTIVE' },
+    { search: debouncedSearch || undefined, status: 'ACTIVE' },
     1,
     50,
   );
@@ -47,10 +62,11 @@ export const SelectCompanyPage: React.FC = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="가맹점 검색..."
+                placeholder="가맹점 검색 (2글자 이상)"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                autoFocus
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
               />
             </div>
           </div>
@@ -63,7 +79,7 @@ export const SelectCompanyPage: React.FC = () => {
               </div>
             ) : companies.length === 0 ? (
               <div className="px-6 py-8 text-center text-gray-400">
-                {search ? '검색 결과가 없습니다' : '등록된 가맹점이 없습니다'}
+                {debouncedSearch ? '검색 결과가 없습니다' : '등록된 가맹점이 없습니다'}
               </div>
             ) : (
               <div className="divide-y">

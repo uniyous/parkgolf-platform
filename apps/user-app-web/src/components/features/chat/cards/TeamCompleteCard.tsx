@@ -1,12 +1,9 @@
 import React from 'react';
-import { CheckCircle2, MapPin, Clock, Users, ArrowRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { CheckCircle2, MapPin, Clock, Users } from 'lucide-react';
 import type { TeamCompleteData } from '@/lib/api/chatApi';
 
 interface TeamCompleteCardProps {
   data: TeamCompleteData;
-  onNextTeam?: () => void;
-  onFinish?: () => void;
   completed?: boolean;
 }
 
@@ -15,18 +12,14 @@ const formatPrice = (price: number) =>
 
 export const TeamCompleteCard: React.FC<TeamCompleteCardProps> = ({
   data,
-  onNextTeam,
-  onFinish,
   completed,
 }) => {
   return (
-    <div className="rounded-xl border border-violet-500/20 bg-violet-500/10 p-4 mt-2 space-y-3">
+    <div className="rounded-xl border border-violet-500/20 bg-violet-500/10 p-4 mt-2 space-y-3 w-full min-w-[260px] max-w-[420px]">
       {/* Header */}
       <div className="flex items-center gap-2">
         <CheckCircle2 className="w-5 h-5 text-violet-400" />
-        <h4 className="text-lg font-semibold text-white">
-          팀{data.teamNumber} 예약 완료
-        </h4>
+        <h4 className="text-lg font-semibold text-white">예약 완료</h4>
       </div>
 
       {/* Booking Info */}
@@ -58,33 +51,6 @@ export const TeamCompleteCard: React.FC<TeamCompleteCardProps> = ({
         {data.bookingNumber}
       </div>
 
-      {/* Actions */}
-      {!completed && (onNextTeam || onFinish) && (
-        <div className="flex gap-2 pt-1">
-          {onFinish && (
-            <button
-              onClick={onFinish}
-              className={cn(
-                'flex-1 px-3 py-2.5 rounded-lg text-base font-medium transition-colors',
-                data.hasMoreTeams
-                  ? 'bg-white/10 text-white/70 hover:bg-white/20'
-                  : 'bg-violet-500/20 text-violet-400 hover:bg-violet-500/30'
-              )}
-            >
-              종료
-            </button>
-          )}
-          {data.hasMoreTeams && onNextTeam && (
-            <button
-              onClick={onNextTeam}
-              className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-base font-medium bg-violet-500/20 text-violet-400 hover:bg-violet-500/30 transition-colors"
-            >
-              다음 팀 예약
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-      )}
     </div>
   );
 };

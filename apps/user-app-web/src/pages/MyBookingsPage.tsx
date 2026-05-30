@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { AppLayout, Container } from '@/components/layout';
+import { SubPageHeader, Container } from '@/components/layout';
 import { GlassCard, Button } from '@/components/ui';
 import { useSearchBookingsQuery } from '@/hooks/queries/booking';
 import { BookingCard, BookingCardSkeleton } from '@/components/BookingCard';
@@ -61,7 +61,8 @@ export const MyBookingsPage: React.FC = () => {
   const totalPages = data ? Math.ceil(data.total / data.limit) : 0;
 
   return (
-    <AppLayout title="예약 내역">
+    <div className="min-h-screen bg-[var(--color-bg-primary)]">
+      <SubPageHeader title="예약 내역" />
       <Container className="py-4 md:py-6 space-y-4">
         {/* Tab Selector */}
         <GlassCard className="!p-0">
@@ -167,6 +168,6 @@ export const MyBookingsPage: React.FC = () => {
           onSuccess={handleCancelSuccess}
         />
       )}
-    </AppLayout>
+    </div>
   );
 };

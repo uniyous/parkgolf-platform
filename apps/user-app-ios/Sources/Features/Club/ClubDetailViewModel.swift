@@ -86,8 +86,20 @@ struct ClubDetail: Codable, Sendable, Identifiable {
     let isActive: Bool
 
     struct OperatingHours: Codable, Sendable {
-        let open: String
-        let close: String
+        let weekday: Hours?
+        let weekend: Hours?
+
+        struct Hours: Codable, Sendable {
+            let start: String
+            let end: String
+        }
+
+        // 화면 표시 호환 helper — 평일 우선, 없으면 주말, 없으면 nil
+        var displayHours: (open: String, close: String)? {
+            if let w = weekday { return (w.start, w.end) }
+            if let w = weekend { return (w.start, w.end) }
+            return nil
+        }
     }
 
     struct SeasonInfo: Codable, Sendable {

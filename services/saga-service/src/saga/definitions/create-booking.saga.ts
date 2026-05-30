@@ -40,6 +40,9 @@ export const CreateBookingSaga: SagaDefinition = {
         userName: response.userName,
         totalPrice: response.totalPrice,
         pricePerPerson: response.pricePerPerson,
+        // 더치페이용 추가 필드
+        chatRoomId: response.chatRoomId,
+        participants: response.participants,
       }),
     },
     {
@@ -106,6 +109,28 @@ export const CreateBookingSaga: SagaDefinition = {
       mergeResponse: (payload, response) => ({
         ...payload,
         bookingStatus: response.status,
+      }),
+    },
+    {
+      // 더치페이 분할결제 준비 — N명에게 개별 orderId 발급
+      // SLOT_RESERVED 이후, NOTIFY_EXTERNAL 이전 단계.
+      // condition: 더치페이 + 2명 이상 참여자
+      name: 'PREPARE_SPLIT',
+      action: 'payment.splitPrepare',
+      compensate: null,
+      timeout: NATS_TIMEOUTS.PAYMENT,
+      targetService: 'PAYMENT_SERVICE',
+      condition: (payload) =>
+        payload.paymentMethod === 'dutchpay' &&
+        Array.isArray(payload.participants) &&
+        (payload.participants as unknown[]).length > 1,
+      buildRequest: (payload) => ({
+        bookingId: payload.bookingId,
+        participants: payload.participants,
+      }),
+      mergeResponse: (payload, response) => ({
+        ...payload,
+        splits: response.splits,
       }),
     },
     {

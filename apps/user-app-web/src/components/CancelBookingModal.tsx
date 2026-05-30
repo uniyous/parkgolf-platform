@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { formatDate, formatPrice } from '@/lib/formatting';
 import { showSuccessToast, showErrorToast } from '@/lib/toast';
 import { type BookingWithCancel } from '@/lib/api/bookingApi';
-import { useCancelBookingMutation } from '@/hooks/queries/booking';
+import { useCancelBookingMutation, useCancelParticipantMutation } from '@/hooks/queries/booking';
 import { CANCEL_REASONS } from '@/lib/constants';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 
@@ -24,21 +24,29 @@ export const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
   const [selectedReason, setSelectedReason] = useState<string>('');
   const [customReason, setCustomReason] = useState<string>('');
   const cancelMutation = useCancelBookingMutation();
+  const cancelParticipantMutation = useCancelParticipantMutation();
+
+  // AGENT_PAY.md §11.4 — 더치페이는 본인 자리만 취소
+  const isDutchpay = booking.paymentMethod === 'dutchpay';
+  const activeMutation = isDutchpay ? cancelParticipantMutation : cancelMutation;
 
   const handleCancel = async () => {
     const reason = selectedReason === '기타' ? customReason : selectedReason;
 
     try {
-      await cancelMutation.mutateAsync({
+      await activeMutation.mutateAsync({
         id: booking.id,
         reason: reason || undefined,
       });
-      showSuccessToast('예약이 취소되었습니다');
+      showSuccessToast(isDutchpay ? '내 자리가 취소되었습니다' : '예약이 취소되었습니다');
       onSuccess?.();
       onClose();
     } catch (error) {
-      console.error('Failed to cancel booking:', error);
-      showErrorToast('예약 취소에 실패했습니다', '다시 시도해주세요.');
+      console.error('Failed to cancel:', error);
+      showErrorToast(
+        isDutchpay ? '취소에 실패했습니다' : '예약 취소에 실패했습니다',
+        '다시 시도해주세요.',
+      );
     }
   };
 
@@ -74,8 +82,9 @@ export const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
       {/* Cancel Policy */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
         <p className="text-sm text-amber-200">
-          예약 취소 시 결제된 금액은 환불 정책에 따라 처리됩니다.
-          예약일 3일 전까지 무료 취소가 가능합니다.
+          {isDutchpay
+            ? '더치페이는 본인 자리만 취소되며, 환불은 본인 결제 금액에 한해 환불 정책에 따라 처리됩니다. 다른 참여자의 예약은 그대로 유지됩니다.'
+            : '예약 취소 시 결제된 금액은 환불 정책에 따라 처리됩니다. 예약일 3일 전까지 무료 취소가 가능합니다.'}
         </p>
       </div>
 
@@ -122,9 +131,9 @@ export const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
       )}
 
       {/* Error Message */}
-      {cancelMutation.isError && (
+      {activeMutation.isError && (
         <p className="text-sm text-red-400 text-center">
-          예약 취소에 실패했습니다. 다시 시도해 주세요.
+          {isDutchpay ? '취소에 실패했습니다. 다시 시도해 주세요.' : '예약 취소에 실패했습니다. 다시 시도해 주세요.'}
         </p>
       )}
     </div>
@@ -135,12 +144,12 @@ export const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
       open={isOpen}
       onOpenChange={handleOpenChange}
       type="danger"
-      title="예약 취소"
+      title={isDutchpay ? '내 자리 취소' : '예약 취소'}
       content={content}
-      okText="예약 취소하기"
+      okText={isDutchpay ? '내 자리 취소하기' : '예약 취소하기'}
       cancelText="돌아가기"
       onOk={handleCancel}
-      loading={cancelMutation.isPending}
+      loading={activeMutation.isPending}
       disabled={!canSubmit}
     />
   );

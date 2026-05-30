@@ -4,7 +4,15 @@ import { SagaStatus, StepStatus } from '@prisma/client';
 import { SagaRegistry } from './saga-registry';
 import { StepExecutorService } from './step-executor.service';
 import { SagaDefinition, StepDefinition } from '../definitions/saga-definition.interface';
-import { NatsResponse } from '../../common/types/response.types';
+import { NatsResponse, type SagaMeta } from '../../common/types/response.types';
+import { PgBossService } from '../../common/pgboss/pgboss.service';
+
+const SAGA_TIMEOUT_RECOVERY_QUEUE = 'saga-timeout-recovery';
+const SAGA_TIMEOUT_DELAY_SECONDS = 15 * 60; // 15분
+
+// CREATE_BOOKING 후 결제 미완료 시 자동 정리용 큐
+const PAYMENT_TIMEOUT_QUEUE = 'payment-timeout';
+const PAYMENT_TIMEOUT_DELAY_SECONDS = 3 * 60; // 3분 — PaymentSplit.expirationMinutes와 동기화
 
 @Injectable()
 export class SagaEngineService {
@@ -14,6 +22,7 @@ export class SagaEngineService {
     private readonly prisma: PrismaService,
     private readonly registry: SagaRegistry,
     private readonly stepExecutor: StepExecutorService,
+    private readonly pgboss: PgBossService,
   ) {}
 
   /**
@@ -28,7 +37,11 @@ export class SagaEngineService {
     const definition = this.registry.get(sagaType);
     if (!definition) {
       this.logger.error(`Unknown saga type: ${sagaType}`);
-      return NatsResponse.success({ error: `Unknown saga type: ${sagaType}` });
+      return NatsResponse.withSaga({}, {
+        executionId: 0,
+        status: 'FAILED',
+        failReason: `Unknown saga type: ${sagaType}`,
+      });
     }
 
     const correlationId = this.buildCorrelationId(sagaType, payload);
@@ -43,7 +56,12 @@ export class SagaEngineService {
     });
     if (existing && existing.status !== SagaStatus.FAILED) {
       this.logger.warn(`[SagaEngine] Duplicate saga: ${correlationId}, status=${existing.status}`);
-      return NatsResponse.success({ sagaExecutionId: existing.id, status: existing.status, duplicate: true });
+      const existingPayload = (existing.payload as Record<string, unknown>) ?? {};
+      return NatsResponse.withSaga(existingPayload, {
+        executionId: existing.id,
+        status: existing.status as SagaMeta['status'],
+        duplicate: true,
+      });
     }
 
     // SagaExecution 생성 + 모든 SagaStep 레코드 생성
@@ -88,17 +106,166 @@ export class SagaEngineService {
 
     this.logger.log(`[SagaEngine] SagaExecution created: id=${sagaExecution.id}`);
 
+    // pg-boss timeout recovery task 등록 (saga가 hang되어도 자동 보상 처리)
+    let timeoutJobId: string | null = null;
+    try {
+      timeoutJobId = await this.pgboss.send(
+        SAGA_TIMEOUT_RECOVERY_QUEUE,
+        { sagaExecutionId: sagaExecution.id },
+        {
+          startAfter: SAGA_TIMEOUT_DELAY_SECONDS,
+          singletonKey: `saga-timeout-${sagaExecution.id}`,
+          retryLimit: 3,
+        },
+      );
+      if (timeoutJobId) {
+        await this.prisma.sagaExecution.update({
+          where: { id: sagaExecution.id },
+          data: { timeoutJobId },
+        });
+      }
+    } catch (err) {
+      this.logger.warn(
+        `[SagaEngine] Failed to register timeout task: ${err instanceof Error ? err.message : 'unknown'}`,
+      );
+      // saga 진행은 계속 (타임아웃 보상 누락은 안전망 worker가 처리)
+    }
+
     // Step들을 순차 실행
     const result = await this.executeSteps(sagaExecution.id, definition, payload);
     const elapsed = Date.now() - startTime;
 
-    this.logger.log(`[SagaEngine] Saga ${sagaType} ${result.status} in ${elapsed}ms: executionId=${sagaExecution.id}`);
-    this.logger.log(`[SagaEngine] ========== SAGA ${sagaType} ${result.status} ==========`);
+    this.logger.log(`[SagaEngine] Saga ${sagaType} ${result.sagaStatus} in ${elapsed}ms: executionId=${sagaExecution.id}`);
+    this.logger.log(`[SagaEngine] ========== SAGA ${sagaType} ${result.sagaStatus} ==========`);
 
-    return NatsResponse.success({
-      sagaExecutionId: sagaExecution.id,
-      ...result,
+    // 정상 종료 시 timeout task 취소
+    if (timeoutJobId) {
+      try {
+        await this.pgboss.cancel(SAGA_TIMEOUT_RECOVERY_QUEUE, timeoutJobId);
+      } catch (err) {
+        // 이미 처리됐거나 cancel 실패해도 saga 자체는 종료된 상태이므로 문제 없음
+        this.logger.debug(`[SagaEngine] timeout task cancel skipped: ${err instanceof Error ? err.message : 'unknown'}`);
+      }
+    }
+
+    // CREATE_BOOKING saga가 정상 종료 + paymentMethod가 결제 대기인 경우
+    //   → 5분 후 PAYMENT_TIMEOUT saga 발화 예약 (잠수 시나리오 대응)
+    // singletonKey로 중복 enqueue 방지 (saga 재시도 시 안전).
+    if (
+      sagaType === 'CREATE_BOOKING' &&
+      result.sagaStatus === SagaStatus.COMPLETED &&
+      (result as { paymentMethod?: string }).paymentMethod &&
+      (result as { paymentMethod?: string }).paymentMethod !== 'onsite' &&
+      (result as { bookingId?: number }).bookingId
+    ) {
+      const bookingId = (result as { bookingId: number }).bookingId;
+      try {
+        await this.pgboss.send(
+          PAYMENT_TIMEOUT_QUEUE,
+          { bookingId },
+          {
+            startAfter: PAYMENT_TIMEOUT_DELAY_SECONDS,
+            singletonKey: `payment-timeout-${bookingId}`,
+            retryLimit: 3,
+          },
+        );
+        this.logger.log(
+          `[SagaEngine] payment-timeout scheduled: booking ${bookingId} (+${PAYMENT_TIMEOUT_DELAY_SECONDS}s)`,
+        );
+      } catch (err) {
+        this.logger.warn(
+          `[SagaEngine] Failed to schedule payment-timeout for booking ${bookingId}: ${err instanceof Error ? err.message : 'unknown'}`,
+        );
+      }
+    }
+
+    const { sagaStatus, failReason, ...dataPayload } = result as {
+      sagaStatus: string;
+      failReason?: string;
+      [key: string]: unknown;
+    };
+
+    return NatsResponse.withSaga(dataPayload, {
+      executionId: sagaExecution.id,
+      status: sagaStatus as SagaMeta['status'],
+      failReason,
     });
+  }
+
+  /**
+   * Saga timeout 복구 (pg-boss worker에서 호출)
+   *
+   * - saga가 15분 이상 active 상태로 남아있으면 호출됨
+   * - 멱등성: 이미 종료된 saga면 skip
+   * - 보상 트랜잭션 자동 실행하여 정합성 회복
+   */
+  async recoverTimedOutSaga(sagaExecutionId: number) {
+    const saga = await this.prisma.sagaExecution.findUnique({
+      where: { id: sagaExecutionId },
+      include: { steps: true },
+    });
+
+    if (!saga) {
+      return { skipped: true, reason: 'not_found' };
+    }
+
+    // 이미 종료된 saga는 처리 불필요
+    const terminalStatuses: SagaStatus[] = [
+      SagaStatus.COMPLETED,
+      SagaStatus.FAILED,
+      SagaStatus.REQUIRES_MANUAL,
+      SagaStatus.COMPENSATION_COMPLETED,
+      SagaStatus.COMPENSATION_FAILED,
+    ];
+    if (terminalStatuses.includes(saga.status)) {
+      return { skipped: true, currentStatus: saga.status };
+    }
+
+    this.logger.warn(
+      `[SagaEngine] Recovering timed-out saga ${sagaExecutionId} (status=${saga.status}, sagaType=${saga.sagaType})`,
+    );
+
+    const definition = this.registry.get(saga.sagaType);
+    if (!definition) {
+      await this.prisma.sagaExecution.update({
+        where: { id: sagaExecutionId },
+        data: {
+          status: SagaStatus.REQUIRES_MANUAL,
+          failReason: `Timed out + saga definition not found: ${saga.sagaType}`,
+          failedAt: new Date(),
+        },
+      });
+      return { recovered: false, reason: 'definition_missing' };
+    }
+
+    // 마지막으로 완료된 step 다음부터 보상 시작
+    const completedStepIndex = saga.steps
+      .filter((s) => s.status === StepStatus.COMPLETED)
+      .reduce((max, s) => Math.max(max, s.stepIndex), -1);
+
+    const compensated = await this.runCompensation(
+      sagaExecutionId,
+      definition,
+      completedStepIndex + 1,
+      saga.payload as Record<string, unknown>,
+    );
+
+    const finalStatus = compensated ? SagaStatus.FAILED : SagaStatus.REQUIRES_MANUAL;
+
+    await this.prisma.sagaExecution.update({
+      where: { id: sagaExecutionId },
+      data: {
+        status: finalStatus,
+        failReason: 'Saga timeout — auto recovery via pg-boss',
+        failedAt: new Date(),
+      },
+    });
+
+    this.logger.warn(
+      `[SagaEngine] Saga ${sagaExecutionId} timeout recovery complete: ${finalStatus}`,
+    );
+
+    return { recovered: true, finalStatus, compensated };
   }
 
   /**
@@ -108,7 +275,7 @@ export class SagaEngineService {
     sagaExecutionId: number,
     definition: SagaDefinition,
     initialPayload: Record<string, unknown>,
-  ): Promise<{ status: string; payload: Record<string, unknown>; failReason?: string }> {
+  ): Promise<Record<string, unknown>> {
     let currentPayload = { ...initialPayload };
 
     for (let i = 0; i < definition.steps.length; i++) {
@@ -208,7 +375,7 @@ export class SagaEngineService {
           },
         });
 
-        return { status: finalStatus, payload: currentPayload, failReason: result.error };
+        return { sagaStatus: finalStatus, ...currentPayload, failReason: result.error };
       }
     }
 
@@ -222,13 +389,13 @@ export class SagaEngineService {
       },
     });
 
-    return { status: 'COMPLETED', payload: currentPayload };
+    return { sagaStatus: 'COMPLETED', ...currentPayload };
   }
 
   /**
    * 보상 트랜잭션 실행 (완료된 Step을 역순으로)
    */
-  private async runCompensation(
+  async runCompensation(
     sagaExecutionId: number,
     definition: SagaDefinition,
     failedStepIndex: number,
@@ -348,7 +515,7 @@ export class SagaEngineService {
   }
 
   /**
-   * Saga 수동 완료 처리
+   * Saga 수동 완료 처리 (sagaStatus는 이미 result에 포함)
    */
   async resolveSaga(sagaExecutionId: number, adminNote?: string) {
     const execution = await this.prisma.sagaExecution.findUnique({
@@ -377,7 +544,7 @@ export class SagaEngineService {
     });
 
     this.logger.log(`[SagaEngine] Saga ${sagaExecutionId} manually resolved`);
-    return NatsResponse.success({ sagaExecutionId, status: 'COMPLETED', resolvedManually: true });
+    return NatsResponse.success({ sagaExecutionId, sagaStatus: 'COMPLETED', resolvedManually: true });
   }
 
   /**

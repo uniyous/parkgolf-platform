@@ -89,8 +89,8 @@ struct BookingResponse: Codable, Sendable, Identifiable {
     let id: Int
     let bookingNumber: String
     let userId: Int?
-    let gameId: Int
-    let gameTimeSlotId: Int
+    let gameId: Int?
+    let gameTimeSlotId: Int?
     let gameName: String?
     let gameCode: String?
     let frontNineCourseId: Int?
@@ -99,14 +99,14 @@ struct BookingResponse: Codable, Sendable, Identifiable {
     let backNineCourseName: String?
     let clubId: Int?
     let clubName: String?
-    let bookingDate: String
-    let startTime: String
-    let endTime: String
-    let playerCount: Int
-    let pricePerPerson: Int
-    let serviceFee: Int
-    let totalPrice: Int
-    let status: String
+    let bookingDate: String?
+    let startTime: String?
+    let endTime: String?
+    let playerCount: Int?
+    let pricePerPerson: Double?
+    let serviceFee: Double?
+    let totalPrice: Double?
+    let status: String?
     let paymentMethod: String?
     let specialRequests: String?
     let notes: String?
@@ -114,22 +114,29 @@ struct BookingResponse: Codable, Sendable, Identifiable {
     let userName: String?
     let userPhone: String?
     let canCancel: Bool?
-    let createdAt: String
+    // AGENT_PAY.md §11.3 — 마이페이지 노출용 파생 필드 (BFF가 currentUser 기준 계산)
+    let myRole: String?                  // "BOOKER" | "MEMBER"
+    let myParticipantStatus: String?     // "PENDING" | "PAID" | "CANCELLED" | "REFUNDED"
+    let createdAt: String?
     let updatedAt: String?
 
     var statusEnum: BookingStatus {
-        BookingStatus(rawValue: status) ?? .pending
+        BookingStatus(rawValue: status ?? "PENDING") ?? .pending
     }
 
     var formattedDate: String {
-        guard let date = DateHelper.fromISODateString(bookingDate) else {
-            return bookingDate
+        guard let bookingDate, let date = DateHelper.fromISODateString(bookingDate) else {
+            return bookingDate ?? ""
         }
         return DateHelper.toKoreanFullDate(date)
     }
 
     var timeRange: String {
-        "\(startTime) - \(endTime)"
+        "\(startTime ?? "") - \(endTime ?? "")"
+    }
+
+    var totalPriceInt: Int {
+        Int(totalPrice ?? 0)
     }
 
     var courseNames: String? {
@@ -138,6 +145,31 @@ struct BookingResponse: Codable, Sendable, Identifiable {
         }
         return frontNineCourseName ?? backNineCourseName
     }
+
+    // AGENT_PAY.md §11.4 — 더치페이 본인 자리 취소 분기
+    var isDutchpay: Bool {
+        paymentMethod == "dutchpay"
+    }
+
+    var isMemberRole: Bool {
+        myRole == "MEMBER"
+    }
+
+    var isMyParticipantCancelled: Bool {
+        myParticipantStatus == "CANCELLED" || myParticipantStatus == "REFUNDED"
+    }
+}
+
+// MARK: - Cancel Participant Response (AGENT_PAY.md §11.4)
+
+struct CancelParticipantResponse: Codable, Sendable {
+    let bookingId: Int
+    let userId: Int
+    let previousStatus: String
+    let newStatus: String
+    let refundedAmount: Int
+    let bookingCancelled: Bool
+    let remainingParticipants: Int
 }
 
 // MARK: - Empty Data Response

@@ -2,7 +2,10 @@ package com.parkgolf.app.data.repository
 
 import com.parkgolf.app.data.mapper.toDomain
 import com.parkgolf.app.data.remote.api.SettingsApi
+import com.parkgolf.app.data.remote.dto.settings.AgentMemoryStatus
+import com.parkgolf.app.data.remote.dto.settings.AgentMemoryToggleResult
 import com.parkgolf.app.data.remote.dto.settings.NotificationSettings
+import com.parkgolf.app.data.remote.dto.settings.UpdateAgentMemoryRequest
 import com.parkgolf.app.data.remote.dto.settings.UpdateNotificationSettingsRequest
 import com.parkgolf.app.data.remote.dto.settings.UpdateProfileRequest
 import com.parkgolf.app.domain.model.User
@@ -39,5 +42,14 @@ class SettingsRepositoryImpl @Inject constructor(
     override suspend fun updateProfile(name: String?, phone: String?): Result<User> = safeApiCall {
         val request = UpdateProfileRequest(name = name, phone = phone)
         settingsApi.updateProfile(request).toResult("프로필 수정에 실패했습니다") { it.toDomain() }
+    }
+
+    override suspend fun getAgentMemory(): Result<AgentMemoryStatus> = safeApiCall {
+        settingsApi.getAgentMemory().toResult("AI 메모리 설정을 불러오는데 실패했습니다")
+    }
+
+    override suspend fun setAgentMemoryEnabled(enabled: Boolean): Result<AgentMemoryToggleResult> = safeApiCall {
+        settingsApi.updateAgentMemory(UpdateAgentMemoryRequest(enabled = enabled))
+            .toResult("AI 메모리 설정 변경에 실패했습니다")
     }
 }

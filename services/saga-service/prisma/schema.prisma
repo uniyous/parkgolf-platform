@@ -27,6 +27,9 @@ model SagaExecution {
   payload        Json
   failReason     String?     @map("fail_reason")
 
+  // pg-boss timeout task ID (정상 완료 시 cancel용)
+  timeoutJobId   String?     @map("timeout_job_id")
+
   // 트리거 정보
   triggeredBy    String?     @map("triggered_by")    // USER, ADMIN, SYSTEM, SCHEDULER
   triggeredById  Int?        @map("triggered_by_id")
@@ -84,27 +87,6 @@ model SagaStep {
 }
 
 // =====================================================
-// Outbox (saga-service 전용)
-// =====================================================
-
-model OutboxEvent {
-  id            Int          @id @default(autoincrement())
-  aggregateType String       @map("aggregate_type")
-  aggregateId   String       @map("aggregate_id")
-  eventType     String       @map("event_type")
-  payload       Json
-  status        OutboxStatus @default(PENDING)
-  retryCount    Int          @default(0) @map("retry_count")
-  lastError     String?      @map("last_error")
-  createdAt     DateTime     @default(now()) @map("created_at")
-  processedAt   DateTime?    @map("processed_at")
-
-  @@index([status, createdAt])
-  @@index([aggregateType, aggregateId])
-  @@map("outbox_events")
-}
-
-// =====================================================
 // Enums
 // =====================================================
 
@@ -128,11 +110,4 @@ enum StepStatus {
   FAILED
   COMPENSATED
   SKIPPED
-}
-
-enum OutboxStatus {
-  PENDING
-  PROCESSING
-  SENT
-  FAILED
 }

@@ -17,6 +17,14 @@ export interface PaginatedResult<T> {
   pagination: Pagination;
 }
 
+/** Saga 트랜잭션 메타데이터 - saga 경유 응답에만 포함 */
+export interface SagaMeta {
+  executionId: number;
+  status: 'COMPLETED' | 'FAILED' | 'REQUIRES_MANUAL' | 'STARTED' | 'STEP_EXECUTING' | 'STEP_COMPLETED' | 'STEP_FAILED' | 'COMPENSATING' | 'COMPENSATED';
+  failReason?: string;
+  duplicate?: boolean;
+}
+
 export interface BffResponse<T = unknown> {
   success?: boolean;
   data?: T | T[] | { [key: string]: T[] };
@@ -28,6 +36,8 @@ export interface BffResponse<T = unknown> {
   totalPages?: number;
   message?: string;
   error?: { code?: string; message?: string; details?: Record<string, unknown> } | string;
+  /** saga 트랜잭션을 경유한 응답에만 존재 */
+  saga?: SagaMeta;
   [key: string]: unknown;
 }
 

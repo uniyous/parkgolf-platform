@@ -1,0 +1,52 @@
+{{- if .Values.redis.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: parkgolf-redis
+  namespace: {{ .Values.global.namespace }}
+spec:
+  type: ClusterIP
+  ports:
+    - { port: 6379, name: redis, targetPort: 6379 }
+  selector:
+    app: parkgolf-redis
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: parkgolf-redis
+  namespace: {{ .Values.global.namespace }}
+spec:
+  serviceName: parkgolf-redis
+  replicas: 1
+  selector:
+    matchLabels: { app: parkgolf-redis }
+  template:
+    metadata:
+      labels: { app: parkgolf-redis }
+    spec:
+      containers:
+        - name: redis
+          image: {{ .Values.redis.image }}
+          args:
+            - "--maxmemory"
+            - {{ .Values.redis.maxmemory | quote }}
+            - "--maxmemory-policy"
+            - {{ .Values.redis.maxmemoryPolicy | quote }}
+            - "--appendonly"
+            - "yes"
+          ports:
+            - { containerPort: 6379 }
+          resources:
+{{ toYaml .Values.redis.resources | indent 12 }}
+          livenessProbe:
+            tcpSocket: { port: 6379 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+{{- end }}

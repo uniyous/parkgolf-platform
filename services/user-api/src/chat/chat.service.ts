@@ -220,6 +220,7 @@ export class ChatService {
     this.logger.log(`Send AI message: roomId=${roomId}, userId=${userId}`);
 
     // 1. 사용자 메시지를 chat-service에 AI_USER로 저장 (fire-and-forget — AI 흐름 차단 방지)
+    //    metadata.targetUserIds = [userId] — 개인 AI 대화. 다른 사용자 history fetch 시 클라이언트가 필터.
     const userMessageData = {
       id: randomUUID(),
       roomId,
@@ -227,6 +228,7 @@ export class ChatService {
       senderName: userName,
       content: dto.message,
       messageType: 'AI_USER',
+      metadata: JSON.stringify({ targetUserIds: [userId] }),
       createdAt: new Date().toISOString(),
     };
     this.natsClient.send('chat.messages.save', userMessageData, NATS_TIMEOUTS.QUICK).catch((err) => {
@@ -256,11 +258,9 @@ export class ChatService {
         paymentMethod: dto.paymentMethod,
         paymentComplete: dto.paymentComplete,
         paymentSuccess: dto.paymentSuccess,
-        // 그룹 예약 필드 (팀 단위 순차)
+        // 멤버 선택 (1예약 = 최대 4명)
         confirmGroupBooking: dto.confirmGroupBooking,
         teamMembers: dto.teamMembers,
-        nextTeam: dto.nextTeam,
-        finishGroup: dto.finishGroup,
         sendReminder: dto.sendReminder,
         // 분할결제 완료 필드
         splitPaymentComplete: dto.splitPaymentComplete,
@@ -270,12 +270,14 @@ export class ChatService {
     );
 
     // 3. AI 응답을 chat-service에 AI_ASSISTANT로 저장 (fire-and-forget — 응답 반환 차단 방지)
+    //    metadata.targetUserIds = [userId] — 개인 AI 대화. 다른 사용자 history fetch 시 클라이언트가 필터.
     if (agentResponse?.success && agentResponse?.data) {
       const aiData = agentResponse.data;
       const metadata = JSON.stringify({
         conversationId: aiData.conversationId,
         state: aiData.state,
         actions: aiData.actions,
+        targetUserIds: [userId],
       });
 
       this.natsClient.send('chat.messages.save', {

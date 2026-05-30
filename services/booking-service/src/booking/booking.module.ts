@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { ScheduleModule } from '@nestjs/schedule';
 import { BookingNatsController } from './controller/booking-nats.controller';
 import { BookingSagaController } from './controller/booking-saga.controller';
 import { BookingSagaStepController } from './controller/booking-saga-step.controller';
@@ -10,12 +9,11 @@ import { TeamSelectionService } from './service/team-selection.service';
 import { SagaHandlerService } from './service/saga-handler.service';
 import { BookingSagaStepService } from './service/booking-saga-step.service';
 import { OutboxProcessorService } from './service/outbox-processor.service';
-import { SagaSchedulerService } from './service/saga-scheduler.service';
+import { ParticipantCancelService } from './service/participant-cancel.service';
 
 @Module({
   imports: [
     PrismaModule,
-    ScheduleModule.forRoot(),
   ],
   controllers: [
     BookingNatsController,
@@ -29,7 +27,7 @@ import { SagaSchedulerService } from './service/saga-scheduler.service';
     SagaHandlerService,
     BookingSagaStepService,
     OutboxProcessorService,
-    SagaSchedulerService,
+    ParticipantCancelService,
   ],
 })
 export class BookingModule {}

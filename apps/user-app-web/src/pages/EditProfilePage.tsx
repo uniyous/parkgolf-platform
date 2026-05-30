@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Phone, Mail } from 'lucide-react';
-import { AppLayout, Container } from '@/components/layout';
+import { SubPageHeader, Container } from '@/components/layout';
 import { GlassCard, Button } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
 import { useUpdateProfileMutation } from '@/hooks/queries/auth';
@@ -75,7 +75,8 @@ export function EditProfilePage() {
   const avatarInitial = (user?.name || '사용자').charAt(0).toUpperCase();
 
   return (
-    <AppLayout title="프로필 수정">
+    <div className="min-h-screen bg-[var(--color-bg-primary)]">
+      <SubPageHeader title="프로필 수정" />
       <Container className="py-4 md:py-6 space-y-4">
         {/* Avatar */}
         <div className="flex justify-center">
@@ -158,6 +159,6 @@ export function EditProfilePage() {
           {updateProfileMutation.isPending ? '저장 중...' : '저장'}
         </Button>
       </Container>
-    </AppLayout>
+    </div>
   );
 }

@@ -220,6 +220,115 @@ export class NotificationNatsController {
     }
   }
 
+  /**
+   * 결제 타임아웃 알림 (PAYMENT_TIMEOUT Saga의 NOTIFY_TIMEOUT step)
+   * dutchpay 분할결제는 환불 정보를 메시지에 포함.
+   */
+  @MessagePattern('notification.booking.paymentTimeout')
+  async handleBookingPaymentTimeout(
+    @Payload()
+    data: {
+      bookingId: number;
+      bookingNumber?: string;
+      userId?: number;
+      paymentMethod?: string;
+      refundedCount?: number;
+      refundedAmount?: number;
+      timeoutAt?: string;
+    },
+  ) {
+    this.logger.log(
+      `NATS: notification.booking.paymentTimeout - bookingId=${data.bookingId} method=${data.paymentMethod}`,
+    );
+
+    if (!data.userId) {
+      return NatsResponse.success({ skipped: true, reason: 'userId missing' });
+    }
+
+    try {
+      const isDutchpay = data.paymentMethod === 'dutchpay';
+      const refundInfo =
+        isDutchpay && (data.refundedCount ?? 0) > 0
+          ? ` (${data.refundedCount}명에게 ${(data.refundedAmount ?? 0).toLocaleString()}원 자동 환불)`
+          : '';
+
+      const notification = await this.notificationService.create({
+        userId: String(data.userId),
+        type: NotificationType.PAYMENT_FAILED,
+        title: '결제 시간이 만료되어 예약이 취소되었습니다',
+        message: isDutchpay
+          ? `예약번호 ${data.bookingNumber ?? data.bookingId}: 분할결제 미완료로 예약이 자동 취소되었습니다.${refundInfo}`
+          : `예약번호 ${data.bookingNumber ?? data.bookingId}: 결제 시간(10분) 초과로 예약이 자동 취소되었습니다.`,
+        data: {
+          bookingId: data.bookingId,
+          bookingNumber: data.bookingNumber,
+          paymentMethod: data.paymentMethod,
+          refundedCount: data.refundedCount,
+          refundedAmount: data.refundedAmount,
+          timeoutAt: data.timeoutAt,
+        },
+        deliveryChannel: DeliveryChannelType.PUSH,
+      });
+
+      await this.deliveryService.deliverNotification(notification);
+      return NatsResponse.success({ notificationId: notification.id });
+    } catch (error) {
+      this.logger.error(`Failed to send paymentTimeout notification: ${error}`);
+      return NatsResponse.success({ delivered: false, error: error instanceof Error ? error.message : 'unknown' });
+    }
+  }
+
+  /**
+   * 결제 실패 알림 (saga PAYMENT_FAILED의 NOTIFY_FAILURE step에서 호출)
+   * MessagePattern으로 응답 반환 (saga step은 request-reply)
+   */
+  @MessagePattern('notification.booking.paymentFailed')
+  async handleBookingPaymentFailed(
+    @Payload()
+    data: {
+      bookingId: number;
+      bookingNumber?: string;
+      userId?: number;
+      reason?: string;
+      errorCode?: string;
+      errorMessage?: string;
+      failedAt?: string;
+    },
+  ) {
+    this.logger.log(`NATS: notification.booking.paymentFailed - bookingId=${data.bookingId}`);
+
+    if (!data.userId) {
+      return NatsResponse.success({ skipped: true, reason: 'userId missing' });
+    }
+
+    try {
+      const isCancelled = data.reason === 'cancelled';
+      const notification = await this.notificationService.create({
+        userId: String(data.userId),
+        type: NotificationType.PAYMENT_FAILED,
+        title: isCancelled ? '결제가 취소되었습니다' : '결제에 실패했습니다',
+        message: isCancelled
+          ? `예약번호 ${data.bookingNumber ?? data.bookingId}의 결제가 취소되어 예약이 자동으로 정리되었습니다.`
+          : `예약번호 ${data.bookingNumber ?? data.bookingId}의 결제에 실패하여 예약이 자동으로 정리되었습니다.${data.errorMessage ? ' (' + data.errorMessage + ')' : ''}`,
+        data: {
+          bookingId: data.bookingId,
+          bookingNumber: data.bookingNumber,
+          reason: data.reason,
+          errorCode: data.errorCode,
+          errorMessage: data.errorMessage,
+          failedAt: data.failedAt,
+        },
+        deliveryChannel: DeliveryChannelType.PUSH,
+      });
+
+      await this.deliveryService.deliverNotification(notification);
+      return NatsResponse.success({ notificationId: notification.id });
+    } catch (error) {
+      this.logger.error(`Failed to send paymentFailed notification: ${error}`);
+      return NatsResponse.success({ delivered: false, error: error instanceof Error ? error.message : 'unknown' });
+    }
+  }
+
   @EventPattern('booking.refundCompleted')
   async handleRefundCompleted(@Payload() data: BookingRefundCompletedEvent) {
     this.logger.log(`NATS Event: booking.refundCompleted - ${data.bookingNumber}`);

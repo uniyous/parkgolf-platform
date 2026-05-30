@@ -17,7 +17,7 @@ import {
   Undo2,
   Split,
 } from 'lucide-react';
-import { AppLayout, Container } from '@/components/layout';
+import { SubPageHeader, Container } from '@/components/layout';
 import { GlassCard, LoadingView, EmptyState, Button } from '@/components/ui';
 import {
   useNotificationsQuery,
@@ -181,7 +181,8 @@ export function NotificationsPage() {
 
   if (isError) {
     return (
-      <AppLayout title="알림">
+      <div className="min-h-screen bg-[var(--color-bg-primary)]">
+      <SubPageHeader title="알림" />
         <Container className="py-4">
           <GlassCard>
             <EmptyState
@@ -193,12 +194,13 @@ export function NotificationsPage() {
             />
           </GlassCard>
         </Container>
-      </AppLayout>
+      </div>
     );
   }
 
   return (
-    <AppLayout title="알림" headerRight={headerRight}>
+    <div className="min-h-screen bg-[var(--color-bg-primary)]">
+      <SubPageHeader title="알림" rightContent={headerRight} />
       <Container className="py-4 md:py-6">
         {/* Filter Tabs */}
         <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide pb-1">
@@ -295,7 +297,7 @@ export function NotificationsPage() {
           </div>
         )}
       </Container>
-    </AppLayout>
+    </div>
   );
 }
 

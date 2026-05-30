@@ -1,0 +1,39 @@
+{{- if .Values.nats.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nats
+  namespace: {{ .Values.global.namespace }}
+spec:
+  clusterIP: None
+  ports:
+    - { port: 4222, name: client }
+    - { port: 8222, name: monitor }
+  selector:
+    app: nats
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nats
+  namespace: {{ .Values.global.namespace }}
+spec:
+  serviceName: nats
+  replicas: 1
+  selector:
+    matchLabels: { app: nats }
+  template:
+    metadata:
+      labels: { app: nats }
+    spec:
+      containers:
+        - name: nats
+          image: {{ .Values.nats.image }}
+          args: ["-js", "-m", "8222"]
+          ports:
+            - { containerPort: 4222 }
+            - { containerPort: 8222 }
+          resources:
+{{ toYaml .Values.nats.resources | indent 12 }}
+{{- end }}

@@ -2,6 +2,7 @@
 
 > 버전: 6.0
 > 최종 수정: 2026-03-09
+> **연계 문서**: AI 예약 흐름 [`AGENT.md`](./AGENT.md) · 결제(현장·카드·더치페이) end-to-end [`AGENT_PAY.md`](./AGENT_PAY.md) · saga 트랜잭션 [`SAGA.md`](./SAGA.md)
 
 ## 목차
 
@@ -248,6 +249,8 @@ const settlementStatus =
 | `COMPLETED` | 전원 결제 완료 (`paidCount === totalCount && totalCount >= playerCount`) |
 
 > **Single Source of Truth**: `booking.settlementStatus` NATS 패턴으로 정산 상태를 조회합니다. `allPaid` 판단은 booking-service의 `markParticipantPaid()`에서 `paidCount === totalCount && totalCount >= playerCount` 공식으로 통일되며, agent-service는 이 API에 위임합니다.
+>
+> **본인 자리 취소 시**: `BookingParticipant.status`가 PAID → REFUNDED 또는 PENDING → CANCELLED로 전이되며, paidCount 계산에서 제외됩니다. 슬롯은 1자리만 release(빈자리 유지). 자세한 흐름은 §7.7 / [AGENT_PAY.md §11](./AGENT_PAY.md).
 
 ### 3.7.1 TeamSelectionStatus (팀 선정 상태)
 
@@ -474,7 +477,7 @@ flowchart LR
 | `PAYMENT_SEND_TIMEOUT` | 10,000ms | payment | 결제 Outbox NATS 전송 타임아웃 |
 | `PAYMENT_MAX_RETRIES` | 5 | payment | 결제 Outbox 최대 재시도 |
 | `TOSS_HTTP_TIMEOUT` | 60,000ms | payment | 토스페이먼츠 API HTTP 타임아웃 (공식 권장) |
-| `SPLIT_EXPIRATION` | 30분 | payment | 더치페이 결제 기한 (기본값) |
+| `SPLIT_EXPIRATION` | 3분 | payment | 더치페이 결제 기한 (기본값, saga payment-timeout과 동기화) |
 
 ### 6.3 정리 작업 스케줄
 
@@ -494,10 +497,11 @@ flowchart LR
 
 | 취소 유형 | 요청자 | 시점 제한 | 환불 | 슬롯 해제 |
 |----------|--------|----------|------|----------|
-| **고객 취소** | 고객 | 정책에 따름 | 정책에 따름 | O |
+| **고객 취소** (단일 결제 — 현장/카드) | booker | 정책에 따름 | 정책에 따름 | 전체 (`booking.playerCount`자리) |
+| **더치페이 본인 자리 취소** | 본인 (booker/MEMBER) | 정책에 따름 | 본인 결제분만 (`policy.refund.resolve`) | **1자리 (빈자리 유지)** — §7.7, [AGENT_PAY.md §11](./AGENT_PAY.md) |
 | **관리자 취소** | 관리자 | 제한 없음 | 전액 | O |
 | **시스템 취소** | 시스템 | 자동 | 전액 | O |
-| **결제 타임아웃** | 시스템 | SLOT_RESERVED 10분 초과 | - (미결제) | O |
+| **결제 타임아웃** | 시스템 | SLOT_RESERVED 일정 시간 초과 | - (미결제) | O |
 | **Saga 실패** | 시스템 | PENDING 상태 | - | X (미예약) |
 
 ### 7.2 취소 프로세스 (현장결제)
@@ -711,6 +715,20 @@ ADMIN            // 관리자 취소
 SYSTEM           // 시스템 취소 (Saga 실패 등)
 ```
 
+### 7.7 더치페이 본인 자리 취소 (빈자리 유지)
+
+더치페이 booking은 1건이지만 결제는 참여자별 N건(`PaymentSplit`)이므로, **본인 자리만 취소·환불** 가능. 단일 결제 booking(현장/카드)의 전체 취소(saga.booking.cancel)와는 별개 경로다.
+
+- **진입점**: 마이페이지 예약내역 → `DELETE /api/user/bookings/:id/participant` (JWT userId == participant.userId)
+- **booking-service**: `@MessagePattern('booking.cancelParticipant')` → `ParticipantCancelService`
+  - `BookingParticipant.status` PAID → REFUNDED / PENDING → CANCELLED
+  - `GameTimeSlotCache` 슬롯 +1 release (booking 전체가 아닌 1자리만)
+  - `Booking.status`는 CONFIRMED 유지 (빈자리). 모든 participant가 CANCELLED/REFUNDED면 cascade로 Booking.status = CANCELLED
+- **payment-service**: `@MessagePattern('payment.refundSplit')` → `policy.refund.resolve`로 환불률 결정 → Toss 부분 환불 → `PaymentSplit.status = REFUNDED`
+- **마이페이지 노출**: `booking.search`에 `includeAsParticipant=true` 전달 시 `Booking.userId OR EXISTS BookingParticipant.userId` 매칭 — 응답에 `myRole`/`myParticipantStatus` 파생 필드
+
+상세 흐름·정책·UI 분기 → [AGENT_PAY.md §11](./AGENT_PAY.md)
+
 ---
 
 ## 8. 모니터링 및 디버깅
@@ -830,6 +848,8 @@ erDiagram
 | `teamSelection.cancel` | 팀 선정 취소 | `{ id?, groupId? }` |
 | `booking.participant.paid` | 참여자 결제 완료 처리 | `{ bookingId, userId }` |
 | `bookingGroup.cancel` | 그룹 예약 전체 취소 | `{ groupId: string }` |
+| `booking.cancelParticipant` | 더치페이 본인 자리만 취소 (빈자리 유지) — §7.7, [AGENT_PAY.md §11](./AGENT_PAY.md) | `{ bookingId, userId, reason? }` |
+| `payment.refundSplit` | PaymentSplit 단건 환불 (payment-service, policy.refund.resolve 연동) | `{ bookingId, userId, reason?, clubId?, companyId?, bookingDate?, startTime? }` |
 
 ### 9.4 Phase 1: 팀 선정
 

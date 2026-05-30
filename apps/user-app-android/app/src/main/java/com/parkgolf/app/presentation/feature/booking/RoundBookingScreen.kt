@@ -25,21 +25,25 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextAlign
 import java.text.NumberFormat
 import java.util.Locale
-import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -50,7 +54,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.parkgolf.app.domain.model.AvailabilityStatus
 import com.parkgolf.app.domain.model.Round
 import com.parkgolf.app.domain.model.TimeSlot
@@ -69,23 +73,25 @@ import com.parkgolf.app.presentation.theme.TextOnGradient
 import com.parkgolf.app.presentation.theme.TextOnGradientSecondary
 import java.time.LocalDate
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RoundBookingScreen(
     onNavigate: (String) -> Unit,
+    initialSearchQuery: String? = null,
     viewModel: RoundBookingViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val dateOptions by viewModel.dateOptions.collectAsState()
 
-    var isRefreshing by remember { mutableStateOf(false) }
-    val pullRefreshState = rememberPullRefreshState(
-        refreshing = isRefreshing,
-        onRefresh = {
-            isRefreshing = true
-            viewModel.search()
+    // 외부에서 받은 검색어를 1회만 ViewModel에 주입 (예: 클럽 상세 → 검색 탭)
+    LaunchedEffect(initialSearchQuery) {
+        if (!initialSearchQuery.isNullOrBlank() && uiState.searchQuery != initialSearchQuery) {
+            viewModel.updateSearchQuery(initialSearchQuery)
         }
-    )
+    }
+
+    var isRefreshing by remember { mutableStateOf(false) }
+    val pullToRefreshState = rememberPullToRefreshState()
 
     // isLoading이 false로 바뀌면 pull-to-refresh 종료
     LaunchedEffect(uiState.isLoading) {
@@ -124,10 +130,14 @@ fun RoundBookingScreen(
             )
 
             // Content with pull-to-refresh
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .pullRefresh(pullRefreshState)
+            PullToRefreshBox(
+                isRefreshing = isRefreshing,
+                onRefresh = {
+                    isRefreshing = true
+                    viewModel.search()
+                },
+                state = pullToRefreshState,
+                modifier = Modifier.fillMaxSize()
             ) {
                 when {
                     uiState.isLoading && uiState.rounds.isEmpty() && !isRefreshing -> {
@@ -207,14 +217,6 @@ fun RoundBookingScreen(
                     }
                 }
 
-                // Pull-to-refresh 인디케이터 (제스처 시에만 표시)
-                PullRefreshIndicator(
-                    refreshing = isRefreshing,
-                    state = pullRefreshState,
-                    modifier = Modifier.align(Alignment.TopCenter),
-                    backgroundColor = Color.White,
-                    contentColor = ParkPrimary
-                )
             }
         }
 
@@ -347,8 +349,7 @@ private fun DateChip(
 
     Column(
         modifier = Modifier
-            .width(56.dp)
-            .height(60.dp)
+            .size(52.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(
                 if (isSelected) ParkPrimary else GlassBackground
@@ -359,16 +360,17 @@ private fun DateChip(
     ) {
         Text(
             text = weekday,
-            fontSize = 14.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
-            color = weekdayColor
+            color = weekdayColor,
+            lineHeight = 12.sp
         )
-        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = shortDate,
-            fontSize = 16.sp,
+            fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
-            color = if (isSelected) Color.White else TextOnGradient
+            color = if (isSelected) Color.White else TextOnGradient,
+            lineHeight = 15.sp
         )
     }
 }
@@ -489,10 +491,12 @@ private fun SeniorRoundCardView(
     round: Round,
     onSelectTimeSlot: (TimeSlot) -> Unit
 ) {
-    var showAllSlots by remember { mutableStateOf(false) }
+    val slotsPerPage = 4
+    var currentPage by remember { mutableIntStateOf(0) }
     val slots = round.timeSlots ?: emptyList()
-    val displayedSlots = if (showAllSlots) slots else slots.take(4)
-    val hasMoreSlots = slots.size > 4
+    val totalPages = maxOf(1, kotlin.math.ceil(slots.size.toDouble() / slotsPerPage).toInt())
+    val visibleSlots = slots.drop(currentPage * slotsPerPage).take(slotsPerPage)
+    val needsPagination = totalPages > 1
     val pricePerPerson = round.pricePerPerson ?: round.basePrice
 
     GlassCard(
@@ -527,7 +531,7 @@ private fun SeniorRoundCardView(
             }
 
             // Time Slots (그리드: 모바일 2열, 태블릿 4열)
-            if (displayedSlots.isNotEmpty()) {
+            if (visibleSlots.isNotEmpty()) {
                 HorizontalDivider(color = GlassBorder)
 
                 Column(
@@ -542,20 +546,55 @@ private fun SeniorRoundCardView(
                     )
 
                     TimeSlotGrid(
-                        slots = displayedSlots,
+                        slots = visibleSlots,
                         onSelectTimeSlot = onSelectTimeSlot
                     )
 
-                    // Show more button
-                    if (hasMoreSlots && !showAllSlots) {
-                        Text(
-                            text = "전체 ${slots.size}개 시간 보기 ▼",
-                            fontSize = 12.sp,
-                            color = TextOnGradientSecondary,
-                            modifier = Modifier
-                                .clickable { showAllSlots = true }
-                                .padding(vertical = 8.dp)
-                        )
+                    // 페이지네이션
+                    if (needsPagination) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(
+                                onClick = { currentPage-- },
+                                enabled = currentPage > 0,
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                val color = if (currentPage == 0) TextOnGradientSecondary.copy(alpha = 0.3f)
+                                    else TextOnGradientSecondary
+                                Icon(
+                                    Icons.Default.ChevronLeft,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = color
+                                )
+                                Text("이전", fontSize = 12.sp, color = color)
+                            }
+
+                            Text(
+                                "${currentPage + 1} / $totalPages",
+                                fontSize = 12.sp,
+                                color = TextOnGradientSecondary.copy(alpha = 0.6f)
+                            )
+
+                            TextButton(
+                                onClick = { currentPage++ },
+                                enabled = currentPage < totalPages - 1,
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                val color = if (currentPage >= totalPages - 1) TextOnGradientSecondary.copy(alpha = 0.3f)
+                                    else TextOnGradientSecondary
+                                Text("다음", fontSize = 12.sp, color = color)
+                                Icon(
+                                    Icons.Default.ChevronRight,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = color
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -632,9 +671,9 @@ private fun TimeSlotGridCell(
             .then(
                 if (slot.availablePlayers == 0) Modifier.alpha(0.4f) else Modifier
             )
-            .padding(vertical = 12.dp),
+            .padding(vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp)
+        verticalArrangement = Arrangement.Center
     ) {
         // 시간
         Text(
@@ -642,16 +681,17 @@ private fun TimeSlotGridCell(
             fontSize = 15.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            lineHeight = 15.sp
         )
-
         // 잔여 자리
         Text(
             text = availabilityText,
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
             color = availabilityColor,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            lineHeight = 12.sp
         )
     }
 }

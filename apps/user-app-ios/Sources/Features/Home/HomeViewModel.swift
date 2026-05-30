@@ -90,9 +90,10 @@ class HomeViewModel: ObservableObject {
             let allBookings = try await bookingService.getMyBookings(status: nil, page: 1, limit: 5)
             let now = Date()
             upcomingBookings = allBookings.filter { booking in
-                guard let date = DateHelper.fromISODateString(booking.bookingDate) else { return false }
+                guard let dateStr = booking.bookingDate, let date = DateHelper.fromISODateString(dateStr) else { return false }
+                let status = booking.status ?? ""
                 return date >= Calendar.current.startOfDay(for: now) &&
-                       (booking.status == "PENDING" || booking.status == "SLOT_RESERVED" || booking.status == "CONFIRMED")
+                       (status == "PENDING" || status == "SLOT_RESERVED" || status == "CONFIRMED")
             }.prefix(5).map { $0 }
             #if DEBUG
             print("[Home] bookings refreshed: \(upcomingBookings.count)건")

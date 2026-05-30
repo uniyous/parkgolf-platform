@@ -63,6 +63,7 @@ import com.parkgolf.app.presentation.feature.profile.LanguageSettingsScreen
 import com.parkgolf.app.presentation.feature.profile.PrivacyScreen
 import com.parkgolf.app.presentation.feature.profile.TermsScreen
 import com.parkgolf.app.presentation.feature.profile.ThemeSettingsScreen
+import com.parkgolf.app.presentation.feature.profile.AgentMemorySettingsScreen
 import com.parkgolf.app.presentation.feature.profile.NotificationSettingsScreen
 import com.parkgolf.app.presentation.feature.profile.ProfileScreen
 import com.parkgolf.app.presentation.feature.profile.SettingsScreen
@@ -73,7 +74,7 @@ import com.parkgolf.app.data.remote.auth.AuthEvent
 import com.parkgolf.app.data.remote.auth.AuthEventBus
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 /**
  * Park Golf Navigation
@@ -180,9 +181,11 @@ fun ParkGolfNavHost(
         ) {
             ClubDetailScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToSearch = {
-                    navController.navigate("main") {
-                        popUpTo("main") { inclusive = true }
+                onNavigateToSearch = { clubName ->
+                    // 검색 탭으로 이동 + 클럽 이름 자동 입력 (iOS/web과 동일 흐름)
+                    navController.navigate(Screen.Search.createRoute(clubName)) {
+                        popUpTo("main") { inclusive = false }
+                        launchSingleTop = true
                     }
                 }
             )
@@ -263,6 +266,12 @@ fun ParkGolfNavHost(
 
         composable(Screen.NotificationSettings.route) {
             NotificationSettingsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.AgentMemorySettings.route) {
+            AgentMemorySettingsScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -471,8 +480,10 @@ fun MainScreen(
                 composable(Screen.Home.route) {
                     HomeScreen(
                         onNavigate = { route ->
-                            // 바텀 네비게이션 탭으로 이동하는 경우
-                            if (route == Screen.Search.route) {
+                            // 바텀 네비게이션 탭(예약/검색)으로 이동하는 경우.
+                            // Screen.Search.route는 "search?clubName={clubName}"라 리터럴 "search"와
+                            // 직접 비교하면 어긋난다 → base route로 판별 (UNI-27 후속, 홈 라운드 검색 크래시 수정)
+                            if (route.substringBefore("?") == "search") {
                                 bottomNavController.navigate(route) {
                                     popUpTo(bottomNavController.graph.findStartDestination().id) {
                                         saveState = true
@@ -487,8 +498,16 @@ fun MainScreen(
                         }
                     )
                 }
-                composable(Screen.Search.route) {
+                composable(
+                    route = Screen.Search.route,
+                    arguments = listOf(navArgument("clubName") { type = NavType.StringType; nullable = true; defaultValue = null })
+                ) { backStackEntry ->
+                    // Compose Navigation은 query 없이 호출 시 placeholder("{clubName}") 리터럴을 그대로
+                    // argument로 넘기는 경우가 있어 sentinel 필터링 (입력박스에 "{clubName}" 노출 방지).
+                    val clubName = backStackEntry.arguments?.getString("clubName")
+                        ?.takeUnless { it.isBlank() || it == "{clubName}" }
                     RoundBookingScreen(
+                        initialSearchQuery = clubName,
                         onNavigate = { route -> navController.navigate(route) }
                     )
                 }

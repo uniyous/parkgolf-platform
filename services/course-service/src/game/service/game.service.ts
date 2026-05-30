@@ -83,20 +83,25 @@ export class GameService {
   async findAll(query: FindGamesQueryDto): Promise<{ data: Game[]; total: number; page: number; limit: number }> {
     const { companyId, clubId, name, status, isActive, page = 1, limit = 10 } = query;
 
+    // REST 쿼리 파라미터가 문자열로 전달될 수 있어 Prisma skip/take(Int)용으로 변환
+    // (예: ?limit=20 → "20" → Prisma take 타입 에러 방지)
+    const pageNum = Number(page) || 1;
+    const limitNum = Number(limit) || 10;
+
     const where: Prisma.GameWhereInput = {};
-    if (companyId) where.club = { companyId };
-    if (clubId) where.clubId = clubId;
+    if (companyId) where.club = { companyId: Number(companyId) };
+    if (clubId) where.clubId = Number(clubId);
     if (name) where.name = { contains: name, mode: 'insensitive' };
     if (status) where.status = status;
     if (isActive !== undefined) where.isActive = isActive;
 
-    const skip = (page - 1) * limit;
+    const skip = (pageNum - 1) * limitNum;
 
     const [games, total] = await this.prisma.$transaction([
       this.prisma.game.findMany({
         where,
         skip,
-        take: limit,
+        take: limitNum,
         orderBy: { createdAt: 'desc' },
         include: {
           frontNineCourse: true,
@@ -107,7 +112,7 @@ export class GameService {
       this.prisma.game.count({ where }),
     ]);
 
-    return { data: games, total, page, limit };
+    return { data: games, total, page: pageNum, limit: limitNum };
   }
 
   async findOne(id: number): Promise<Game> {

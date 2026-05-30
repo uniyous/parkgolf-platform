@@ -1,9 +1,10 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { Prisma, PaymentStatus, PaymentMethod, RefundStatus, OutboxStatus } from '@prisma/client';
+import { Prisma, PaymentStatus, PaymentMethod, RefundStatus, OutboxStatus, SplitStatus } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { TossApiService, TossPaymentResponse } from './toss-api.service';
 import { AppException, Errors } from '../../common/exceptions';
+import { PgBossService } from '../../common/pgboss/pgboss.service';
 import {
   PreparePaymentDto,
   ConfirmPaymentDto,
@@ -21,6 +22,7 @@ export class PaymentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tossApi: TossApiService,
+    private readonly pgboss: PgBossService,
     @Inject('BOOKING_SERVICE') private readonly bookingClient: ClientProxy,
     @Inject('NOTIFICATION_SERVICE') private readonly notificationClient: ClientProxy,
   ) {}
@@ -77,24 +79,31 @@ export class PaymentService {
       );
     }
 
-    // 2. 결제 상태를 IN_PROGRESS로 변경
+    // 2. 결제 상태를 IN_PROGRESS로 변경 + paymentKey 사전 저장
+    //    (reconcile 잡이 토스 getPayment(paymentKey)로 조회하려면 미리 기록 필요)
     await this.prisma.payment.update({
       where: { id: payment.id },
-      data: { status: PaymentStatus.IN_PROGRESS },
+      data: {
+        status: PaymentStatus.IN_PROGRESS,
+        paymentKey: dto.paymentKey,
+      },
     });
 
+    // 3. 5분 후 reconcile 잡 schedule (토스 응답 못 받는 경우 안전망)
+    await this.scheduleReconcile(payment.id);
+
     try {
-      // 3. 토스페이먼츠 승인 API 호출
+      // 4. 토스페이먼츠 승인 API 호출
       const tossResponse = await this.tossApi.confirmPayment(
         dto.paymentKey,
         dto.orderId,
         dto.amount,
       );
 
-      // 4. 결제 정보 업데이트
+      // 5. 결제 정보 업데이트
       const updatedPayment = await this.updatePaymentFromToss(payment.id, tossResponse);
 
-      // 5. Outbox 이벤트 저장 (booking-service에 알림)
+      // 6. Outbox 이벤트 저장 (booking-service에 알림)
       await this.createOutboxEvent('payment.confirmed', {
         paymentId: updatedPayment.id,
         paymentKey: dto.paymentKey,
@@ -108,13 +117,294 @@ export class PaymentService {
 
       return updatedPayment;
     } catch (error) {
-      // 승인 실패 시 상태 롤백
-      await this.prisma.payment.update({
-        where: { id: payment.id },
-        data: { status: PaymentStatus.ABORTED },
+      // 네트워크 불명 (TIMEOUT/UNAVAILABLE)은 ABORTED 단정 금지 — reconcile에 위임
+      if (this.isNetworkUncertainError(error)) {
+        this.logger.warn(
+          `[confirmPayment] network uncertain, deferring to reconcile: ${dto.orderId}`,
+        );
+        throw error;
+      }
+
+      // 명시적 실패 → ABORTED + booking.paymentFailed outbox 발행
+      await this.markPaymentAborted(payment.id, {
+        reason: 'confirm_failed',
+        errorMessage: error instanceof Error ? error.message : undefined,
       });
       throw error;
     }
+  }
+
+  /**
+   * 5분 후 reconcile 잡 schedule
+   * 정상 완료(DONE) 또는 명시적 실패(ABORTED) 시엔 worker가 알아서 skip하므로 cancel 불필요
+   */
+  private async scheduleReconcile(paymentId: number) {
+    try {
+      await this.pgboss.send(
+        'payment-reconcile',
+        { paymentId },
+        {
+          startAfter: 300, // 5분
+          singletonKey: `reconcile-${paymentId}`,
+          retryLimit: 3,
+          retryBackoff: true,
+        },
+      );
+    } catch (err) {
+      this.logger.warn(
+        `[Reconcile] schedule failed for payment ${paymentId}: ${err instanceof Error ? err.message : 'unknown'}`,
+      );
+    }
+  }
+
+  /**
+   * 토스 호출 결과가 "응답 못 받음/불명" 인지 판정
+   * - TIMEOUT/UNAVAILABLE은 토스가 처리했는지 알 수 없으므로 ABORTED 단정 금지
+   */
+  private isNetworkUncertainError(error: unknown): boolean {
+    if (error instanceof AppException) {
+      return (
+        error.code === Errors.External.UNAVAILABLE.code ||
+        error.code === Errors.External.TIMEOUT.code
+      );
+    }
+    return false;
+  }
+
+  /**
+   * 결제 상태 reconcile (pg-boss worker가 호출)
+   *
+   * IN_PROGRESS 정체나 네트워크 불명 케이스에서, 토스 getPayment로 실제 상태를 조회해
+   * DB 상태와 outbox를 정정한다.
+   */
+  async reconcilePayment(paymentId: number): Promise<unknown> {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+    });
+
+    if (!payment) {
+      return { skipped: true, reason: 'not_found' };
+    }
+
+    // 이미 종결 상태면 skip (정상 완료/실패한 결제는 reconcile 불필요)
+    const terminalStatuses: PaymentStatus[] = [
+      PaymentStatus.DONE,
+      PaymentStatus.CANCELED,
+      PaymentStatus.PARTIAL_CANCELED,
+      PaymentStatus.ABORTED,
+      PaymentStatus.EXPIRED,
+    ];
+    if (terminalStatuses.includes(payment.status)) {
+      return { skipped: true, currentStatus: payment.status };
+    }
+
+    // paymentKey 없으면 토스 조회 불가 → 자동 ABORT (위젯조차 안 띄우고 5분 경과)
+    if (!payment.paymentKey) {
+      this.logger.warn(`[Reconcile] payment ${paymentId} has no paymentKey, marking ABORTED`);
+      await this.markPaymentAborted(payment.id, {
+        reason: 'reconcile_no_payment_key',
+        errorMessage: 'paymentKey not recorded before reconcile',
+      });
+      return { handled: 'aborted_no_key' };
+    }
+
+    // 토스에 실제 상태 조회
+    const tossPayment = await this.tossApi.getPayment(payment.paymentKey);
+    this.logger.log(
+      `[Reconcile] payment ${paymentId}, toss status=${tossPayment.status}`,
+    );
+
+    switch (tossPayment.status) {
+      case 'DONE': {
+        await this.updatePaymentFromToss(payment.id, tossPayment);
+        await this.createOutboxEvent('payment.confirmed', {
+          paymentId: payment.id,
+          paymentKey: payment.paymentKey,
+          orderId: payment.orderId,
+          amount: payment.amount,
+          bookingId: payment.bookingId,
+          userId: payment.userId,
+        });
+        return { handled: 'reconciled_done' };
+      }
+      case 'ABORTED':
+      case 'EXPIRED': {
+        await this.markPaymentAborted(payment.id, {
+          reason: `toss_${tossPayment.status.toLowerCase()}`,
+          errorMessage: `Toss reported ${tossPayment.status} during reconcile`,
+        });
+        return { handled: `reconciled_${tossPayment.status.toLowerCase()}` };
+      }
+      case 'CANCELED':
+      case 'PARTIAL_CANCELED': {
+        // 토스 콘솔 직접 취소 등 — 상태만 동기화
+        await this.prisma.payment.update({
+          where: { id: payment.id },
+          data: { status: this.mapPaymentStatus(tossPayment.status) },
+        });
+        return { handled: `synced_${tossPayment.status.toLowerCase()}` };
+      }
+      case 'WAITING_FOR_DEPOSIT':
+        // 가상계좌 입금 대기 — webhook이 처리하므로 skip
+        return { skipped: true, currentStatus: tossPayment.status };
+      case 'IN_PROGRESS':
+      case 'READY':
+        // 토스 측이 아직 미확정 — pg-boss retry로 재시도
+        throw new Error(`Toss status still pending: ${tossPayment.status}`);
+      default:
+        this.logger.warn(`[Reconcile] unexpected toss status: ${tossPayment.status}`);
+        throw new Error(`unexpected toss status: ${tossPayment.status}`);
+    }
+  }
+
+  /**
+   * 결제 중단 (실패/취소) - orderId 기반
+   * 클라이언트가 결제창 onFail/onCancel 시 호출.
+   * 멱등성 보장 (이미 ABORTED면 outbox 재발행 없이 성공 응답).
+   */
+  async abandonPaymentByOrderId(data: {
+    orderId: string;
+    reason: 'failed' | 'cancelled';
+    errorCode?: string;
+    errorMessage?: string;
+  }) {
+    // 1) 단건 결제 (Payment) 우선 조회
+    const payment = await this.prisma.payment.findUnique({
+      where: { orderId: data.orderId },
+    });
+
+    if (payment) {
+      // 멱등성: 이미 ABORTED면 그대로 반환
+      if (payment.status === PaymentStatus.ABORTED) {
+        this.logger.log(`Payment already ABORTED: ${data.orderId} (idempotent)`);
+        return payment;
+      }
+
+      // 결제 완료된 건은 abandon 불가 (취소 saga로 처리)
+      if (payment.status === PaymentStatus.DONE) {
+        throw new AppException(
+          Errors.Payment.INVALID_STATUS,
+          '이미 결제 완료된 건은 취소 saga로 처리해야 합니다',
+        );
+      }
+
+      return this.markPaymentAborted(payment.id, {
+        reason: data.reason,
+        errorCode: data.errorCode,
+        errorMessage: data.errorMessage,
+      });
+    }
+
+    // 2) 더치페이 PaymentSplit 분기 — orderId가 SPL-*인 경우
+    const split = await this.prisma.paymentSplit.findUnique({
+      where: { orderId: data.orderId },
+    });
+
+    if (!split) {
+      throw new AppException(Errors.Payment.NOT_FOUND);
+    }
+
+    return this.markSplitAborted(split, {
+      reason: data.reason,
+      errorCode: data.errorCode,
+      errorMessage: data.errorMessage,
+    });
+  }
+
+  /**
+   * 더치페이 split 1건을 사용자가 명시적으로 abandon — 즉시 PAYMENT_FAILED saga 트리거
+   *
+   * 트랜잭션 안에서
+   *   ─ 해당 split.status = CANCELLED
+   *   ─ outbox 'payment.failed' 발행 (paymentMethod='dutchpay'로 saga 분기 보장)
+   * commit 후 saga가 REFUND_PAID_SPLITS step에서
+   *   이미 PAID인 다른 split → Toss 환불 + PENDING split → EXPIRED 처리.
+   */
+  private async markSplitAborted(
+    split: { id: number; orderId: string; bookingId: number; userId: number; status: SplitStatus },
+    meta: { reason: string; errorCode?: string; errorMessage?: string },
+  ) {
+    // 멱등성
+    if (split.status === SplitStatus.CANCELLED) {
+      this.logger.log(`Split already CANCELLED: ${split.orderId} (idempotent)`);
+      return split;
+    }
+    if (split.status === SplitStatus.PAID) {
+      throw new AppException(
+        Errors.Payment.INVALID_STATUS,
+        '이미 결제 완료된 split은 CANCEL_BOOKING saga로 처리해야 합니다',
+      );
+    }
+    if (split.status !== SplitStatus.PENDING) {
+      throw new AppException(
+        Errors.Payment.INVALID_STATUS,
+        `split 상태가 PENDING이 아닙니다: ${split.status}`,
+      );
+    }
+
+    const { outboxEventId } = await this.prisma.$transaction(async (tx) => {
+      await tx.paymentSplit.update({
+        where: { id: split.id },
+        data: { status: SplitStatus.CANCELLED },
+      });
+
+      const event = await this.insertOutboxEvent(tx, 'payment.failed', {
+        bookingId: split.bookingId,
+        orderId: split.orderId,
+        userId: split.userId,
+        reason: meta.reason,
+        errorCode: meta.errorCode,
+        errorMessage: meta.errorMessage,
+        // saga의 REFUND_PAID_SPLITS step condition 분기용
+        paymentMethod: 'dutchpay',
+      });
+      this.logger.log(
+        `Split CANCELLED + outbox: ${split.orderId} (booking ${split.bookingId})`,
+      );
+      return { outboxEventId: event.id };
+    });
+
+    await this.triggerOutboxJob(outboxEventId);
+    return { ...split, status: SplitStatus.CANCELLED };
+  }
+
+  /**
+   * payment.status=ABORTED + booking.paymentFailed outbox 이벤트 발행 (단일 트랜잭션)
+   * 트랜잭션 commit 후 pg-boss 트리거 (commit 전 worker가 깨면 row 못 찾는 race 방지)
+   */
+  private async markPaymentAborted(
+    paymentId: number,
+    meta: { reason: string; errorCode?: string; errorMessage?: string },
+  ) {
+    const { payment, outboxEventId } = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.payment.update({
+        where: { id: paymentId },
+        data: { status: PaymentStatus.ABORTED },
+      });
+
+      if (!updated.bookingId) {
+        this.logger.warn(`Payment ABORTED without bookingId: ${updated.orderId}`);
+        return { payment: updated, outboxEventId: undefined };
+      }
+
+      const event = await this.insertOutboxEvent(tx, 'payment.failed', {
+        paymentId: updated.id,
+        bookingId: updated.bookingId,
+        orderId: updated.orderId,
+        userId: updated.userId,
+        reason: meta.reason,
+        errorCode: meta.errorCode,
+        errorMessage: meta.errorMessage,
+      });
+      this.logger.log(`Payment ABORTED + outbox: ${updated.orderId} (booking ${updated.bookingId})`);
+      return { payment: updated, outboxEventId: event.id };
+    });
+
+    if (outboxEventId !== undefined) {
+      await this.triggerOutboxJob(outboxEventId);
+    }
+
+    return payment;
   }
 
   /**
@@ -512,13 +802,23 @@ export class PaymentService {
   }
 
   /**
-   * Outbox 이벤트 생성
+   * Outbox 이벤트 생성 + pg-boss 즉시 트리거
+   *
+   * 흐름:
+   *   1. PaymentOutboxEvent INSERT (트랜잭션 안전성 확보)
+   *   2. pg-boss send로 worker 즉시 트리거 (~수ms 지연)
+   *   3. worker가 NATS publish → status=SENT 업데이트
+   *
+   * 트랜잭션 안에서 호출해야 한다면 insertOutboxEvent + triggerOutboxJob을 분리해서 사용.
+   *
+   * TODO: pg-boss send 실패 시 OutboxEvent가 PENDING으로 영구히 남음.
+   *       backup poller 또는 pg-boss recurring schedule로 안전망 보완 필요.
    */
-  private async createOutboxEvent(
+  async createOutboxEvent(
     eventType: string,
     payload: Record<string, unknown> & { paymentId: number },
   ) {
-    await this.prisma.paymentOutboxEvent.create({
+    const event = await this.prisma.paymentOutboxEvent.create({
       data: {
         aggregateType: 'Payment',
         aggregateId: String(payload.paymentId),
@@ -527,6 +827,57 @@ export class PaymentService {
         status: OutboxStatus.PENDING,
       },
     });
+
+    await this.triggerOutboxJob(event.id);
+    return event;
+  }
+
+  /**
+   * 트랜잭션 클라이언트로 outbox row INSERT만 수행 (pg-boss 트리거는 별도)
+   * 호출자: 트랜잭션 commit 후 반드시 triggerOutboxJob(event.id)을 이어 호출해야 함.
+   */
+  async insertOutboxEvent(
+    tx: Prisma.TransactionClient,
+    eventType: string,
+    // 단건 결제: paymentId, 더치페이 split: bookingId만 있을 수도 있음.
+    // aggregateId는 paymentId → bookingId 순으로 fallback.
+    payload: Record<string, unknown> & ({ paymentId: number } | { bookingId: number }),
+  ) {
+    const aggregateId =
+      (payload as { paymentId?: number }).paymentId ??
+      (payload as { bookingId?: number }).bookingId ??
+      0;
+    return tx.paymentOutboxEvent.create({
+      data: {
+        aggregateType: 'Payment',
+        aggregateId: String(aggregateId),
+        eventType,
+        payload: payload as Prisma.InputJsonValue,
+        status: OutboxStatus.PENDING,
+      },
+    });
+  }
+
+  /**
+   * pg-boss로 outbox worker 즉시 트리거.
+   * 실패해도 throw 안 함 (backup poller 보완 예정).
+   */
+  async triggerOutboxJob(eventId: number) {
+    try {
+      await this.pgboss.send(
+        'payment-outbox-publish',
+        { outboxEventId: eventId },
+        {
+          singletonKey: `outbox-${eventId}`,
+          retryLimit: 5,
+          retryBackoff: true,
+        },
+      );
+    } catch (err) {
+      this.logger.warn(
+        `[Outbox] pg-boss send failed for event ${eventId}: ${err instanceof Error ? err.message : 'unknown'}. Will be picked up by backup poller.`,
+      );
+    }
   }
 
   /**

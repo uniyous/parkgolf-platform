@@ -1,0 +1,30 @@
+# dev 환경 override
+# values.yaml은 공통(dev 기본)이라 dev에선 거의 override 없음.
+# 향후 dev 전용 차이가 생기면 여기에.
+
+global:
+  namespace: parkgolf-dev
+  domain: dev-api.parkgolfmate.com
+  image:
+    tag: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+externalSecrets:
+  clusterName: parkgolf-dev-cluster
+  clusterLocation: asia-northeast3-a
+ingress:
+  staticIpName: parkgolf-parkgolf-dev-cluster-ip
+serviceImageTags:
+  agent-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  iam-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  course-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  booking-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  payment-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  chat-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  notify-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  saga-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  partner-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  admin-api: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  user-api: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  chat-gateway: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  weather-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  location-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  job-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a

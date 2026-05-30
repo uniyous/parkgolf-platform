@@ -111,6 +111,7 @@ struct EditProfileView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
+        .subScreenTabBarHidden()
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("프로필 수정")

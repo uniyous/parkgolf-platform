@@ -6,7 +6,10 @@ sealed class Screen(val route: String) {
     data object SignUp : Screen("signup")
     // Main Tabs
     data object Home : Screen("home")
-    data object Search : Screen("search")
+    data object Search : Screen("search?clubName={clubName}") {
+        fun createRoute(clubName: String? = null): String =
+            if (clubName.isNullOrBlank()) "search" else "search?clubName=${clubName}"
+    }
     data object Social : Screen("social")
     data object Profile : Screen("profile")
 
@@ -43,6 +46,7 @@ sealed class Screen(val route: String) {
     data object EditProfile : Screen("profile/edit")
     data object Settings : Screen("settings")
     data object NotificationSettings : Screen("settings/notifications")
+    data object AgentMemorySettings : Screen("settings/agent_memory")
     data object ChangePassword : Screen("settings/change_password")
     data object DeleteAccount : Screen("settings/delete_account")
     data object ThemeSettings : Screen("settings/theme")

@@ -36,4 +36,38 @@ export class SettingsService {
       NATS_TIMEOUTS.QUICK,
     );
   }
+
+  // ─── AI Agent Memory (Phase 3 — UNI-20 프라이버시 토글) ──────
+
+  /**
+   * AI 비서 메모리 상태 조회 (enabled / hasMemory / summary)
+   * NATS: agent.memory.get
+   */
+  async getAgentMemory(userId: number): Promise<ApiResponse<{
+    userId: number;
+    enabled: boolean;
+    hasMemory: boolean;
+    summary: string | null;
+    favoriteClubsCount?: number;
+    frequentTeammatesCount?: number;
+  }>> {
+    this.logger.log(`Get agent memory: userId=${userId}`);
+    return this.natsClient.send('agent.memory.get', { userId }, NATS_TIMEOUTS.QUICK);
+  }
+
+  /**
+   * AI 비서 메모리 프라이버시 토글 (ON/OFF)
+   * NATS: agent.memory.setEnabled
+   */
+  async setAgentMemoryEnabled(
+    userId: number,
+    enabled: boolean,
+  ): Promise<ApiResponse<{ userId: number; enabled: boolean }>> {
+    this.logger.log(`Set agent memory: userId=${userId} enabled=${enabled}`);
+    return this.natsClient.send(
+      'agent.memory.setEnabled',
+      { userId, enabled },
+      NATS_TIMEOUTS.QUICK,
+    );
+  }
 }

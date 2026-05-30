@@ -21,7 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.parkgolf.app.domain.model.ChatRoom
 import com.parkgolf.app.domain.model.ChatRoomType
 import com.parkgolf.app.presentation.components.EmptyStateView

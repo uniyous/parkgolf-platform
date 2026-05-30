@@ -1,0 +1,73 @@
+{{- $defaults := .Values.defaults -}}
+{{- $registry := .Values.global.image.registry -}}
+{{- $tag := .Values.global.image.tag -}}
+{{- $pullPolicy := .Values.global.image.pullPolicy -}}
+{{- $namespace := .Values.global.namespace -}}
+{{- range .Values.services }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .name }}
+  namespace: {{ $namespace }}
+  labels:
+    app: {{ .name }}
+spec:
+  replicas: {{ .replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: {{ .name }}
+{{- with .strategy }}
+  strategy:
+{{ toYaml . | indent 4 }}
+{{- end }}
+  template:
+    metadata:
+      labels:
+        app: {{ .name }}
+    spec:
+      # prisma migrate는 ArgoCD PreSync Job(templates/migrate-job.yaml)로 분리.
+      containers:
+        - name: {{ .name }}
+          # service별 tag override 우선, 없으면 global.image.tag fallback
+          image: {{ $registry }}/{{ .name }}:{{ index $.Values.serviceImageTags .name | default $tag }}
+          imagePullPolicy: {{ $pullPolicy }}
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: NODE_ENV
+              valueFrom: { configMapKeyRef: { name: parkgolf-config, key: NODE_ENV } }
+            - name: NATS_URL
+              valueFrom: { configMapKeyRef: { name: parkgolf-config, key: NATS_URL } }
+            # OpenTelemetry — Cloud Trace 자동 식별
+            - name: OTEL_SERVICE_NAME
+              value: {{ .name | quote }}
+            - name: JWT_SECRET
+              valueFrom: { secretKeyRef: { name: parkgolf-secrets, key: JWT_SECRET } }
+            - name: JWT_REFRESH_SECRET
+              valueFrom: { secretKeyRef: { name: parkgolf-secrets, key: JWT_REFRESH_SECRET } }
+{{- if .db }}
+            - name: DATABASE_URL
+              valueFrom: { secretKeyRef: { name: {{ .name }}-db-secret, key: DATABASE_URL } }
+{{- end }}
+{{- range .extraEnv }}
+            - name: {{ .name }}
+{{- if .secretRef }}
+              valueFrom: { secretKeyRef: { name: {{ .secretRef.name }}, key: {{ .secretRef.key }} } }
+{{- else if .configRef }}
+              valueFrom: { configMapKeyRef: { name: {{ .configRef.name }}, key: {{ .configRef.key }} } }
+{{- else }}
+              value: {{ .value | quote }}
+{{- end }}
+{{- end }}
+          resources:
+{{ toYaml (.resources | default $defaults.resources) | indent 12 }}
+          startupProbe:
+{{ toYaml $defaults.startupProbe | indent 12 }}
+          readinessProbe:
+{{ toYaml $defaults.readinessProbe | indent 12 }}
+          livenessProbe:
+{{ toYaml $defaults.livenessProbe | indent 12 }}
+{{- end }}

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Users, Check, CheckCircle2 } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Users, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { SelectMembersData } from '@/lib/api/chatApi';
 
@@ -16,7 +16,27 @@ export const SelectMembersCard: React.FC<SelectMembersCardProps> = ({
   onCancel,
   completed,
 }) => {
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  // currentTeam.members(서버 prefill) + availableMembers를 합쳐서 표시.
+  // currentTeam.members는 미리 체크된 상태로 시작 (서버가 자연어에서 추출한 사전 배정).
+  const allMembers = useMemo(() => {
+    const seen = new Set<number>();
+    const merged: Array<{ userId: number; userName: string; userEmail: string }> = [];
+    for (const m of data.currentTeam?.members ?? []) {
+      if (seen.has(m.userId)) continue;
+      seen.add(m.userId);
+      merged.push({ userId: m.userId, userName: m.userName, userEmail: m.userEmail ?? '' });
+    }
+    for (const m of data.availableMembers) {
+      if (seen.has(m.userId)) continue;
+      seen.add(m.userId);
+      merged.push(m);
+    }
+    return merged;
+  }, [data.currentTeam, data.availableMembers]);
+
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(
+    () => new Set((data.currentTeam?.members ?? []).map((m) => m.userId)),
+  );
 
   const toggleMember = (userId: number) => {
     setSelectedIds((prev) => {
@@ -31,46 +51,22 @@ export const SelectMembersCard: React.FC<SelectMembersCardProps> = ({
   };
 
   const handleConfirm = () => {
-    const selected = data.availableMembers.filter((m) => selectedIds.has(m.userId));
+    const selected = allMembers.filter((m) => selectedIds.has(m.userId));
     onConfirm?.(selected);
   };
 
   return (
-    <div className="rounded-xl border border-violet-500/20 bg-violet-500/10 p-4 mt-2 space-y-4">
+    <div className="rounded-xl border border-violet-500/20 bg-violet-500/10 p-4 mt-2 space-y-4 w-full min-w-[260px] max-w-[420px]">
         {/* Header */}
         <div>
           <h4 className="text-lg font-semibold text-white flex items-center gap-2">
             <Users className="w-4 h-4 text-violet-400" />
-            팀{data.teamNumber} 멤버 선택
+            멤버 선택
           </h4>
           <p className="text-base text-white/50 mt-1">
             {data.clubName} · {data.date} · 최대 {data.maxPlayers}명
           </p>
         </div>
-
-        {/* Assigned Teams (read-only) */}
-        {data.assignedTeams.length > 0 && (
-          <div className="space-y-1.5">
-            <p className="text-base text-white/40">이전 팀 배정 현황</p>
-            {data.assignedTeams.map((team) => (
-              <div
-                key={team.teamNumber}
-                className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5"
-              >
-                <div className="flex items-center gap-2 text-base text-white/50">
-                  <CheckCircle2 className="w-3 h-3 text-violet-400" />
-                  <span className="text-violet-400 font-medium">팀{team.teamNumber}</span>
-                  <span>{team.slotTime}</span>
-                  <span className="text-white/30">·</span>
-                  <span>{team.gameName}</span>
-                </div>
-                <span className="text-base text-white/40">
-                  {team.members.map((m) => m.userName).join(', ')}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
 
         {/* Available Members (checkboxes) */}
         <div className="space-y-1.5">
@@ -80,7 +76,7 @@ export const SelectMembersCard: React.FC<SelectMembersCardProps> = ({
               {selectedIds.size}/{data.maxPlayers}
             </span>
           </div>
-          {data.availableMembers.map((member) => {
+          {allMembers.map((member) => {
             const isSelected = selectedIds.has(member.userId);
             const isDisabled = completed || (!isSelected && selectedIds.size >= data.maxPlayers);
 

@@ -18,6 +18,7 @@ struct MyStatsView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
+        .subScreenTabBarHidden()
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("내 통계")
@@ -116,6 +117,7 @@ struct ThemeSettingsView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
+        .subScreenTabBarHidden()
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("테마")
@@ -284,6 +286,7 @@ struct LanguageSettingsView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
+        .subScreenTabBarHidden()
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("언어")
@@ -357,6 +360,7 @@ struct AnnouncementsView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
+        .subScreenTabBarHidden()
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("공지사항")
@@ -395,6 +399,7 @@ struct FAQView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
+        .subScreenTabBarHidden()
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("자주 묻는 질문")
@@ -433,6 +438,7 @@ struct ContactUsView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
+        .subScreenTabBarHidden()
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("문의하기")

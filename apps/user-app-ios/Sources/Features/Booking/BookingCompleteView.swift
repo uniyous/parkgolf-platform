@@ -182,7 +182,7 @@ struct BookingCompleteView: View {
 
                 // Tags
                 HStack(spacing: ParkSpacing.xs) {
-                    InfoTag(text: "\(booking.playerCount)명")
+                    InfoTag(text: "\(booking.playerCount ?? 0)명")
 
                     if let courseNames = booking.courseNames {
                         InfoTag(text: courseNames, isAccent: true)
@@ -209,8 +209,8 @@ struct BookingCompleteView: View {
     private var infoGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: ParkSpacing.sm) {
             InfoGridItem(label: "예약 날짜", value: booking.formattedDate)
-            InfoGridItem(label: "예약 시간", value: booking.startTime)
-            InfoGridItem(label: "플레이어 수", value: "\(booking.playerCount)명")
+            InfoGridItem(label: "예약 시간", value: booking.startTime ?? "")
+            InfoGridItem(label: "플레이어 수", value: "\(booking.playerCount ?? 0)명")
             InfoGridItem(label: "결제 방법", value: paymentMethodDisplay)
         }
     }
@@ -257,12 +257,14 @@ struct BookingCompleteView: View {
                 .fontWeight(.semibold)
                 .foregroundStyle(Color.parkSuccess.opacity(0.9))
 
-            Text(formatPrice(booking.totalPrice))
+            Text(formatPrice(Int(booking.totalPrice ?? 0)))
                 .font(.system(size: 30, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
 
-            if booking.pricePerPerson > 0 {
-                Text("(기본요금: \(formatPrice(booking.pricePerPerson * booking.playerCount))원\(booking.serviceFee > 0 ? " + 수수료: \(formatPrice(booking.serviceFee))원" : ""))")
+            if (booking.pricePerPerson ?? 0) > 0 {
+                let base = Int(booking.pricePerPerson ?? 0) * (booking.playerCount ?? 0)
+                let fee = Int(booking.serviceFee ?? 0)
+                Text("(기본요금: \(formatPrice(base))원\(fee > 0 ? " + 수수료: \(formatPrice(fee))원" : ""))")
                     .font(.parkLabelMedium)
                     .foregroundStyle(Color.parkSuccess.opacity(0.7))
             }
@@ -455,38 +457,35 @@ struct NoticeItem: View {
 // MARK: - Preview
 
 #Preview {
-    BookingCompleteView(
-        booking: BookingResponse(
-            id: 1,
-            bookingNumber: "BK-20240125-001",
-            userId: 1,
-            gameId: 1,
-            gameTimeSlotId: 1,
-            gameName: "주말 특가 라운드",
-            gameCode: "AB",
-            frontNineCourseId: 1,
-            frontNineCourseName: "A코스",
-            backNineCourseId: 2,
-            backNineCourseName: "B코스",
-            clubId: 1,
-            clubName: "서울파크골프장",
-            bookingDate: "2024-01-25",
-            startTime: "09:00",
-            endTime: "11:00",
-            playerCount: 4,
-            pricePerPerson: 25000,
-            serviceFee: 3000,
-            totalPrice: 103000,
-            status: "CONFIRMED",
-            paymentMethod: "card",
-            specialRequests: "카트 요청드립니다",
-            notes: nil,
-            userEmail: nil,
-            userName: nil,
-            userPhone: nil,
-            canCancel: true,
-            createdAt: "2024-01-20T10:00:00Z",
-            updatedAt: nil
-        )
-    )
+    let json = """
+    {
+        "id": 1,
+        "bookingNumber": "BK-20240125-001",
+        "userId": 1,
+        "gameId": 1,
+        "gameTimeSlotId": 1,
+        "gameName": "주말 특가 라운드",
+        "gameCode": "AB",
+        "frontNineCourseId": 1,
+        "frontNineCourseName": "A코스",
+        "backNineCourseId": 2,
+        "backNineCourseName": "B코스",
+        "clubId": 1,
+        "clubName": "서울파크골프장",
+        "bookingDate": "2024-01-25",
+        "startTime": "09:00",
+        "endTime": "11:00",
+        "playerCount": 4,
+        "pricePerPerson": 25000,
+        "serviceFee": 3000,
+        "totalPrice": 103000,
+        "status": "CONFIRMED",
+        "paymentMethod": "card",
+        "specialRequests": "카트 요청드립니다",
+        "canCancel": true,
+        "createdAt": "2024-01-20T10:00:00Z"
+    }
+    """.data(using: .utf8)!
+    let booking = try! JSONDecoder().decode(BookingResponse.self, from: json)
+    BookingCompleteView(booking: booking)
 }

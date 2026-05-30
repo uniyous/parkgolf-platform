@@ -11,7 +11,6 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
@@ -140,13 +139,7 @@ fun ParkGolfTheme(
         SideEffect {
             val window = (view.context as Activity).window
 
-            // Status bar - transparent to show gradient
-            window.statusBarColor = GradientStart.toArgb()
-
-            // Navigation bar - dark to match gradient end
-            window.navigationBarColor = GradientEnd.toArgb()
-
-            // Light icons on dark background
+            // Edge-to-edge: 시스템 바 아이콘 색상만 지정 (배경색은 MainActivity enableEdgeToEdge가 처리)
             WindowCompat.getInsetsController(window, view).apply {
                 isAppearanceLightStatusBars = false
                 isAppearanceLightNavigationBars = false

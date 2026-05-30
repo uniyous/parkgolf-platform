@@ -61,44 +61,6 @@ function waitForKakaoSdk(): Promise<void> {
   return sdkPromise;
 }
 
-/** OpenStreetMap iframe fallback */
-const OsmFallback: React.FC<{ latitude: number; longitude: number; height: string; clubName?: string }> = ({
-  latitude, longitude, height, clubName,
-}) => {
-  const delta = 0.008;
-  const bbox = `${longitude - delta},${latitude - delta / 2},${longitude + delta},${latitude + delta / 2}`;
-  const src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${latitude},${longitude}`;
-
-  return (
-    <div className="relative w-full rounded-lg overflow-hidden" style={{ height }}>
-      <iframe
-        title={clubName || '지도'}
-        src={src}
-        className="w-full h-full border-0"
-        loading="lazy"
-      />
-      <div className="absolute bottom-2 right-2 flex gap-2">
-        <a
-          href={`https://map.kakao.com/link/map/${encodeURIComponent(clubName || '위치')},${latitude},${longitude}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="px-2 py-1 text-[10px] bg-black/60 text-white rounded hover:bg-black/80 transition-colors"
-        >
-          카카오맵
-        </a>
-        <a
-          href={`https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=16/${latitude}/${longitude}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="px-2 py-1 text-[10px] bg-black/60 text-white rounded hover:bg-black/80 transition-colors"
-        >
-          크게 보기
-        </a>
-      </div>
-    </div>
-  );
-};
-
 interface KakaoMapProps {
   latitude: number;
   longitude: number;
@@ -114,14 +76,14 @@ export const KakaoMap: React.FC<KakaoMapProps> = ({
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<{ relayout: () => void } | null>(null);
-  const [status, setStatus] = useState<'loading' | 'kakao' | 'fallback'>('loading');
+  const [status, setStatus] = useState<'loading' | 'kakao' | 'error'>('loading');
 
   // SDK 로딩
   useEffect(() => {
     let cancelled = false;
     waitForKakaoSdk()
       .then(() => { if (!cancelled) setStatus('kakao'); })
-      .catch(() => { if (!cancelled) setStatus('fallback'); });
+      .catch(() => { if (!cancelled) setStatus('error'); });
     return () => { cancelled = true; };
   }, []);
 
@@ -151,9 +113,12 @@ export const KakaoMap: React.FC<KakaoMapProps> = ({
     setTimeout(() => map.relayout(), 200);
   }, [status, latitude, longitude, clubName]);
 
-  // Fallback: OpenStreetMap
-  if (status === 'fallback') {
-    return <OsmFallback latitude={latitude} longitude={longitude} height={height} clubName={clubName} />;
+  if (status === 'error') {
+    return (
+      <div className="relative w-full rounded-lg overflow-hidden bg-white/5 flex items-center justify-center" style={{ height }}>
+        <span className="text-sm text-white/40">지도를 불러올 수 없습니다</span>
+      </div>
+    );
   }
 
   return (

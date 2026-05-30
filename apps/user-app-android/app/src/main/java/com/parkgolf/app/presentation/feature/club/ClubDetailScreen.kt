@@ -1,5 +1,6 @@
 package com.parkgolf.app.presentation.feature.club
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,7 +47,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.parkgolf.app.domain.model.ClubDetail
 import com.parkgolf.app.domain.model.Round
 import com.parkgolf.app.presentation.components.GlassCard
@@ -64,7 +65,7 @@ import java.util.Locale
 @Composable
 fun ClubDetailScreen(
     onNavigateBack: () -> Unit,
-    onNavigateToSearch: () -> Unit,
+    onNavigateToSearch: (clubName: String?) -> Unit,
     viewModel: ClubDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -148,7 +149,7 @@ fun ClubDetailScreen(
                         ClubInfoCard(club = uiState.club!!)
                         GamesSection(
                             games = uiState.games,
-                            onBookClick = onNavigateToSearch
+                            onBookClick = { onNavigateToSearch(uiState.club?.name) }
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                     }
@@ -396,26 +397,16 @@ private fun IconInfoRow(
     color: Color,
     onClick: (() -> Unit)? = null
 ) {
+    val rowModifier = Modifier.padding(vertical = 2.dp).let {
+        if (onClick != null) it.clickable(onClick = onClick) else it
+    }
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = if (onClick != null) {
-            Modifier.padding(vertical = 2.dp)
-        } else {
-            Modifier.padding(vertical = 2.dp)
-        }
+        modifier = rowModifier
     ) {
         icon()
         Spacer(modifier = Modifier.width(6.dp))
-        if (onClick != null) {
-            TextButton(
-                onClick = onClick,
-                modifier = Modifier.height(24.dp)
-            ) {
-                Text(text = text, color = color, style = MaterialTheme.typography.bodySmall)
-            }
-        } else {
-            Text(text = text, color = color, style = MaterialTheme.typography.bodySmall)
-        }
+        Text(text = text, color = color, style = MaterialTheme.typography.bodySmall)
     }
 }
 

@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { ScheduleModule } from '@nestjs/schedule';
 import { CommonModule } from './common/common.module';
 import { NatsModule } from './common/nats/nats.module';
+import { RedisModule } from './common/redis/redis.module';
+import { PrismaModule } from '../prisma/prisma.module';
 import { BookingAgentModule } from './booking-agent/booking-agent.module';
 
 @Module({
@@ -10,9 +11,10 @@ import { BookingAgentModule } from './booking-agent/booking-agent.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    ScheduleModule.forRoot(),
     CommonModule,
     NatsModule,
+    RedisModule,
+    PrismaModule,
     BookingAgentModule,
   ],
 })

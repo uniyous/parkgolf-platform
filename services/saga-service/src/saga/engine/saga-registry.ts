@@ -5,6 +5,7 @@ import { CancelBookingSaga } from '../definitions/cancel-booking.saga';
 import { AdminRefundSaga } from '../definitions/admin-refund.saga';
 import { PaymentConfirmedSaga } from '../definitions/payment-confirmed.saga';
 import { PaymentTimeoutSaga } from '../definitions/payment-timeout.saga';
+import { PaymentFailedSaga } from '../definitions/payment-failed.saga';
 
 @Injectable()
 export class SagaRegistry {
@@ -17,6 +18,7 @@ export class SagaRegistry {
     this.register(AdminRefundSaga);
     this.register(PaymentConfirmedSaga);
     this.register(PaymentTimeoutSaga);
+    this.register(PaymentFailedSaga);
 
     this.logger.log(`Registered ${this.registry.size} saga definitions: ${[...this.registry.keys()].join(', ')}`);
   }

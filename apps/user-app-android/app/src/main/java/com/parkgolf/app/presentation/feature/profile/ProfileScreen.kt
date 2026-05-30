@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
@@ -57,7 +58,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.parkgolf.app.presentation.components.GlassCard
 import com.parkgolf.app.presentation.components.GradientBackground
 import com.parkgolf.app.presentation.components.GradientButton
@@ -397,6 +398,13 @@ private fun AppSettingsSection(onNavigate: (String) -> Unit) {
             iconColor = ParkError,
             title = "알림 설정",
             onClick = { onNavigate("settings/notifications") }
+        )
+
+        ProfileMenuItem(
+            icon = Icons.Default.AutoAwesome,
+            iconColor = ParkPrimary,
+            title = "AI 비서 메모리",
+            onClick = { onNavigate("settings/agent_memory") }
         )
     }
 }
