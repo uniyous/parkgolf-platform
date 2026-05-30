@@ -238,6 +238,16 @@ export class DirectActionHandlerService {
         '예약에 실패했습니다';
       message = `예약에 실패했어요: ${errorMsg}`;
       actions.push({ type: 'BOOKING_FAILED', data: { reason: errorMsg } });
+      // 실패 시 슬롯/예약 선택 초기화 → 다른 시간 재선택이 매끄럽게 (UNI-38).
+      // clubId·멤버·인원은 유지해 같은 클럽에서 다른 시간만 다시 고르면 되도록.
+      this.conversationService.updateSlots(context, {
+        slotId: undefined,
+        time: undefined,
+        slotPrice: undefined,
+        bookingId: undefined,
+        bookingNumber: undefined,
+        confirmed: false,
+      });
       this.conversationService.setState(context, 'COLLECTING');
     }
 
