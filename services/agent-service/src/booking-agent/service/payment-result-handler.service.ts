@@ -34,7 +34,13 @@ export class PaymentResultHandlerService {
 
     if (request.paymentSuccess) {
       const bookingId = context.slots.bookingId;
-      const detail = bookingId ? await this.toolExecutor.getBookingDetail(bookingId) : null;
+      // 결제 확정(payment.confirmed → CONFIRM saga)이 paymentComplete 통지보다 ~1초 늦게
+      // 끝날 수 있어, CONFIRMED 될 때까지 짧게 폴링한다. (없으면 완료 카드 누락 — UNI-38)
+      let detail = bookingId ? await this.toolExecutor.getBookingDetail(bookingId) : null;
+      for (let i = 0; i < 6 && detail?.status !== 'CONFIRMED'; i++) {
+        await new Promise((r) => setTimeout(r, 1000));
+        detail = bookingId ? await this.toolExecutor.getBookingDetail(bookingId) : null;
+      }
       if (detail?.status === 'CONFIRMED') {
         // 카드결제: 결제 완료 후 확정 → 공통 finalize
         const result = {
@@ -44,7 +50,7 @@ export class PaymentResultHandlerService {
         };
         return this.bookingCompletion.finalizeBooking(context, result);
       }
-      message = '결제가 완료되었어요! 예약 확정 처리 중입니다.';
+      message = '결제가 완료되었어요! 예약 확정 처리 중입니다. 잠시 후 예약 내역에서 확인해 주세요.';
       this.conversationService.setState(context, 'CONFIRMING');
     } else {
       message = '결제가 취소되었어요. 다시 시도하거나 다른 결제방법을 선택해 주세요.';
