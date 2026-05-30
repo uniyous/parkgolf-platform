@@ -41,7 +41,8 @@ export class BookingAgentService {
         const context = await this.conversationService.loadOrCreate(userId, convId);
         const response = await this.handleRequest(context, request);
         await this.conversationService.save(context);
-        return response;
+        // 서버 시각 stamp — 클라이언트가 로컬 메시지 createdAt에 사용해 정렬 시계 통일 (UNI-38)
+        return { ...response, timestamp: new Date().toISOString() };
       });
     } catch (err: unknown) {
       if (err instanceof ConversationBusyError) {

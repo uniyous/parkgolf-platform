@@ -104,7 +104,7 @@ export const ChatRoomPage: React.FC = () => {
             senderName: 'AI 예약 도우미',
             content: response.message,
             messageType: 'AI_ASSISTANT',
-            createdAt: new Date().toISOString(),
+            createdAt: response.timestamp ?? new Date().toISOString(),
             readBy: null,
           };
           setAiMessageActions((prev) => new Map(prev).set(aiMsg.id, response.actions!));
@@ -127,7 +127,7 @@ export const ChatRoomPage: React.FC = () => {
             senderName: 'AI 예약 도우미',
             content: response.message,
             messageType: 'AI_ASSISTANT',
-            createdAt: new Date().toISOString(),
+            createdAt: response.timestamp ?? new Date().toISOString(),
             readBy: null,
           };
           setAiMessageActions((prev) => new Map(prev).set(aiMsg.id, response.actions!));
@@ -359,7 +359,7 @@ export const ChatRoomPage: React.FC = () => {
         senderName: 'AI 예약 도우미',
         content: response.message,
         messageType: 'AI_ASSISTANT',
-        createdAt: new Date().toISOString(),
+        createdAt: response.timestamp ?? new Date().toISOString(),
         readBy: null,
       };
 
@@ -387,7 +387,7 @@ export const ChatRoomPage: React.FC = () => {
         senderName: 'AI 예약 도우미',
         content: response.message,
         messageType: 'AI_ASSISTANT',
-        createdAt: new Date().toISOString(),
+        createdAt: response.timestamp ?? new Date().toISOString(),
         readBy: null,
       };
 
@@ -436,7 +436,7 @@ export const ChatRoomPage: React.FC = () => {
           senderName: 'AI 예약 도우미',
           content: response.message,
           messageType: 'AI_ASSISTANT',
-          createdAt: new Date().toISOString(),
+          createdAt: response.timestamp ?? new Date().toISOString(),
           readBy: null,
         };
 

@@ -544,7 +544,8 @@ struct ChatRoomView: View {
                     senderName: "AI 예약 도우미",
                     content: response.message,
                     messageType: .aiAssistant,
-                    createdAt: Date(),
+                    // 서버 시각으로 정렬 시계 통일 (UNI-38) — 없으면 로컬 시각 폴백
+                    createdAt: response.timestamp.flatMap { DateHelper.iso8601Formatter.date(from: $0) } ?? Date(),
                     readBy: nil
                 )
 

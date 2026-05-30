@@ -167,6 +167,8 @@ export class ChatResponseDto {
   message: string;
   state: ConversationState;
   actions?: ChatAction[];
+  /** 서버 생성 시각(ISO UTC). 클라이언트가 로컬 메시지 createdAt에 사용해 정렬 시계를 통일 (UNI-38). */
+  timestamp?: string;
 }
 
 /**

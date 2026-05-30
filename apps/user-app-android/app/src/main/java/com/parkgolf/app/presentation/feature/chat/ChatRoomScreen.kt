@@ -665,7 +665,7 @@ private fun ChatMessageBubble(
     message: ChatMessage,
     isOwnMessage: Boolean
 ) {
-    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+    val timeFormatter = DateTimeFormatter.ofPattern("a hh:mm", java.util.Locale.KOREAN)
 
     Row(
         modifier = Modifier
