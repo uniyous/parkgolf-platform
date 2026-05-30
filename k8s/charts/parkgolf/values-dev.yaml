@@ -13,14 +13,14 @@ externalSecrets:
 ingress:
   staticIpName: parkgolf-parkgolf-dev-cluster-ip
 serviceImageTags:
-  agent-service: c083745403c55f8474cc54fface977ff89498689
+  agent-service: e9783bbd95d68f481ac44dc7932272e3a35b33b1
   iam-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
   course-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
   booking-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
   payment-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
   chat-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
   notify-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
-  saga-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  saga-service: e9783bbd95d68f481ac44dc7932272e3a35b33b1
   partner-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
   admin-api: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
   user-api: 5c024208922ec0d3c5d79c6e70dbc5da3c07185c
