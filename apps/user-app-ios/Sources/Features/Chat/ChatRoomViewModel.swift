@@ -59,7 +59,10 @@ final class ChatRoomViewModel: ObservableObject {
                 if message.roomId == self.roomId {
                     // Avoid duplicates
                     if !self.messages.contains(where: { $0.id == message.id }) {
+                        // createdAt 기준 전체 정렬 — 정렬 없이 append하면 결제/완료 카드
+                        // 순서가 역전됨 (UNI-37). broadcast(서버시각)/로컬(클라시각) 혼재 대응.
                         self.messages.append(message)
+                        self.messages.sort { $0.createdAt < $1.createdAt }
                     }
                 }
             }
@@ -242,6 +245,7 @@ final class ChatRoomViewModel: ObservableObject {
                         // Message was sent successfully, add if not already added
                         if !self.messages.contains(where: { $0.id == message.id }) {
                             self.messages.append(message)
+                            self.messages.sort { $0.createdAt < $1.createdAt }
                         }
                     } else {
                         // Socket send failed, try REST API
@@ -265,6 +269,7 @@ final class ChatRoomViewModel: ObservableObject {
             // Add to local messages if not already added
             if !messages.contains(where: { $0.id == message.id }) {
                 messages.append(message)
+                messages.sort { $0.createdAt < $1.createdAt }
             }
         } catch {
             self.error = error

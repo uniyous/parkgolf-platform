@@ -177,8 +177,18 @@ export class ToolExecutorService {
     );
   }
 
-  broadcastTeamCompleteCard(roomId: string, teamCompleteData: Record<string, unknown>) {
-    return this.notification.broadcastTeamCompleteCard(roomId, teamCompleteData);
+  broadcastTeamCompleteCard(
+    roomId: string,
+    teamCompleteData: Record<string, unknown>,
+    targetUserIds?: number[],
+    bookerUserId?: number,
+  ) {
+    return this.notification.broadcastTeamCompleteCard(
+      roomId,
+      teamCompleteData,
+      targetUserIds,
+      bookerUserId,
+    );
   }
 
   sendSystemMessage(roomId: string, content: string) {

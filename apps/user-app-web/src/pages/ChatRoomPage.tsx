@@ -185,18 +185,18 @@ export const ChatRoomPage: React.FC = () => {
         dbMessages.push(...page.messages);
       }
     }
-    // Sort by createdAt ascending (oldest first = newest at bottom)
-    const sorted = [...dbMessages].sort(
-      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    );
-    // Add realtime messages that are not in DB yet
-    const allMessages = [...sorted];
+    // Merge DB + realtime, then sort the FULL list by createdAt ascending.
+    // (실시간 메시지를 정렬 없이 맨 뒤에 붙이면 결제/완료 카드 순서가 역전됨 — UNI-37)
+    const merged = [...dbMessages];
     realtimeMessages.forEach((rtMsg) => {
-      if (!allMessages.some((m) => m.id === rtMsg.id)) {
-        allMessages.push(rtMsg);
+      if (!merged.some((m) => m.id === rtMsg.id)) {
+        merged.push(rtMsg);
       }
     });
-    return allMessages;
+    merged.sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+    return merged;
   }, [messagesData, realtimeMessages]);
 
   // joinRoom 재시도 래퍼 — 실패 시 최대 3회 백오프 재시도

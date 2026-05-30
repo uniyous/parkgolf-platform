@@ -67,10 +67,21 @@ export class BookingCompletionService {
       this.recordSemanticMemory(context, paymentMethod, playerCount);
     }
 
-    // 채팅방 전체 브로드캐스트 (senderId=0). API 응답에는 actions 제외 (중복 방지).
+    // 채팅방 브로드캐스트 (senderId=0). API 응답에는 actions 제외 (중복 방지).
+    // 예약 참여자(+booker)를 targetUserIds로 명시 → settlement 카드와 동일하게 멤버별 전송.
+    // 멤버 미지정(1인 등)이면 targetUserIds 없이 방 전체 브로드캐스트.
     const roomId = context.slots.chatRoomId;
     if (roomId) {
-      this.toolExecutor.broadcastTeamCompleteCard(roomId, teamCompleteData);
+      const memberIds = members.map((m) => m.userId);
+      const targetUserIds = memberIds.length > 0
+        ? Array.from(new Set([...memberIds, context.userId]))
+        : undefined;
+      this.toolExecutor.broadcastTeamCompleteCard(
+        roomId,
+        teamCompleteData,
+        targetUserIds,
+        context.userId,
+      );
       return {
         conversationId: context.conversationId,
         message,
