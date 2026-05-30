@@ -21,11 +21,15 @@ export class JetStreamConsumerService implements OnModuleInit, OnModuleDestroy {
   private consumerMessages: ConsumerMessages | null = null;
   private isShuttingDown = false;
   private resubscribePending = false;
+  /** 소비 루프 세대. 재구독/재시작 때 증가시켜 옛 루프의 종료 콜백을 무효화(무한 재구독 방지). */
+  private generation = 0;
+  private watchdog: ReturnType<typeof setInterval> | null = null;
   private readonly sc = StringCodec();
 
   private static readonly STREAM_NAME = 'CHAT_MESSAGES';
   private static readonly CONSUMER_NAME = 'chat-service-messages';
   private static readonly RESUBSCRIBE_DEBOUNCE_MS = 500;
+  private static readonly WATCHDOG_INTERVAL_MS = 30_000;
 
   constructor(
     private readonly configService: ConfigService,
@@ -57,6 +61,8 @@ export class JetStreamConsumerService implements OnModuleInit, OnModuleDestroy {
 
       // NATS 연결 상태 변화 감지 → reconnect 시 consumer 자동 재구독
       this.watchConnectionStatus();
+      // 주기 watchdog — 연결은 유지된 채 stream/consumer 가 재생성돼 소비가 멈춘 경우 복구 (UNI-39)
+      this.startWatchdog();
     } catch (error) {
       this.logger.error('Failed to initialize JetStream consumer', error);
     }
@@ -64,6 +70,10 @@ export class JetStreamConsumerService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleDestroy() {
     this.isShuttingDown = true;
+    if (this.watchdog) {
+      clearInterval(this.watchdog);
+      this.watchdog = null;
+    }
     if (this.consumerMessages) {
       this.consumerMessages.close();
       this.consumerMessages = null;
@@ -128,9 +138,43 @@ export class JetStreamConsumerService implements OnModuleInit, OnModuleDestroy {
     }, JetStreamConsumerService.RESUBSCRIBE_DEBOUNCE_MS);
   }
 
+  /**
+   * 주기 watchdog (UNI-39). NATS 연결은 유지된 채 stream/consumer 가 재생성(gateway 503 복구 등)되면
+   * reconnect 이벤트가 안 와서 소비가 조용히 멈춘다. 주기적으로 consumer 존재 + 소비 상태를 점검해 복구.
+   */
+  private startWatchdog(): void {
+    if (this.watchdog) return;
+    this.watchdog = setInterval(() => {
+      if (this.isShuttingDown) return;
+      void this.ensureHealthy();
+    }, JetStreamConsumerService.WATCHDOG_INTERVAL_MS);
+  }
+
+  private async ensureHealthy(): Promise<void> {
+    if (this.isShuttingDown || this.resubscribePending || !this.jsm) return;
+    // 소비 iterator 가 없으면 즉시 재구독
+    if (!this.consumerMessages) {
+      this.logger.warn('Watchdog: no active consumer iterator — resubscribing');
+      this.scheduleResubscribe();
+      return;
+    }
+    // consumer 가 실제로 존재하는지 확인 (stream/consumer 재생성으로 사라졌을 수 있음)
+    try {
+      await this.jsm.consumers.info(
+        JetStreamConsumerService.STREAM_NAME,
+        JetStreamConsumerService.CONSUMER_NAME,
+      );
+    } catch {
+      this.logger.warn('Watchdog: consumer missing — resubscribing');
+      this.scheduleResubscribe();
+    }
+  }
+
   private async resubscribe(): Promise<void> {
     if (this.isShuttingDown || !this.nc) return;
     try {
+      // 세대 증가 → 곧 닫을 옛 루프의 종료 콜백이 재구독을 다시 트리거하지 않도록 무효화
+      this.generation++;
       if (this.consumerMessages) {
         try {
           this.consumerMessages.close();
@@ -188,27 +232,38 @@ export class JetStreamConsumerService implements OnModuleInit, OnModuleDestroy {
     );
 
     this.consumerMessages = await consumer.consume();
+    const gen = ++this.generation;
     this.logger.log('Started consuming messages from CHAT_MESSAGES stream');
 
-    this.processMessages();
+    void this.processMessages(this.consumerMessages, gen);
   }
 
-  private async processMessages(): Promise<void> {
-    if (!this.consumerMessages) return;
+  private async processMessages(cm: ConsumerMessages, gen: number): Promise<void> {
+    try {
+      for await (const msg of cm) {
+        try {
+          const raw = this.sc.decode(msg.data);
+          const data: SaveMessageDto = JSON.parse(raw);
 
-    for await (const msg of this.consumerMessages) {
-      try {
-        const raw = this.sc.decode(msg.data);
-        const data: SaveMessageDto = JSON.parse(raw);
+          await this.chatService.saveMessage(data);
+          msg.ack();
 
-        await this.chatService.saveMessage(data);
-        msg.ack();
-
-        this.logger.debug(`Processed and saved message: ${data.id}`);
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error);
-        this.logger.error(`Failed to process JetStream message: ${message}`);
-        msg.nak();
+          this.logger.debug(`Processed and saved message: ${data.id}`);
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : String(error);
+          this.logger.error(`Failed to process JetStream message: ${message}`);
+          msg.nak();
+        }
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Consume loop error: ${message}`);
+    } finally {
+      // 루프 종료 = consumer/iterator 가 닫힘(stream·consumer 재생성 등). 종료 중이 아니고
+      // 이 루프가 최신 세대일 때만 재구독 (재구독으로 교체된 옛 루프는 무시 → 무한 재구독 방지, UNI-39).
+      if (!this.isShuttingDown && gen === this.generation) {
+        this.logger.warn('Consume loop ended — scheduling resubscribe');
+        this.scheduleResubscribe();
       }
     }
   }
