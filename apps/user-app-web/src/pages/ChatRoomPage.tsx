@@ -313,7 +313,7 @@ export const ChatRoomPage: React.FC = () => {
       case 'CONFIRMING': return '예약 확인 중...';
       case 'BOOKING': return '예약 처리 중...';
       case 'SETTLING': return '정산 처리 중...';
-      case 'TEAM_COMPLETE': return '다음 팀 준비 중...';
+      case 'TEAM_COMPLETE': return '예약 완료 중...';
       default: return '생각 중...';
     }
   }, [conversationState]);

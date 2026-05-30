@@ -82,8 +82,6 @@ async function sendAi(
     paymentMethod?: string;
     // Group booking
     teamMembers?: Array<{ userId: number; userName: string; userEmail: string }>;
-    nextTeam?: boolean;
-    finishGroup?: boolean;
     sendReminder?: boolean;
     // Split payment
     splitPaymentComplete?: boolean;
@@ -105,8 +103,6 @@ async function sendAi(
   if (opts.paymentMethod) data.paymentMethod = opts.paymentMethod;
   // Group booking
   if (opts.teamMembers) data.teamMembers = opts.teamMembers;
-  if (opts.nextTeam) data.nextTeam = opts.nextTeam;
-  if (opts.finishGroup) data.finishGroup = opts.finishGroup;
   if (opts.sendReminder) data.sendReminder = opts.sendReminder;
   // Split payment
   if (opts.splitPaymentComplete) data.splitPaymentComplete = opts.splitPaymentComplete;
@@ -812,80 +808,7 @@ test.describe('13. 그룹 예약 — 슬롯 선택 (그룹 모드)', () => {
 });
 
 // ═════════════════════════════════════════════════
-// 14. 그룹 예약 — 다음 팀
-// ═════════════════════════════════════════════════
-test.describe('14. 그룹 예약 — 다음 팀', () => {
-  test('TC-029: nextTeam → SELECT_MEMBERS 카드 반환', async () => {
-    // Step 1: 컨텍스트 생성 (골프장 검색)
-    const searchRes = await sendAi(ctx, '천안 파크골프장 알려줘');
-    expect(searchRes.body.success).toBe(true);
-    const conversationId = searchRes.body.data.conversationId;
-
-    // Step 2: 다음 팀 요청
-    const nextRes = await sendAi(ctx, '다음 팀', {
-      conversationId,
-      nextTeam: true,
-    });
-
-    console.log('TC-029:', JSON.stringify(nextRes.body, null, 2));
-
-    expect(nextRes.body.success).toBe(true);
-    expect(nextRes.body.data.conversationId).toBe(conversationId);
-    expect(nextRes.body.data.message).toBeTruthy();
-
-    // chatRoomId가 설정된 경우 SELECT_MEMBERS 카드 반환
-    if (nextRes.body.data.actions?.length > 0) {
-      const selectAction = nextRes.body.data.actions.find(
-        (a: any) => a.type === 'SELECT_MEMBERS',
-      );
-      if (selectAction) {
-        expect(selectAction.data.teamNumber).toBeGreaterThanOrEqual(2);
-        expect(selectAction.data.maxPlayers).toBe(4);
-        expect(selectAction.data.assignedTeams).toBeDefined();
-        expect(selectAction.data.availableMembers).toBeDefined();
-        expect(nextRes.body.data.state).toBe('SELECTING_MEMBERS');
-      }
-    }
-  });
-});
-
-// ═════════════════════════════════════════════════
-// 15. 그룹 예약 — 종료
-// ═════════════════════════════════════════════════
-test.describe('15. 그룹 예약 — 종료', () => {
-  test('TC-030: finishGroup → BOOKING_COMPLETE (groupSummary)', async () => {
-    // Step 1: 컨텍스트 생성
-    const searchRes = await sendAi(ctx, '천안 파크골프장 알려줘');
-    expect(searchRes.body.success).toBe(true);
-    const conversationId = searchRes.body.data.conversationId;
-
-    // Step 2: 종료
-    const finishRes = await sendAi(ctx, '종료', {
-      conversationId,
-      finishGroup: true,
-    });
-
-    console.log('TC-030:', JSON.stringify(finishRes.body, null, 2));
-
-    expect(finishRes.body.success).toBe(true);
-    expect(finishRes.body.data.state).toBe('COMPLETED');
-    expect(finishRes.body.data.message).toMatch(/완료/);
-
-    // BOOKING_COMPLETE 액션에 groupSummary 포함
-    const completeAction = finishRes.body.data.actions?.find(
-      (a: any) => a.type === 'BOOKING_COMPLETE',
-    );
-    expect(completeAction).toBeDefined();
-    expect(completeAction.data.groupSummary).toBe(true);
-    expect(completeAction.data.teamCount).toBeDefined();
-    expect(completeAction.data.totalMembers).toBeDefined();
-    expect(completeAction.data.totalPrice).toBeDefined();
-    expect(completeAction.data.teams).toBeDefined();
-  });
-});
-
-// ═════════════════════════════════════════════════
-// 16. 그룹 예약 — 리마인더
+// 14. 그룹 예약 — 리마인더
 // ═════════════════════════════════════════════════
 test.describe('16. 그룹 예약 — 리마인더', () => {
   test('TC-031: sendReminder → 리마인더 전송 응답', async () => {
@@ -988,14 +911,5 @@ test.describe('17. 확장된 State 전이 검증', () => {
     console.log('TC-033 state (teamMember select):', teamState);
     // CONFIRMING (슬롯이 있을 때) 또는 다른 상태 (슬롯이 없을 때)
     expect(ALL_VALID_STATES).toContain(teamState);
-
-    // Step 4: finishGroup → COMPLETED
-    const finishRes = await sendAi(ctx, '종료', {
-      conversationId,
-      finishGroup: true,
-    });
-    const finishState = finishRes.body.data.state;
-    console.log('TC-033 state (finishGroup):', finishState);
-    expect(finishState).toBe('COMPLETED');
   });
 });
