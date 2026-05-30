@@ -9,8 +9,6 @@ import { ChatResponseDto, ConversationContext } from '../dto/chat.dto';
  *
  * 결제수단별 완료 진입점(onsite/card/dutchpay)이 공통 finalizeBooking 을 호출한다.
  * L3(Semantic Memory) 누적은 finalizeBooking **단 1곳**에서만 → 누락/중복 0.
- *
- * (구 completeTeam: 팀별 순차 모델의 completedTeams 누적/teamNumber 로직은 제거됨)
  */
 @Injectable()
 export class BookingCompletionService {

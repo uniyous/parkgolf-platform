@@ -14,8 +14,6 @@ import {
  *
  * - handleTeamMemberSelect: 멤버 선택 → 슬롯 조회 (이미 슬롯이 있으면 라우터가 redirect)
  * - handleSendReminder:     더치페이 미결제 참여자 리마인더 push
- *
- * (구 멀티팀 순차 예약의 handleNextTeam / handleFinishGroup 은 UNI-36 에서 제거됨)
  */
 @Injectable()
 export class GroupBookingService {
