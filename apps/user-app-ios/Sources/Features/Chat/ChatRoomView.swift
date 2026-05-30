@@ -519,6 +519,7 @@ struct ChatRoomView: View {
                 readBy: nil
             )
             viewModel.messages.append(userMsg)
+            viewModel.messages.sort { $0.createdAt < $1.createdAt }
 
             // AI에 메시지 전송 (구조화된 요청 또는 텍스트)
             if let request = request {
@@ -553,6 +554,7 @@ struct ChatRoomView: View {
                 }
 
                 viewModel.messages.append(aiMsg)
+                viewModel.messages.sort { $0.createdAt < $1.createdAt }
             }
         }
     }
