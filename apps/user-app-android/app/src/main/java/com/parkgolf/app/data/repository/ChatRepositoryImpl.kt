@@ -143,7 +143,8 @@ class ChatRepositoryImpl @Inject constructor(
                     jsonElementToMap(jsonObj)
                 } ?: emptyMap()
                 ChatAction(type = actionType, data = dataMap)
-            }
+            },
+            timestamp = dto.timestamp
         )
     }
 

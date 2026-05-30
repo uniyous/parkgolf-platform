@@ -56,7 +56,7 @@ fun AiMessageBubble(
     selectedClubId: String? = null,
     selectedSlotId: String? = null
 ) {
-    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+    val timeFormatter = DateTimeFormatter.ofPattern("a hh:mm", java.util.Locale.KOREAN)
 
     Column(
         modifier = Modifier
@@ -206,7 +206,7 @@ fun AiUserMessageBubble(
     content: String,
     createdAt: LocalDateTime
 ) {
-    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+    val timeFormatter = DateTimeFormatter.ofPattern("a hh:mm", java.util.Locale.KOREAN)
 
     Row(
         modifier = Modifier

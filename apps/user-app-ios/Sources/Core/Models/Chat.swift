@@ -363,6 +363,8 @@ struct AiChatResponse: Codable, Sendable {
     let message: String
     let state: ConversationState
     let actions: [ChatAction]?
+    /// 서버 생성 시각(ISO UTC). 로컬 메시지 createdAt에 사용해 정렬 시계 통일 (UNI-38).
+    let timestamp: String?
 }
 
 struct AiChatRequest: Codable, Sendable {

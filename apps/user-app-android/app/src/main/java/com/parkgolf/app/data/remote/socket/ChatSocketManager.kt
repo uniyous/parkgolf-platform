@@ -555,11 +555,9 @@ class ChatSocketManager @Inject constructor() {
 
     private fun parseMessage(data: JSONObject): ChatMessage {
         val createdAtStr = data.optString("createdAt")
-        val createdAt = try {
-            LocalDateTime.parse(createdAtStr, DateTimeFormatter.ISO_DATE_TIME)
-        } catch (e: Exception) {
-            LocalDateTime.now()
-        }
+        // 서버 UTC → KST 변환 후 저장 (표시단은 변환 없이 포맷만, UNI-38)
+        val createdAt = com.parkgolf.app.util.ChatDateTime.parseServerToKst(createdAtStr)
+            ?: com.parkgolf.app.util.ChatDateTime.nowKst()
 
         // Gateway broadcasts "type" (lowercase), DB/API uses "messageType" — handle both (like iOS)
         val typeString = data.optString("messageType").ifEmpty {

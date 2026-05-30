@@ -634,7 +634,7 @@ class ChatViewModel @Inject constructor(
             senderName = "나",
             content = content,
             messageType = MessageType.AI_USER,
-            createdAt = LocalDateTime.now()
+            createdAt = com.parkgolf.app.util.ChatDateTime.nowKst()
         )
         _uiState.value = _uiState.value.copy(
             messages = _uiState.value.messages + userMsg,
@@ -651,7 +651,9 @@ class ChatViewModel @Inject constructor(
             senderName = "AI 예약 도우미",
             content = response.message,
             messageType = MessageType.AI_ASSISTANT,
-            createdAt = LocalDateTime.now()
+            // 서버 시각으로 정렬 시계 통일 (UNI-38) — 없으면 KST now 폴백
+            createdAt = com.parkgolf.app.util.ChatDateTime.parseServerToKst(response.timestamp)
+                ?: com.parkgolf.app.util.ChatDateTime.nowKst()
         )
         val updatedActions = _uiState.value.aiMessageActions.toMutableMap()
         if (response.actions.isNotEmpty()) {
