@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Clock, Check, MapPin, Calendar, Flag, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { SlotCardData } from '@/lib/api/chatApi';
@@ -25,7 +25,16 @@ const formatDateKorean = (dateStr: string) => {
 };
 
 export const SlotCard: React.FC<SlotCardProps> = ({ data, onSelect, selectedSlotId }) => {
-  const hasSelection = !!selectedSlotId;
+  // selectedSlotId 가 "이 카드 안의 슬롯"과 일치할 때만 선택 상태로 본다.
+  // (전역 !!selectedSlotId 로 보면, 이전 날짜/실패한 선택의 잔존 id 때문에
+  //  새 날짜 카드의 슬롯이 전부 disabled 되는 버그가 있었음 — UNI)
+  const hasSelection = useMemo(() => {
+    if (selectedSlotId == null) return false;
+    const sel = String(selectedSlotId);
+    const inRounds = data.rounds?.some((r) => r.slots?.some((s) => String(s.id) === sel));
+    const inFlat = data.slots?.some((s) => String(s.id) === sel);
+    return Boolean(inRounds || inFlat);
+  }, [selectedSlotId, data]);
   // 라운드별 페이지 상태: { [gameId]: pageIndex }
   const [pages, setPages] = useState<Record<string | number, number>>({});
 
