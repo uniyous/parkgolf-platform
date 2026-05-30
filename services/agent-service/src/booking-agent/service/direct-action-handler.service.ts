@@ -230,7 +230,12 @@ export class DirectActionHandlerService {
         this.conversationService.setState(context, 'COMPLETED');
       }
     } else {
-      const errorMsg = result?.message || toolResult.error || '예약에 실패했습니다';
+      // saga failReason 에 BFF 에러 봉투({success,error:{code,message}})가 통째로 담겨오는
+      // 경우가 있어 원본 JSON 노출을 방지 — 사람이 읽을 message만 추출.
+      const errorMsg =
+        this.extractErrorMessage(result?.message) ||
+        this.extractErrorMessage(toolResult.error) ||
+        '예약에 실패했습니다';
       message = `예약에 실패했어요: ${errorMsg}`;
       actions.push({ type: 'BOOKING_FAILED', data: { reason: errorMsg } });
       this.conversationService.setState(context, 'COLLECTING');
@@ -244,6 +249,30 @@ export class DirectActionHandlerService {
       state: context.state,
       actions: actions.length > 0 ? actions : undefined,
     };
+  }
+
+  /**
+   * 에러 사유에서 사람이 읽을 메시지만 추출.
+   * BFF/마이크로서비스 에러 봉투({success,error:{code,message}})가 문자열/객체로 와도
+   * `error.message`(없으면 `message`)만 반환하고, 평문이면 그대로 반환.
+   */
+  private extractErrorMessage(raw: unknown): string | undefined {
+    if (raw == null) return undefined;
+    let val: unknown = raw;
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      if (!trimmed.startsWith('{')) return trimmed || undefined;
+      try {
+        val = JSON.parse(trimmed);
+      } catch {
+        return trimmed;
+      }
+    }
+    if (val && typeof val === 'object') {
+      const obj = val as { error?: { message?: string }; message?: string };
+      return obj.error?.message || obj.message || undefined;
+    }
+    return undefined;
   }
 
   /**
