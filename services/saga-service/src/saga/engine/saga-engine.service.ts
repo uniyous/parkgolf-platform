@@ -148,36 +148,9 @@ export class SagaEngineService {
       }
     }
 
-    // CREATE_BOOKING saga가 정상 종료 + paymentMethod가 결제 대기인 경우
-    //   → 5분 후 PAYMENT_TIMEOUT saga 발화 예약 (잠수 시나리오 대응)
-    // singletonKey로 중복 enqueue 방지 (saga 재시도 시 안전).
-    if (
-      sagaType === 'CREATE_BOOKING' &&
-      result.sagaStatus === SagaStatus.COMPLETED &&
-      (result as { paymentMethod?: string }).paymentMethod &&
-      (result as { paymentMethod?: string }).paymentMethod !== 'onsite' &&
-      (result as { bookingId?: number }).bookingId
-    ) {
-      const bookingId = (result as { bookingId: number }).bookingId;
-      try {
-        await this.pgboss.send(
-          PAYMENT_TIMEOUT_QUEUE,
-          { bookingId },
-          {
-            startAfter: PAYMENT_TIMEOUT_DELAY_SECONDS,
-            singletonKey: `payment-timeout-${bookingId}`,
-            retryLimit: 3,
-          },
-        );
-        this.logger.log(
-          `[SagaEngine] payment-timeout scheduled: booking ${bookingId} (+${PAYMENT_TIMEOUT_DELAY_SECONDS}s)`,
-        );
-      } catch (err) {
-        this.logger.warn(
-          `[SagaEngine] Failed to schedule payment-timeout for booking ${bookingId}: ${err instanceof Error ? err.message : 'unknown'}`,
-        );
-      }
-    }
+    // payment-timeout one-off 잡은 executeSteps에서 createBooking step 직후(bookingId 확보)에
+    // 등록한다 (UNI-38 #6). 완료 시점이 아닌 생성 시점에 등록해야 saga가 뒤에서 멈춰
+    // PENDING으로 남는 예약도 3분 후 PAYMENT_TIMEOUT으로 회수된다.
 
     const { sagaStatus, failReason, ...dataPayload } = result as {
       sagaStatus: string;
@@ -271,12 +244,39 @@ export class SagaEngineService {
   /**
    * Step들을 순차 실행
    */
+  /**
+   * 결제 타임아웃 one-off 잡 등록 (UNI-38 #6).
+   * createBooking step 직후 호출 — 3분 뒤 워커가 PENDING/SLOT_RESERVED면 PAYMENT_TIMEOUT 트리거.
+   * singletonKey로 중복 enqueue 방지(멱등). saga는 multi-pod이므로 반복 cron이 아닌 one-off만 사용.
+   */
+  private async schedulePaymentTimeout(bookingId: number): Promise<void> {
+    try {
+      await this.pgboss.send(
+        PAYMENT_TIMEOUT_QUEUE,
+        { bookingId },
+        {
+          startAfter: PAYMENT_TIMEOUT_DELAY_SECONDS,
+          singletonKey: `payment-timeout-${bookingId}`,
+          retryLimit: 3,
+        },
+      );
+      this.logger.log(
+        `[SagaEngine] payment-timeout scheduled: booking ${bookingId} (+${PAYMENT_TIMEOUT_DELAY_SECONDS}s)`,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `[SagaEngine] Failed to schedule payment-timeout for booking ${bookingId}: ${err instanceof Error ? err.message : 'unknown'}`,
+      );
+    }
+  }
+
   private async executeSteps(
     sagaExecutionId: number,
     definition: SagaDefinition,
     initialPayload: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
     let currentPayload = { ...initialPayload };
+    let timeoutScheduled = false;
 
     for (let i = 0; i < definition.steps.length; i++) {
       const stepDef = definition.steps[i];
@@ -332,6 +332,20 @@ export class SagaEngineService {
           where: { id: sagaExecutionId },
           data: { status: SagaStatus.STEP_COMPLETED, payload: currentPayload as any },
         });
+
+        // CREATE_BOOKING: bookingId 확보 즉시 결제 타임아웃 one-off 잡 등록 (UNI-38 #6).
+        // 완료가 아닌 이 시점에 등록해야 이후 step이 멈추거나 saga가 중단돼 PENDING으로
+        // 남아도 3분 후 PAYMENT_TIMEOUT으로 슬롯이 회수된다. (onsite는 3분 시점 CONFIRMED면 워커가 skip)
+        if (
+          !timeoutScheduled &&
+          definition.name === 'CREATE_BOOKING' &&
+          typeof (currentPayload as { bookingId?: number }).bookingId === 'number'
+        ) {
+          timeoutScheduled = true;
+          await this.schedulePaymentTimeout(
+            (currentPayload as { bookingId: number }).bookingId,
+          );
+        }
       } else {
         // Step 실패
         await this.prisma.sagaStep.updateMany({
