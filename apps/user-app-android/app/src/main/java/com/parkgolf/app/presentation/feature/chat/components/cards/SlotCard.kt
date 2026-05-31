@@ -13,8 +13,11 @@ import androidx.compose.material.icons.filled.GolfCourse
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -34,7 +37,8 @@ private const val SLOTS_PER_PAGE = 4
 @Composable
 fun SlotCard(
     data: Map<String, Any?>,
-    onSelect: ((String, String, Int, String?) -> Unit)? = null,
+    // UNI-41: 마지막 파라미터 = 결제수단(onsite/card/dutchpay). 슬롯 단계에서 선택 → 확인카드 없이 바로 예약.
+    onSelect: ((String, String, Int, String?, String) -> Unit)? = null,
     selectedSlotId: String? = null
 ) {
     val clubName = data["clubName"]?.toString() ?: ""
@@ -44,6 +48,17 @@ fun SlotCard(
     val rounds = (data["rounds"] as? List<*>)?.filterIsInstance<Map<String, Any?>>()
     val numberFormat = NumberFormat.getNumberInstance(Locale.KOREA)
     val hasSelection = selectedSlotId != null
+
+    // UNI-41: 결제수단 선택 (group이면 더치 노출, 기본 더치 / 아니면 현장)
+    val groupMode = (data["groupMode"] as? Boolean) ?: false
+    var paymentMethod by remember(groupMode) { mutableStateOf(if (groupMode) "dutchpay" else "onsite") }
+    val methods = remember(groupMode) {
+        buildList {
+            add("onsite" to "현장결제")
+            add("card" to "카드결제")
+            if (groupMode) add("dutchpay" to "더치페이")
+        }
+    }
 
     // 라운드별 페이지 상태
     val pages = remember { mutableStateMapOf<String, Int>() }
@@ -119,6 +134,10 @@ fun SlotCard(
                     HorizontalDivider(color = ParkOnPrimary.copy(alpha = 0.1f))
                 }
 
+                if (onSelect != null && !hasSelection) {
+                    PaymentMethodSelector(methods, paymentMethod) { paymentMethod = it }
+                }
+
                 // 게임 라운드 목록
                 rounds.forEachIndexed { index, round ->
                     val gameId = round["gameId"]?.toString() ?: "$index"
@@ -186,7 +205,7 @@ fun SlotCard(
                                                 availableSpots = availableSpots,
                                                 isSelected = isSelected,
                                                 isDisabled = isDisabled,
-                                                onClick = { onSelect?.invoke(slotId, time, roundPrice, roundName) },
+                                                onClick = { onSelect?.invoke(slotId, time, roundPrice, roundName, paymentMethod) },
                                                 modifier = Modifier.fillMaxWidth()
                                             )
                                         }
@@ -272,6 +291,9 @@ fun SlotCard(
 
     val rows = slots.chunked(2)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (onSelect != null && !hasSelection) {
+            PaymentMethodSelector(methods, paymentMethod) { paymentMethod = it }
+        }
         rows.forEach { rowSlots ->
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -286,7 +308,7 @@ fun SlotCard(
                     val isDisabled = hasSelection && !isSelected
 
                     Surface(
-                        onClick = { if (!isDisabled) onSelect?.invoke(id, time, price, gameName) },
+                        onClick = { if (!isDisabled) onSelect?.invoke(id, time, price, gameName, paymentMethod) },
                         enabled = onSelect != null && !isDisabled,
                         shape = RoundedCornerShape(12.dp),
                         color = GlassCard,
@@ -344,6 +366,49 @@ fun SlotCard(
                 }
                 if (rowSlots.size == 1) {
                     Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PaymentMethodSelector(
+    methods: List<Pair<String, String>>,
+    selected: String,
+    onChange: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text(
+            text = "결제방법 (시간 선택 시 적용)",
+            style = MaterialTheme.typography.bodyMedium,
+            color = ParkOnPrimary.copy(alpha = 0.5f)
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            methods.forEach { (method, label) ->
+                val isOn = selected == method
+                Surface(
+                    onClick = { onChange(method) },
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (isOn) ParkPrimary.copy(alpha = 0.3f) else ParkOnPrimary.copy(alpha = 0.05f),
+                    border = BorderStroke(
+                        1.dp,
+                        if (isOn) ParkPrimary.copy(alpha = 0.6f) else ParkOnPrimary.copy(alpha = 0.1f)
+                    ),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (isOn) ParkOnPrimary else ParkOnPrimary.copy(alpha = 0.6f),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 7.dp)
+                    )
                 }
             }
         }

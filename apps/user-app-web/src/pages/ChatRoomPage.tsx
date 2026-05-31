@@ -745,18 +745,6 @@ export const ChatRoomPage: React.FC = () => {
                         ...(paymentMethod ? { paymentMethod } : {}),
                       });
                     }}
-                    onConfirmBooking={(paymentMethod: 'onsite' | 'card' | 'dutchpay') => {
-                      const labels: Record<string, string> = {
-                        card: '카드결제로 예약 확인',
-                        dutchpay: '더치페이로 예약 확인',
-                        onsite: '예약 확인',
-                      };
-                      handleAiFollowUp({
-                        message: labels[paymentMethod] || '예약 확인',
-                        confirmBooking: true,
-                        paymentMethod,
-                      });
-                    }}
                     onCancelBooking={() => {
                       setSelectedSlotId(null);
                       handleAiFollowUp({

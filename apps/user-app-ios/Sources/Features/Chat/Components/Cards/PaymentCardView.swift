@@ -24,6 +24,12 @@ struct PaymentCardView: View {
     private var amount: Int { dict["amount"] as? Int ?? 0 }
     private var orderId: String { dict["orderId"] as? String ?? "" }
 
+    // UNI-41: 참여자 이름 ("김철수, 박영희")
+    private var participantNames: String {
+        guard let arr = dict["participants"] as? [[String: Any]] else { return "" }
+        return arr.compactMap { $0["userName"] as? String }.joined(separator: ", ")
+    }
+
     private var timerColor: Color {
         if remainingSeconds <= 0 { return .red }
         if remainingSeconds <= 60 { return .yellow }
@@ -52,7 +58,7 @@ struct PaymentCardView: View {
             VStack(alignment: .leading, spacing: 8) {
                 infoRow(icon: "mappin.circle.fill", value: clubName)
                 infoRow(icon: "calendar", value: "\(date) \(time)")
-                infoRow(icon: "person.2.fill", value: "\(playerCount)명")
+                infoRow(icon: "person.2.fill", value: participantNames.isEmpty ? "\(playerCount)명" : "\(playerCount)명 · \(participantNames)")
 
                 HStack(spacing: 8) {
                     Image(systemName: "wonsign")

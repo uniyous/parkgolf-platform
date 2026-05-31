@@ -102,6 +102,8 @@ export class BookingAgentService {
             selectedSlotId: context.slots.slotId,
             selectedSlotTime: context.slots.time,
             selectedSlotPrice: context.slots.slotPrice,
+            // UNI-41: 멤버 선택 전에 고른 결제수단을 이어받아 확인카드 없이 바로 예약
+            paymentMethod: request.paymentMethod ?? context.slots.paymentMethod,
           });
         }
         return this.groupBooking.handleTeamMemberSelect(context, request);

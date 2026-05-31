@@ -32,6 +32,12 @@ fun PaymentCard(
     val playerCount = (data["playerCount"] as? Number)?.toInt() ?: 0
     val amount = (data["amount"] as? Number)?.toInt() ?: 0
     val numberFormat = NumberFormat.getNumberInstance(Locale.KOREA)
+    // UNI-41: 참여자 이름 ("김철수, 박영희")
+    @Suppress("UNCHECKED_CAST")
+    val participantNames = (data["participants"] as? List<*>)
+        ?.filterIsInstance<Map<String, Any?>>()
+        ?.mapNotNull { it["userName"]?.toString() }
+        ?.joinToString(", ") ?: ""
 
     var remainingSeconds by remember { mutableIntStateOf(PAYMENT_TIMEOUT_SECONDS) }
     var isPaying by remember { mutableStateOf(false) }
@@ -94,7 +100,10 @@ fun PaymentCard(
                     icon = Icons.Default.CalendarToday,
                     value = "${formatDateKorean(date)} $time"
                 )
-                PaymentInfoRow(icon = Icons.Default.Group, value = "${playerCount}명")
+                PaymentInfoRow(
+                    icon = Icons.Default.Group,
+                    value = if (participantNames.isEmpty()) "${playerCount}명" else "${playerCount}명 · $participantNames"
+                )
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)

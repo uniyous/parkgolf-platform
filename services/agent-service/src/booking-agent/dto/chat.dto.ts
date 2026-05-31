@@ -142,7 +142,6 @@ export type ActionType =
   | 'SHOW_CLUBS'              // 골프장 목록 표시
   | 'SHOW_SLOTS'              // 타임슬롯 표시
   | 'SHOW_WEATHER'            // 날씨 정보 표시
-  | 'CONFIRM_BOOKING'         // 예약 확인 UI
   | 'SELECT_MEMBERS'          // 팀 멤버 선택 카드
   | 'SHOW_PAYMENT'            // 결제 카드 표시 (카드결제)
   | 'SPLIT_PAYMENT'           // 더치페이 결제 상태
