@@ -1,29 +1,31 @@
 # 결제(현장·카드·더치페이) — AGENT × SAGA × BOOKING × PAYMENT 통합 워크플로우
 
-> 최종 수정: 2026-05-28
+> 최종 수정: 2026-05-31
 > **연계 문서**: 에이전트 전체 플로우 [`AGENT.md`](./AGENT.md) · UI(카드·시각흐름·컴포넌트) [`AGENT_UI.md`](./AGENT_UI.md) · 컨텍스트 조립 [`AGENT_CONTEXT.md`](./AGENT_CONTEXT.md) · saga 보상/결제실패 [`SAGA.md`](./SAGA.md) · 예약/정산 상태 [`BOOKING.md`](./BOOKING.md)
 
 에이전트가 처리하는 **3가지 결제방법(현장·카드·더치페이)의 단일 출처(SSOT)** — 분기·플로우·책임 분담·타임라인·검증.
 
 ## 1. 결제방법 분기
 
-`handleDirectBooking`(`CONFIRM_BOOKING` 카드의 결제방법 클릭)에서 분기. 모든 경로는 `booking.create` saga 성공 후에 갈라진다.
+결제수단은 **슬롯 카드(`SHOW_SLOTS`)에서 선택**한다(UNI-41). 슬롯 클릭이 `paymentMethod`를 동반해 `handleDirectSlotSelect → handleDirectBooking`으로 직행하며, 모든 경로는 `booking.create` saga 성공 후에 갈라진다. 별도 확인 카드는 없다.
 
 | 결제방법 | `paymentMethod` | 조건 | 동작 |
 |---------|-----------------|------|------|
 | 현장결제 | `onsite` | 항상 가능 | 예약 생성 → 즉시 `TEAM_COMPLETE` |
-| 카드결제 | `card` | 항상 가능 | 예약 생성 → `SHOW_PAYMENT` → Toss 결제 → `TEAM_COMPLETE` |
+| 카드결제 | `card` | 항상 가능 | 예약 생성 → `SHOW_PAYMENT`(참여자명) → Toss 결제 → `TEAM_COMPLETE` |
 | 더치페이 | `dutchpay` | 멤버 2명 이상 | 예약 생성 → `SETTLEMENT_STATUS` 진행자/참여자 → 전원 결제 → `TEAM_COMPLETE` |
 
-> 1명 예약은 `CONFIRM_BOOKING` 카드에서 더치페이 옵션을 숨긴다 → [`AGENT_UI.md §5`](./AGENT_UI.md).
+> 슬롯 카드는 `groupMode`(멤버 2명 이상)일 때만 더치페이 옵션을 노출한다 → [`AGENT_UI.md §5`](./AGENT_UI.md).
+>
+> 각 단계의 부수효과(saga·prepare·splitPrepare·broadcast·finalize)는 **재개(resume) 계층**(`effect-executor` step-runner + Turn Journal)을 거쳐 멱등하게 처리된다. 중단/재시도 시 COMMITTED 스텝은 재실행 없이 스킵 → [`AGENT.md §14`](./AGENT.md).
 
 ## 2. 현장결제
 
 가장 단순한 경로. 슬롯 확정과 동시에 booking이 `CONFIRMED`(결제 미수반)로 들어가며 별도 결제 단계가 없다.
 
 ```
-[예약 확인 + 현장결제]
-   → handleDirectBooking → booking.create (Saga)
+[슬롯 + 현장결제 클릭]
+   → handleDirectSlotSelect → handleDirectBooking → booking.create (Saga)
    → Saga 폴링(300ms × 20회) 후 CONFIRMED 확인
    → TEAM_COMPLETE 카드
 ```
@@ -38,7 +40,7 @@
 
 ```mermaid
 flowchart TD
-    Start([진행자: 카드결제로 예약 확정<br/>confirmBooking=true, paymentMethod=card]) --> Create["① 예약 생성 + 슬롯 확보<br/>booking.create → CREATE_BOOKING saga<br/>→ PAYMENT_PENDING"]
+    Start([진행자: 슬롯+카드결제 클릭<br/>selectedSlotId + paymentMethod=card]) --> Create["① 예약 생성 + 슬롯 확보<br/>booking.create → CREATE_BOOKING saga<br/>→ PAYMENT_PENDING"]
     Create --> Poll["② Saga 폴링<br/>booking.findById × 최대 20회 (300ms 간격)"]
     Poll --> Prepare["③ 결제 준비<br/>payment.prepare → 단일 orderId"]
     Prepare --> ShowCard["④ 진행자 결제 카드<br/>SHOW_PAYMENT { orderId, amount }<br/>(3분 타이머)"]
@@ -83,7 +85,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    Start([진행자: 더치페이로 예약 확정]) --> Create["① 예약 생성 + 슬롯 확보<br/>booking.create → CREATE_BOOKING saga<br/>→ PAYMENT_PENDING"]
+    Start([진행자: 슬롯+더치페이 클릭]) --> Create["① 예약 생성 + 슬롯 확보<br/>booking.create → CREATE_BOOKING saga<br/>→ PAYMENT_PENDING"]
     Create --> Prepare["② 분할결제 준비<br/>payment.splitPrepare<br/>참여자 N명 orderId 발급"]
     Prepare --> Card["③ 진행자 정산 카드<br/>SETTLEMENT_STATUS (state=SETTLING)<br/>진행자 개인 메시지"]
     Card --> Broadcast["④ 참여자 브로드캐스트<br/>senderId=0 정산 카드 + push 알림<br/>(chat · gateway · notify)"]
@@ -111,7 +113,7 @@ flowchart TD
 
 - **③ 진행자 응답**: `handleDirectBooking`의 더치페이 분기 → `SETTLEMENT_STATUS` 카드를 HTTP 응답으로 반환(진행자 개인, state=`SETTLING`). 진행자 본인 결제분은 정산 카드 broadcast 대상에서 제외.
 - **④ 참여자 브로드캐스트**: `senderId=0` + `metadata.targetUserIds`로 chat-service 저장 후 chat-gateway가 서버사이드 타겟팅으로 해당 참여자에게만 전달. 동시에 notify로 push.
-- **⑥ 정산 완료 판정**: `handleSplitPaymentComplete`가 `booking.settlementStatus`(SSOT)로 `allPaid` 확인. 전원 완료 시 `completeTeam` → `TEAM_COMPLETE`. groupMode면 다음 팀(`nextTeam`)으로 이어진다.
+- **⑥ 정산 완료 판정**: `handleSplitPaymentComplete`가 `booking.settlementStatus`(SSOT)로 `allPaid` 확인. 전원 완료 시 `finalizeBooking` → `TEAM_COMPLETE`(예약 완료, 종료). 1예약=최대4명 단위라 다음 팀 단계는 없다(UNI-36).
 
 관련 카드: `SETTLEMENT_STATUS`, `TEAM_COMPLETE` → [AGENT_UI.md §4](./AGENT_UI.md)
 관련 요청 필드: `splitPaymentComplete`, `splitOrderId`, `sendReminder` → [AGENT_UI.md §6](./AGENT_UI.md)
@@ -261,7 +263,7 @@ flowchart TD
 | `myRole = MEMBER` | 예약 카드에 "참여" 배지 | (조회만) |
 | `myParticipantStatus = CANCELLED / REFUNDED` | "취소됨" 표기, 액션 없음 | — |
 
-> 챗 UI(`ConfirmBookingCard`/`PaymentCard`)의 기존 "취소" 버튼은 흐름 중단 용도라 그대로 유지.
+> 챗 UI(`PaymentCard`)의 "취소" 버튼은 흐름 중단 용도라 그대로 유지. (`ConfirmBookingCard`는 UNI-41로 제거됨)
 
 ### 11.8 별도 점검 — 타임아웃 시간 코멘트 정합
 

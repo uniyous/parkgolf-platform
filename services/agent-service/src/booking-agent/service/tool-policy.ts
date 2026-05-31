@@ -8,7 +8,7 @@ import { ToolCall } from './deepseek.service';
  *            시도해도 guardLlmToolCall 로 차단된다. saga 시작 등 비가역 작업은
  *            결정적 경로(direct-action-handler / effect-executor)만 담당.
  *
- * 설계: docs/architecture/agent-orchestration.md, UNI-29
+ * 설계: docs/workflow/AGENT.md §1.1·§6.1 (결정/재개/비결정), UNI-29
  */
 export const COMMAND_TOOL_NAMES: ReadonlySet<string> = new Set<string>([
   'create_booking',
