@@ -115,6 +115,8 @@ export interface SlotCardData {
     price: number;
     gameName: string;
   }>;
+  /** group(멤버 선택 경유) 여부 — 슬롯 카드의 더치페이 옵션 노출 판단 (UNI-41) */
+  groupMode?: boolean;
 }
 
 export interface WeatherCardData {
@@ -164,6 +166,8 @@ export interface PaymentCardData {
   date: string;
   time: string;
   playerCount: number;
+  /** 참여자 — 결제진행 카드에 이름 표시 (UNI-41) */
+  participants?: Array<{ userId: number; userName: string }>;
 }
 
 export interface TeamMember {

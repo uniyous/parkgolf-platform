@@ -5,9 +5,11 @@ import type { SlotCardData } from '@/lib/api/chatApi';
 
 const SLOTS_PER_PAGE = 4;
 
+type PaymentMethod = 'onsite' | 'card' | 'dutchpay';
+
 interface SlotCardProps {
   data: SlotCardData;
-  onSelect?: (slotId: string, time: string, price: number, gameName?: string) => void;
+  onSelect?: (slotId: string, time: string, price: number, gameName: string | undefined, paymentMethod: PaymentMethod) => void;
   selectedSlotId?: string | null;
 }
 
@@ -42,6 +44,38 @@ export const SlotCard: React.FC<SlotCardProps> = ({ data, onSelect, selectedSlot
   const setPage = (gameId: string | number, page: number) =>
     setPages((prev) => ({ ...prev, [gameId]: page }));
 
+  // UNI-41: 결제수단 선택을 슬롯 단계로 이동 (확인 카드 제거). group이면 더치 노출.
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
+    data.groupMode ? 'dutchpay' : 'onsite',
+  );
+  const methods: Array<{ m: PaymentMethod; label: string }> = [
+    { m: 'onsite', label: '현장결제' },
+    { m: 'card', label: '카드결제' },
+    ...(data.groupMode ? [{ m: 'dutchpay' as PaymentMethod, label: '더치페이' }] : []),
+  ];
+  const methodSelector = onSelect && !hasSelection ? (
+    <div className="px-4 py-2.5 border-b border-white/10">
+      <div className="text-base text-white/50 mb-1.5">결제방법 (시간 선택 시 적용)</div>
+      <div className="flex gap-1.5">
+        {methods.map(({ m, label }) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => setPaymentMethod(m)}
+            className={cn(
+              'flex-1 rounded-lg px-2 py-1.5 text-base border transition-colors',
+              paymentMethod === m
+                ? 'bg-violet-500/30 border-violet-500/60 text-white'
+                : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10',
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  ) : null;
+
   // ── 라운드 그룹 레이아웃 ──
   if (data.rounds && data.rounds.length > 0) {
     return (
@@ -70,6 +104,8 @@ export const SlotCard: React.FC<SlotCardProps> = ({ data, onSelect, selectedSlot
             <div className="border-t border-white/10" />
           </>
         )}
+
+        {methodSelector}
 
         {/* 라운드 목록 */}
         {data.rounds.map((round, index) => {
@@ -109,7 +145,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({ data, onSelect, selectedSlot
                     return (
                       <button
                         key={slot.id}
-                        onClick={() => !isDisabled && onSelect?.(String(slot.id), slot.time, slot.price, round.name)}
+                        onClick={() => !isDisabled && onSelect?.(String(slot.id), slot.time, slot.price, round.name, paymentMethod)}
                         disabled={!onSelect || isDisabled}
                         className={cn(
                           'rounded-lg px-2.5 py-1.5 border transition-all flex items-center justify-center gap-1',
@@ -191,8 +227,9 @@ export const SlotCard: React.FC<SlotCardProps> = ({ data, onSelect, selectedSlot
 
   // ── 하위 호환: flat slots 그리드 ──
   return (
-    <div className="mt-2 w-full min-w-[260px] max-w-[420px] rounded-2xl bg-violet-500/10 border border-violet-500/20 p-3">
-        <div className="grid grid-cols-2 gap-2">
+    <div className="mt-2 w-full min-w-[260px] max-w-[420px] rounded-2xl bg-violet-500/10 border border-violet-500/20 overflow-hidden">
+        {methodSelector}
+        <div className="grid grid-cols-2 gap-2 p-3">
           {data.slots.map((slot) => {
             const isSelected = selectedSlotId === slot.id;
             const isDisabled = hasSelection && !isSelected;
@@ -200,7 +237,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({ data, onSelect, selectedSlot
             return (
               <button
                 key={slot.id}
-                onClick={() => !isDisabled && onSelect?.(slot.id, slot.time, slot.price, slot.gameName)}
+                onClick={() => !isDisabled && onSelect?.(slot.id, slot.time, slot.price, slot.gameName, paymentMethod)}
                 disabled={!onSelect || isDisabled}
                 className={cn(
                   'rounded-xl p-3 border text-left transition-all relative',

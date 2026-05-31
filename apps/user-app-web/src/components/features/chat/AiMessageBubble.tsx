@@ -21,7 +21,7 @@ interface AiMessageBubbleProps {
   roomId?: string;
   conversationId?: string;
   onClubSelect?: (clubId: string, clubName: string) => void;
-  onSlotSelect?: (slotId: string, time: string, price: number, clubId?: string, clubName?: string, gameName?: string) => void;
+  onSlotSelect?: (slotId: string, time: string, price: number, clubId?: string, clubName?: string, gameName?: string, paymentMethod?: 'onsite' | 'card' | 'dutchpay') => void;
   onConfirmBooking?: (paymentMethod: 'onsite' | 'card' | 'dutchpay') => void;
   onCancelBooking?: () => void;
   onPaymentComplete?: (success: boolean) => void;
@@ -89,9 +89,9 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
                 {action.type === 'SHOW_SLOTS' && (
                   <SlotCard
                     data={action.data as SlotCardData}
-                    onSelect={(slotId, time, price, gameName) => {
+                    onSelect={(slotId, time, price, gameName, paymentMethod) => {
                       const slotData = action.data as SlotCardData;
-                      onSlotSelect?.(slotId, time, price, slotData.clubId, slotData.clubName, gameName);
+                      onSlotSelect?.(slotId, time, price, slotData.clubId, slotData.clubName, gameName, paymentMethod);
                     }}
                     selectedSlotId={selectedSlotId}
                   />
