@@ -62,7 +62,8 @@ export class GroupBookingService {
     let message: string;
 
     if (toolResult.success && (toolResult.result as any)?.availableCount > 0) {
-      actions.push({ type: 'SHOW_SLOTS', data: toolResult.result });
+      // UNI-41: 멤버 선택 경유 = group → 슬롯 카드에서 더치 옵션 노출
+      actions.push({ type: 'SHOW_SLOTS', data: { ...(toolResult.result as Record<string, unknown>), groupMode: true } });
       message = `${teamMembers.length}명 — 시간을 선택해 주세요!`;
       this.conversationService.setState(context, 'CONFIRMING');
     } else {

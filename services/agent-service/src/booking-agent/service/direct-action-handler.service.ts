@@ -14,7 +14,7 @@ import {
 /**
  * UI 액션 클릭에 대한 직접 처리 (LLM 우회).
  * - handleDirectClubSelect:  골프장 선택 → SELECT_MEMBERS
- * - handleDirectSlotSelect:  슬롯 선택 → CONFIRM_BOOKING
+ * - handleDirectSlotSelect:  슬롯 선택(+결제수단) → 바로 예약 / (레거시) CONFIRM_BOOKING
  * - handleDirectBooking:     예약 확정 → 결제방법 분기 (현장/카드/더치페이)
  * - handleCancelBooking:     취소 클릭 → 슬롯 초기화
  */
@@ -66,7 +66,9 @@ export class DirectActionHandlerService {
     let message: string;
 
     if (toolResult.success && (toolResult.result as any)?.availableCount > 0) {
-      actions.push({ type: 'SHOW_SLOTS', data: toolResult.result });
+      // UNI-41: 슬롯 카드에서 결제수단 선택 → group 여부 전달(더치 노출 판단용)
+      const isGroupSlots = !!context.slots.groupMode || (context.slots.currentTeamMembers || []).length > 0;
+      actions.push({ type: 'SHOW_SLOTS', data: { ...(toolResult.result as Record<string, unknown>), groupMode: isGroupSlots } });
       message = `${selectedClubName}의 예약 가능 시간이에요!`;
       this.conversationService.setState(context, 'CONFIRMING');
     } else {
@@ -84,7 +86,9 @@ export class DirectActionHandlerService {
   }
 
   /**
-   * 슬롯 카드 클릭 → 바로 CONFIRM_BOOKING.
+   * 슬롯 카드 클릭 → 예약 진행.
+   * - 결제수단 동반(UNI-41): 확인 카드 생략하고 바로 예약 (onsite 즉시완료 / card 결제진행 / dutch 정산).
+   * - 결제수단 없음(레거시): CONFIRM_BOOKING 카드.
    * 멤버는 클럽 선택 시점에 이미 확정 (UNI-21 흐름 변경).
    * 채팅방 외 1인 진입은 groupMode=false / playerCount=1 default.
    */
@@ -120,6 +124,12 @@ export class DirectActionHandlerService {
       slotPrice: selectedSlotPrice,
       ...(request.selectedGameName && { gameName: request.selectedGameName }),
     });
+
+    // UNI-41: 슬롯 클릭이 결제수단을 동반하면 예약정보확인 카드를 생략하고 바로 예약 진행
+    // (onsite → 즉시 완료 / card → 결제진행 / dutch → 정산). 결제수단 선택이 슬롯 단계로 이동.
+    if (request.paymentMethod) {
+      return this.handleDirectBooking(context, { ...request, confirmBooking: true });
+    }
 
     const teamMembers = context.slots.currentTeamMembers || [];
     const isGroup = context.slots.groupMode || teamMembers.length > 0;
@@ -424,6 +434,11 @@ export class DirectActionHandlerService {
           date: result.details?.date || context.slots.date || '',
           time: result.details?.time || context.slots.time || '',
           playerCount: result.details?.playerCount || playerCount || 4,
+          // UNI-41: 결제진행 카드에 참여자 이름 표시 (확인 카드 제거 대체)
+          participants: (context.slots.currentTeamMembers || []).map((m) => ({
+            userId: m.userId,
+            userName: m.userName,
+          })),
         },
       }],
     };

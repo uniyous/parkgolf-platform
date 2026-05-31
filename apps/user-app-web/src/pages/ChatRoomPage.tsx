@@ -729,15 +729,20 @@ export const ChatRoomPage: React.FC = () => {
                         selectedClubName: clubName,
                       });
                     }}
-                    onSlotSelect={(slotId, time, price, clubId, clubName, gameName) => {
+                    onSlotSelect={(slotId, time, price, clubId, clubName, gameName, paymentMethod) => {
                       setSelectedSlotId(slotId);
+                      // UNI-41: 슬롯 클릭에 결제수단 동반 → 확인 카드 없이 바로 예약 진행
+                      const methodLabel: Record<string, string> = {
+                        card: '카드결제로 예약', dutchpay: '더치페이로 예약', onsite: '현장결제로 예약',
+                      };
                       handleAiFollowUp({
-                        message: `${time} 선택`,
+                        message: paymentMethod ? `${time} ${methodLabel[paymentMethod] || '예약'}` : `${time} 선택`,
                         selectedSlotId: slotId,
                         selectedSlotTime: time,
                         selectedSlotPrice: price,
                         ...(clubId ? { selectedClubId: clubId, selectedClubName: clubName } : {}),
                         ...(gameName ? { selectedGameName: gameName } : {}),
+                        ...(paymentMethod ? { paymentMethod } : {}),
                       });
                     }}
                     onConfirmBooking={(paymentMethod: 'onsite' | 'card' | 'dutchpay') => {

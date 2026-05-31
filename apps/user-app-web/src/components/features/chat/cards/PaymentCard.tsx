@@ -148,7 +148,12 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({ data, roomId, conversa
           </div>
           <div className="flex items-center gap-2 text-white/70">
             <Users className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-            <span>{data.playerCount}명</span>
+            <span>
+              {data.playerCount}명
+              {data.participants && data.participants.length > 0 && (
+                <span className="text-white/50"> · {data.participants.map((p) => p.userName).join(', ')}</span>
+              )}
+            </span>
           </div>
           <div className="flex items-center gap-2 text-white/70">
             <Banknote className="w-3.5 h-3.5 text-blue-400 shrink-0" />
