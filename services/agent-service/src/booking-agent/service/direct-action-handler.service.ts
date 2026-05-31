@@ -14,7 +14,7 @@ import {
 /**
  * UI 액션 클릭에 대한 직접 처리 (LLM 우회).
  * - handleDirectClubSelect:  골프장 선택 → SELECT_MEMBERS
- * - handleDirectSlotSelect:  슬롯 선택(+결제수단) → 바로 예약 / (레거시) CONFIRM_BOOKING
+ * - handleDirectSlotSelect:  슬롯 선택(+결제수단) → 확인카드 없이 바로 예약
  * - handleDirectBooking:     예약 확정 → 결제방법 분기 (현장/카드/더치페이)
  * - handleCancelBooking:     취소 클릭 → 슬롯 초기화
  */
@@ -86,10 +86,9 @@ export class DirectActionHandlerService {
   }
 
   /**
-   * 슬롯 카드 클릭 → 예약 진행.
-   * - 결제수단 동반(UNI-41): 확인 카드 생략하고 바로 예약 (onsite 즉시완료 / card 결제진행 / dutch 정산).
-   * - 결제수단 없음(레거시): CONFIRM_BOOKING 카드.
-   * 멤버는 클럽 선택 시점에 이미 확정 (UNI-21 흐름 변경).
+   * 슬롯 카드 클릭 → 확인 카드 없이 바로 예약 (UNI-41).
+   * 슬롯 카드에서 결제수단 선택(현장/카드/더치) → onsite 즉시완료 / card 결제진행 / dutch 정산.
+   * 채팅방 그룹: 멤버 미선택이면 SELECT_MEMBERS 먼저(슬롯+결제수단 보존 후 재진입).
    * 채팅방 외 1인 진입은 groupMode=false / playerCount=1 default.
    */
   async handleDirectSlotSelect(
@@ -110,6 +109,14 @@ export class DirectActionHandlerService {
     const isChatRoom = !!context.slots.chatRoomId;
     const hasMembers = (context.slots.currentTeamMembers || []).length > 0;
     if (isChatRoom && !hasMembers) {
+      // UNI-41: 슬롯+결제수단을 컨텍스트에 보존 → 멤버 선택 후 redirect에서 바로 예약 (확인카드 생략).
+      this.conversationService.updateSlots(context, {
+        slotId: selectedSlotId,
+        time: selectedSlotTime,
+        slotPrice: selectedSlotPrice,
+        ...(request.selectedGameName && { gameName: request.selectedGameName }),
+        ...(request.paymentMethod && { paymentMethod: request.paymentMethod }),
+      });
       const selectMembers = await this.uiCardHelper.showSelectMembers(
         context,
         '먼저 함께할 멤버를 선택해 주세요! (인원수 확정 후 시간 선택)',
@@ -125,44 +132,14 @@ export class DirectActionHandlerService {
       ...(request.selectedGameName && { gameName: request.selectedGameName }),
     });
 
-    // UNI-41: 슬롯 클릭이 결제수단을 동반하면 예약정보확인 카드를 생략하고 바로 예약 진행
-    // (onsite → 즉시 완료 / card → 결제진행 / dutch → 정산). 결제수단 선택이 슬롯 단계로 이동.
-    if (request.paymentMethod) {
-      return this.handleDirectBooking(context, { ...request, confirmBooking: true });
-    }
-
-    const teamMembers = context.slots.currentTeamMembers || [];
-    const isGroup = context.slots.groupMode || teamMembers.length > 0;
-    const playerCount = isGroup
-      ? teamMembers.length || context.slots.playerCount || 1
-      : context.slots.playerCount || 1;
-    const slotPrice = selectedSlotPrice || context.slots.slotPrice || 0;
-    const price = slotPrice * playerCount;
-
-    const confirmData: Record<string, unknown> = {
-      clubName: context.slots.clubName || '',
-      date: context.slots.date || this.uiCardHelper.getTomorrowDate(),
-      time: selectedSlotTime || context.slots.time || '',
-      playerCount,
-      price,
-      groupMode: isGroup,
-      members: teamMembers.map((m) => ({
-        userId: m.userId,
-        userName: m.userName,
-      })),
-      pricePerPerson: slotPrice,
-    };
-
-    const message = '예약 정보를 확인해 주세요!';
-    this.conversationService.addAssistantMessage(context, message);
-    this.conversationService.setState(context, 'CONFIRMING');
-
-    return {
-      conversationId: context.conversationId,
-      message,
-      state: context.state,
-      actions: [{ type: 'CONFIRM_BOOKING', data: confirmData }],
-    };
+    // UNI-41: 슬롯 클릭 → 예약정보확인 카드 없이 바로 예약 진행.
+    // 결제수단은 슬롯 카드에서 선택(현장/카드/더치). 미동반 시 현장결제 기본값.
+    // (onsite → 즉시 완료 / card → 결제진행 / dutch → 정산)
+    return this.handleDirectBooking(context, {
+      ...request,
+      confirmBooking: true,
+      paymentMethod: request.paymentMethod || context.slots.paymentMethod || 'onsite',
+    });
   }
 
   /**

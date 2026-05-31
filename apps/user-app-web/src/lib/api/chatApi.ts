@@ -63,7 +63,7 @@ export interface MessagesResponse {
 // ============================================
 
 export type ConversationState = 'IDLE' | 'ANALYZING' | 'COLLECTING' | 'SELECTING_MEMBERS' | 'CONFIRMING' | 'BOOKING' | 'SETTLING' | 'TEAM_COMPLETE' | 'COMPLETED' | 'CANCELLED';
-export type ActionType = 'SHOW_CLUBS' | 'SHOW_SLOTS' | 'SHOW_WEATHER' | 'CONFIRM_BOOKING' | 'SELECT_MEMBERS' | 'SHOW_PAYMENT' | 'SPLIT_PAYMENT' | 'SETTLEMENT_STATUS' | 'TEAM_COMPLETE' | 'BOOKING_FAILED' | 'BOOKING_EXPIRED';
+export type ActionType = 'SHOW_CLUBS' | 'SHOW_SLOTS' | 'SHOW_WEATHER' | 'SELECT_MEMBERS' | 'SHOW_PAYMENT' | 'SPLIT_PAYMENT' | 'SETTLEMENT_STATUS' | 'TEAM_COMPLETE' | 'BOOKING_FAILED' | 'BOOKING_EXPIRED';
 
 export interface ChatAction {
   type: ActionType;
@@ -141,20 +141,6 @@ export interface BookingCompleteData {
     playerCount: number;
     totalPrice: number;
   };
-}
-
-export interface ConfirmBookingData {
-  clubName: string;
-  date: string;
-  time: string;
-  playerCount: number;
-  price: number;
-  gameName?: string;
-  // 그룹 예약 시
-  teamNumber?: number;
-  members?: Array<{ userId: number; userName: string }>;
-  pricePerPerson?: number;
-  groupMode?: boolean;
 }
 
 export interface PaymentCardData {

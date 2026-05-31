@@ -19,7 +19,6 @@ import androidx.compose.ui.unit.dp
 import com.parkgolf.app.domain.model.ActionType
 import com.parkgolf.app.domain.model.ChatAction
 import com.parkgolf.app.presentation.feature.chat.components.cards.ClubCard
-import com.parkgolf.app.presentation.feature.chat.components.cards.ConfirmBookingCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.PaymentCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.SelectParticipantsCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.SettlementStatusCard
@@ -42,8 +41,7 @@ fun AiMessageBubble(
     showLabel: Boolean = true,
     currentUserId: Int? = null,
     onClubSelect: ((String, String) -> Unit)? = null,
-    onSlotSelect: ((slotId: String, time: String, price: Int, clubId: String?, clubName: String?, gameName: String?) -> Unit)? = null,
-    onConfirmBooking: ((String) -> Unit)? = null,
+    onSlotSelect: ((slotId: String, time: String, price: Int, clubId: String?, clubName: String?, gameName: String?, paymentMethod: String) -> Unit)? = null,
     onCancelBooking: (() -> Unit)? = null,
     onPaymentComplete: ((Boolean) -> Unit)? = null,
     onRequestPayment: ((orderId: String, orderName: String, amount: Int) -> Unit)? = null,
@@ -144,19 +142,14 @@ fun AiMessageBubble(
                                 )
                                 ActionType.SHOW_SLOTS -> SlotCard(
                                     data = action.data,
-                                    onSelect = { slotId, time, price, gameName ->
+                                    onSelect = { slotId, time, price, gameName, paymentMethod ->
                                         val clubId = action.data["clubId"]?.toString()
                                         val clubName = action.data["clubName"]?.toString()
-                                        onSlotSelect?.invoke(slotId, time, price, clubId, clubName, gameName)
+                                        onSlotSelect?.invoke(slotId, time, price, clubId, clubName, gameName, paymentMethod)
                                     },
                                     selectedSlotId = selectedSlotId
                                 )
                                 ActionType.SHOW_WEATHER -> WeatherCard(data = action.data)
-                                ActionType.CONFIRM_BOOKING -> ConfirmBookingCard(
-                                    data = action.data,
-                                    onConfirm = onConfirmBooking,
-                                    onCancel = onCancelBooking
-                                )
                                 ActionType.SHOW_PAYMENT -> PaymentCard(
                                     data = action.data,
                                     onPaymentComplete = onPaymentComplete,

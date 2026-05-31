@@ -44,7 +44,7 @@ export function guardLlmToolCall(tc: ToolCall): ToolGuardRejection | null {
         success: false,
         error: 'COMMAND_TOOL_NOT_ALLOWED',
         message:
-          '예약/결제 같은 작업은 직접 실행할 수 없습니다. 슬롯 카드(SHOW_SLOTS)로 안내하고, 사용자가 확정 카드(CONFIRM_BOOKING)에서 확정하면 시스템이 처리합니다.',
+          '예약/결제 같은 작업은 직접 실행할 수 없습니다. 슬롯 카드(SHOW_SLOTS)로 안내하고, 사용자가 슬롯 카드에서 결제수단을 고르고 시간을 누르면 시스템이 처리합니다.',
       },
     };
   }
