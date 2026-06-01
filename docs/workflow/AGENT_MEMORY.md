@@ -1,6 +1,8 @@
 # AI 에이전트 메모리 아키텍처 (Hermes 5-Layer)
 
-> 최종 수정일: 2026-05-22 (v0.1)
+> 최종 수정일: 2026-05-31 (v0.3)
+>
+> **적용 상태**: Phase 1(Working Memory → Redis + per-conv lock)·Phase 2(Episodic prefill)·Phase 3(Semantic profile) **적용 완료**. Phase 4(Procedural)·5(Tool Registry)는 미적용(future). §1.2의 "현재 한계"는 적용 전 동기이며 Phase 1~3로 해소됨. 재개(Resume) 계층은 §3.10 참조.
 >
 > **관계**: 본 문서는 `docs/workflow/AGENT.md`(워크플로우)의 **상태 저장/회상 메커니즘**을 담당한다. AGENT.md가 "어떻게 처리하는가"라면, 본 문서는 "무엇을 어디에 기억하고 어떻게 꺼내는가"이다.
 > **연계 문서**: 워크플로우 [`AGENT.md`](./AGENT.md) · UI(카드·시각흐름·컴포넌트) [`AGENT_UI.md`](./AGENT_UI.md) · 컨텍스트 조립 [`AGENT_CONTEXT.md`](./AGENT_CONTEXT.md) · 결제(현장·카드·더치페이) [`AGENT_PAY.md`](./AGENT_PAY.md)
@@ -202,14 +204,17 @@ export interface BookingSlots {
   slotId?: string;
   time?: string;
   date?: string;
-  paymentMethod?: 'onsite' | 'card' | 'dutchpay';
+  gameName?: string;
+  paymentMethod?: 'onsite' | 'card' | 'dutchpay';  // 슬롯 카드에서 선택 (UNI-41)
   groupMode?: boolean;
   currentTeamMembers?: Array<{ userId: number; userName: string; userEmail: string }>;
-  completedTeams?: Array<{ teamNumber: number; bookingId: number; ... }>;
   chatRoomId?: string;
+  bookerId?: number;
+  bookingId?: number;       // 재개 거친 커서 (create_booking 성공 후)
+  confirmed?: boolean;
   latitude?: number;
   longitude?: number;
-  // ... 기타 필드 (기존 chat.dto.ts BookingSlots와 동일)
+  // ... 기타 필드 (기존 chat.dto.ts BookingSlots와 동일). 팀별순차(completedTeams/currentTeamNumber)는 UNI-36으로 제거됨
 }
 ```
 
@@ -232,12 +237,10 @@ export interface BookingSlots {
     "date": "2026-05-23",
     "paymentMethod": "dutchpay",
     "groupMode": true,
-    "currentTeamNumber": 1,
     "currentTeamMembers": [
       { "userId": 5, "userName": "철수", "userEmail": "..." },
       { "userId": 26, "userName": "박영희", "userEmail": "..." }
     ],
-    "completedTeams": [],
     "chatRoomId": "dd97d5b0-...",
     "latitude": 37.5163, "longitude": 127.0204
   },
@@ -438,6 +441,30 @@ spec:
 | 사용자 계정 삭제 | `SCAN agent:conv:{userId}:*` → 일괄 DEL (계정 삭제 정책 반영) |
 | 사용자별 활성 대화 조회 (필요 시) | `SCAN agent:conv:{userId}:*` 또는 선택적 `agent:user:{userId}:active` Set |
 | 동시 같은 conv 요청 (multi-pod) | `lock:conv:{userId}:{convId}` 분산 락 → 직렬 처리 |
+
+---
+
+### 3.10 재개(Resume) — Working Memory + Turn Journal 2단 커서
+
+Working Memory(L1)는 재개의 **거친 커서**다. 여기에 부수효과 멱등을 위한 **세밀 커서**(Turn Journal)를 같은 Redis·같은 TTL로 얹어 재개 계층을 구성한다. 결정 오케스트레이션의 부수효과(saga·결제준비·정산준비·브로드캐스트·확정)는 모두 이 두 커서로 중단/재시도/멀티파드 재라우팅을 이어붙인다. 설계·스텝 표는 [`AGENT.md §14`](./AGENT.md).
+
+| 커서 | 키 | 추적 | 역할 |
+|------|----|------|------|
+| 거친 (coarse) | `agent:conv:{userId}:{convId}` (L1) | `state` · `slots.bookingId` · `confirmed` | "FSM 어디까지" — 재진입 시 복원 지점 |
+| 세밀 (fine) | `agent:journal:{runId}` (Hash, runId=convId) | 스텝별 PENDING / COMMITTED | "이 예약의 어떤 부수효과가 끝났나" — 재실행 스킵 |
+
+- 두 키 모두 **TTL 1800s 동일** → 미완 턴이 영구 잔류하지 않음. 별도 인프라 0.
+- 분산 락(§3.5)이 같은 conv의 동시 요청을 직렬화하므로, 재개 커서 읽기/쓰기 사이의 race는 락이 1차로 막고 저널 멱등이 2차로 막는다(2중 안전망).
+- 효율: 턴 진입 시 저널 `HGETALL` 1회로 커밋 스텝을 배치 로드, `state==COMPLETED` fast-path면 저널·saga 미접근.
+
+```mermaid
+%%{init: {'theme':'base','themeVariables':{'fontSize':'13px'}}}%%
+flowchart LR
+  RE["턴 재진입"] --> COARSE{"L1 state<br/>==COMPLETED?"}
+  COARSE -->|예| FAST["fast-path: slots로<br/>TEAM_COMPLETE 재구성"]
+  COARSE -->|아니오| FINE["Turn Journal HGETALL"]
+  FINE --> STEP["각 스텝: COMMITTED면 스킵·캐시,<br/>아니면 실행 후 COMMITTED 기록"]
+```
 
 ---
 

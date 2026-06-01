@@ -6,7 +6,7 @@ import { REDIS_CLIENT } from '../../common/redis/redis.module';
 /**
  * Turn Journal — 부수효과(Effect) 스텝의 append-only 기록 + resume (UNI-34).
  *
- * 설계: docs/architecture/agent-orchestration.md, UNI-29 Tier 1
+ * 설계: docs/workflow/AGENT.md §14 (재개/Resume), UNI-29 Tier 1
  *
  * - 키: `agent:journal:{runId}` (Redis Hash, field = stepId)
  * - 값: JournalEntry(JSON) — status(PENDING|COMMITTED) + idemKey + result

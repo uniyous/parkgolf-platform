@@ -6,7 +6,7 @@ import { TurnJournalService } from './turn-journal.service';
 /**
  * Effect Executor — 부수효과(saga 시작)의 **유일한 진입점** (UNI-34).
  *
- * 설계: docs/architecture/agent-orchestration.md, UNI-29 Phase 3
+ * 설계: docs/workflow/AGENT.md §14 (재개/Resume), UNI-29 Phase 3
  *
  * 책임:
  *  1. create_booking saga 호출을 한 곳으로 수렴 (direct-action-handler만 호출)
