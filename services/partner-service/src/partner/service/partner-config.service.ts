@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { eq, and, inArray, desc, count } from 'drizzle-orm';
+import { DrizzleService } from '../../db/drizzle.service';
+import { partnerConfigs, gameMappings } from '../../db/schema';
 import { CryptoService } from './crypto.service';
 import { CreatePartnerConfigDto } from '../dto/create-partner-config.dto';
 import { UpdatePartnerConfigDto } from '../dto/update-partner-config.dto';
@@ -10,133 +12,89 @@ export class PartnerConfigService {
   private readonly logger = new Logger(PartnerConfigService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly drizzle: DrizzleService,
     private readonly cryptoService: CryptoService,
   ) {}
 
+  private get db() {
+    return this.drizzle.db;
+  }
+
   async create(dto: CreatePartnerConfigDto) {
-    const config = await this.prisma.partnerConfig.create({
-      data: {
+    const [config] = await this.db
+      .insert(partnerConfigs)
+      .values({
         ...dto,
         responseMapping: dto.responseMapping as object,
         apiKey: this.cryptoService.encrypt(dto.apiKey),
         apiSecret: dto.apiSecret ? this.cryptoService.encrypt(dto.apiSecret) : undefined,
         webhookSecret: dto.webhookSecret ? this.cryptoService.encrypt(dto.webhookSecret) : undefined,
-      },
-    });
-
+      })
+      .returning();
     return this.maskSensitiveFields(config);
   }
 
   async findById(id: number) {
-    const config = await this.prisma.partnerConfig.findUnique({
-      where: { id },
-      include: { gameMappings: true },
-    });
-
-    if (!config) {
-      throw new AppException(Errors.Partner.CONFIG_NOT_FOUND);
-    }
-
+    const config = await this.db.query.partnerConfigs.findFirst({ where: eq(partnerConfigs.id, id), with: { gameMappings: true } });
+    if (!config) throw new AppException(Errors.Partner.CONFIG_NOT_FOUND);
     return this.maskSensitiveFields(config);
   }
 
-  /**
-   * 골프장의 활성 파트너 연동 여부 확인 (에러 없이 boolean 반환)
-   */
   async isPartnerClub(clubId: number): Promise<boolean> {
-    const config = await this.prisma.partnerConfig.findUnique({
-      where: { clubId },
-      select: { isActive: true },
-    });
+    const [config] = await this.db.select({ isActive: partnerConfigs.isActive }).from(partnerConfigs).where(eq(partnerConfigs.clubId, clubId)).limit(1);
     return !!config?.isActive;
   }
 
   async findByClubId(clubId: number) {
-    const config = await this.prisma.partnerConfig.findUnique({
-      where: { clubId },
-      include: { gameMappings: true },
-    });
-
-    if (!config) {
-      throw new AppException(Errors.Partner.CONFIG_NOT_FOUND);
-    }
-
+    const config = await this.db.query.partnerConfigs.findFirst({ where: eq(partnerConfigs.clubId, clubId), with: { gameMappings: true } });
+    if (!config) throw new AppException(Errors.Partner.CONFIG_NOT_FOUND);
     return this.maskSensitiveFields(config);
   }
 
   async findAll(params: { page?: number; limit?: number; companyId?: number; isActive?: boolean }) {
     const page = Number(params.page) || 1;
     const limit = Number(params.limit) || 20;
-    const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = {};
-    if (params.companyId !== undefined) where.companyId = Number(params.companyId);
-    if (params.isActive !== undefined) where.isActive = params.isActive === true || params.isActive === ('true' as unknown);
+    const conds = [];
+    if (params.companyId !== undefined) conds.push(eq(partnerConfigs.companyId, Number(params.companyId)));
+    if (params.isActive !== undefined) conds.push(eq(partnerConfigs.isActive, params.isActive === true || (params.isActive as unknown) === 'true'));
+    const where = conds.length ? and(...conds) : undefined;
 
-    const [items, total] = await Promise.all([
-      this.prisma.partnerConfig.findMany({
+    const [items, totalRows] = await Promise.all([
+      this.db.query.partnerConfigs.findMany({
         where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        include: { gameMappings: { select: { id: true, externalCourseName: true, internalGameId: true } } },
+        orderBy: desc(partnerConfigs.createdAt),
+        limit,
+        offset: (page - 1) * limit,
+        with: { gameMappings: { columns: { id: true, externalCourseName: true, internalGameId: true } } },
       }),
-      this.prisma.partnerConfig.count({ where }),
+      this.db.select({ value: count() }).from(partnerConfigs).where(where),
     ]);
 
-    return {
-      data: items.map((item) => this.maskSensitiveFields(item)),
-      total,
-      page,
-      limit,
-    };
+    return { data: items.map((item) => this.maskSensitiveFields(item)), total: totalRows[0].value, page, limit };
   }
 
   async update(dto: UpdatePartnerConfigDto) {
     const { id, ...updateData } = dto;
 
-    // 암호화 필드 처리
-    const data: Record<string, unknown> = { ...updateData };
-    if (updateData.apiKey) {
-      data.apiKey = this.cryptoService.encrypt(updateData.apiKey);
-    }
-    if (updateData.apiSecret) {
-      data.apiSecret = this.cryptoService.encrypt(updateData.apiSecret);
-    }
-    if (updateData.webhookSecret) {
-      data.webhookSecret = this.cryptoService.encrypt(updateData.webhookSecret);
-    }
-    if (updateData.responseMapping) {
-      data.responseMapping = updateData.responseMapping as object;
-    }
+    const data: Partial<typeof partnerConfigs.$inferInsert> = { ...updateData };
+    if (updateData.apiKey) data.apiKey = this.cryptoService.encrypt(updateData.apiKey);
+    if (updateData.apiSecret) data.apiSecret = this.cryptoService.encrypt(updateData.apiSecret);
+    if (updateData.webhookSecret) data.webhookSecret = this.cryptoService.encrypt(updateData.webhookSecret);
+    if (updateData.responseMapping) data.responseMapping = updateData.responseMapping as object;
 
-    const config = await this.prisma.partnerConfig.update({
-      where: { id },
-      data,
-    });
-
+    const [config] = await this.db.update(partnerConfigs).set(data).where(eq(partnerConfigs.id, id)).returning();
     return this.maskSensitiveFields(config);
   }
 
   async delete(id: number) {
-    await this.prisma.partnerConfig.delete({ where: { id } });
+    await this.db.delete(partnerConfigs).where(eq(partnerConfigs.id, id));
     return { deleted: true };
   }
 
-  /**
-   * 내부 호출용: 복호화된 설정 반환 (서비스 간 사용)
-   */
   async findByIdWithDecryptedKeys(id: number) {
-    const config = await this.prisma.partnerConfig.findUnique({
-      where: { id },
-      include: { gameMappings: true },
-    });
-
-    if (!config) {
-      throw new AppException(Errors.Partner.CONFIG_NOT_FOUND);
-    }
-
+    const config = await this.db.query.partnerConfigs.findFirst({ where: eq(partnerConfigs.id, id), with: { gameMappings: true } });
+    if (!config) throw new AppException(Errors.Partner.CONFIG_NOT_FOUND);
     return {
       ...config,
       apiKey: this.cryptoService.decrypt(config.apiKey),
@@ -145,30 +103,15 @@ export class PartnerConfigService {
     };
   }
 
-  /**
-   * 활성 파트너 목록 (동기화용)
-   */
   async findActiveForSync(syncType: 'slot' | 'booking') {
-    const where: Record<string, unknown> = {
-      isActive: true,
-      syncMode: { in: ['API_POLLING', 'HYBRID'] },
-    };
-
-    if (syncType === 'slot') {
-      where.slotSyncEnabled = true;
-    } else {
-      where.bookingSyncEnabled = true;
-    }
-
-    return this.prisma.partnerConfig.findMany({
-      where,
-      include: { gameMappings: { where: { isActive: true } } },
+    const conds = [eq(partnerConfigs.isActive, true), inArray(partnerConfigs.syncMode, ['API_POLLING', 'HYBRID'])];
+    conds.push(syncType === 'slot' ? eq(partnerConfigs.slotSyncEnabled, true) : eq(partnerConfigs.bookingSyncEnabled, true));
+    return this.db.query.partnerConfigs.findMany({
+      where: and(...conds),
+      with: { gameMappings: { where: eq(gameMappings.isActive, true) } },
     });
   }
 
-  /**
-   * 민감 필드 마스킹 (외부 응답용)
-   */
   private maskSensitiveFields(config: Record<string, unknown>) {
     return {
       ...config,
