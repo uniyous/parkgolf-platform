@@ -1,24 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../../../prisma/prisma.service';
-import { DeliveryChannelType, Notification, NotificationType } from '@prisma/client';
+import { eq, and, count, gte, desc, sql } from 'drizzle-orm';
+import { DrizzleService } from '../../db/drizzle.service';
+import { notifications, deadLetterNotifications, type Notification } from '../../db/schema';
+import { NotificationType } from '../../contracts/enums';
 import { AppException } from '../../common/exceptions/app.exception';
 import { Errors } from '../../common/exceptions/catalog/error-catalog';
 
 const DEFAULT_MAX_RETRIES = 3;
-
-interface DeadLetterNotification {
-  id: number;
-  originalId: number;
-  userId: string;
-  type: NotificationType;
-  title: string;
-  message: string;
-  data: unknown;
-  deliveryChannel: DeliveryChannelType | null;
-  failureReason: string;
-  retryCount: number;
-  movedAt: Date;
-}
 
 interface DeadLetterStats {
   total: number;
@@ -32,150 +20,89 @@ interface DeadLetterStats {
 export class DeadLetterService {
   private readonly logger = new Logger(DeadLetterService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
 
-  /**
-   * 영구 실패한 알림을 Dead Letter Queue로 이동
-   */
+  private get db() {
+    return this.drizzle.db;
+  }
+
   async moveToDeadLetter(notification: Notification, reason: string): Promise<void> {
-    this.logger.warn(
-      `Moving notification ${notification.id} to dead letter queue. Reason: ${reason}`,
-    );
-
+    this.logger.warn(`Moving notification ${notification.id} to dead letter queue. Reason: ${reason}`);
     try {
-      await this.prisma.$transaction([
-        // Dead Letter Queue에 추가
-        this.prisma.deadLetterNotification.create({
-          data: {
-            originalId: notification.id,
-            userId: notification.userId,
-            type: notification.type,
-            title: notification.title,
-            message: notification.message,
-            data: notification.data,
-            deliveryChannel: notification.deliveryChannel,
-            failureReason: reason,
-            retryCount: notification.retryCount,
-          },
-        }),
-        // 원본 알림 삭제
-        this.prisma.notification.delete({
-          where: { id: notification.id },
-        }),
-      ]);
-
+      await this.db.transaction(async (tx) => {
+        await tx.insert(deadLetterNotifications).values({
+          originalId: notification.id,
+          userId: notification.userId,
+          type: notification.type,
+          title: notification.title,
+          message: notification.message,
+          data: notification.data,
+          deliveryChannel: notification.deliveryChannel,
+          failureReason: reason,
+          retryCount: notification.retryCount,
+        });
+        await tx.delete(notifications).where(eq(notifications.id, notification.id));
+      });
       this.logger.log(`Notification ${notification.id} moved to dead letter queue`);
     } catch (error) {
-      this.logger.error(`Failed to move notification ${notification.id} to dead letter: ${error.message}`);
+      this.logger.error(`Failed to move notification ${notification.id} to dead letter: ${(error as Error).message}`);
       throw error;
     }
   }
 
-  /**
-   * Dead Letter Queue에서 알림 목록 조회
-   */
-  async findAll(options?: {
-    userId?: string;
-    type?: NotificationType;
-    page?: number;
-    limit?: number;
-  }): Promise<{
-    items: DeadLetterNotification[];
-    total: number;
-    page: number;
-    totalPages: number;
-  }> {
+  async findAll(options?: { userId?: string; type?: NotificationType; page?: number; limit?: number }) {
     const { userId, type, page = 1, limit = 20 } = options || {};
-    const skip = (page - 1) * limit;
+    const conds = [];
+    if (userId) conds.push(eq(deadLetterNotifications.userId, userId));
+    if (type) conds.push(eq(deadLetterNotifications.type, type));
+    const where = conds.length ? and(...conds) : undefined;
 
-    const where: Record<string, unknown> = {};
-    if (userId) where.userId = userId;
-    if (type) where.type = type;
-
-    const [items, total] = await Promise.all([
-      this.prisma.deadLetterNotification.findMany({
-        where,
-        orderBy: { movedAt: 'desc' },
-        skip,
-        take: limit,
-      }),
-      this.prisma.deadLetterNotification.count({ where }),
+    const [items, totalRows] = await Promise.all([
+      this.db.select().from(deadLetterNotifications).where(where).orderBy(desc(deadLetterNotifications.movedAt)).limit(limit).offset((page - 1) * limit),
+      this.db.select({ value: count() }).from(deadLetterNotifications).where(where),
     ]);
-
-    return {
-      items: items as DeadLetterNotification[],
-      total,
-      page,
-      totalPages: Math.ceil(total / limit),
-    };
+    const total = totalRows[0].value;
+    return { items, total, page, totalPages: Math.ceil(total / limit) };
   }
 
-  /**
-   * Dead Letter Queue 통계 조회
-   */
   async getStats(): Promise<DeadLetterStats> {
     const now = new Date();
     const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    const [total, lastDay, lastWeek, byType] = await Promise.all([
-      this.prisma.deadLetterNotification.count(),
-      this.prisma.deadLetterNotification.count({
-        where: { movedAt: { gte: oneDayAgo } },
-      }),
-      this.prisma.deadLetterNotification.count({
-        where: { movedAt: { gte: oneWeekAgo } },
-      }),
-      this.prisma.deadLetterNotification.groupBy({
-        by: ['type'],
-        _count: { type: true },
-      }),
+    const [totalRows, lastDayRows, lastWeekRows, byType] = await Promise.all([
+      this.db.select({ value: count() }).from(deadLetterNotifications),
+      this.db.select({ value: count() }).from(deadLetterNotifications).where(gte(deadLetterNotifications.movedAt, oneDayAgo)),
+      this.db.select({ value: count() }).from(deadLetterNotifications).where(gte(deadLetterNotifications.movedAt, oneWeekAgo)),
+      this.db.select({ type: deadLetterNotifications.type, count: count() }).from(deadLetterNotifications).groupBy(deadLetterNotifications.type),
     ]);
 
     const typeStats: Record<string, number> = {};
-    for (const item of byType) {
-      typeStats[item.type] = item._count.type;
-    }
+    for (const item of byType) typeStats[item.type] = item.count;
 
-    // Get failure reasons
-    const reasonGroups = await this.prisma.deadLetterNotification.groupBy({
-      by: ['failureReason'],
-      _count: { failureReason: true },
-      orderBy: { _count: { failureReason: 'desc' } },
-      take: 10,
-    });
+    const reasonGroups = await this.db
+      .select({ failureReason: deadLetterNotifications.failureReason, count: count() })
+      .from(deadLetterNotifications)
+      .groupBy(deadLetterNotifications.failureReason)
+      .orderBy(sql`count(*) DESC`)
+      .limit(10);
 
     const reasonStats: Record<string, number> = {};
-    for (const item of reasonGroups) {
-      reasonStats[item.failureReason] = item._count.failureReason;
-    }
+    for (const item of reasonGroups) reasonStats[item.failureReason] = item.count;
 
-    return {
-      total,
-      byType: typeStats,
-      byReason: reasonStats,
-      lastDay,
-      lastWeek,
-    };
+    return { total: totalRows[0].value, byType: typeStats, byReason: reasonStats, lastDay: lastDayRows[0].value, lastWeek: lastWeekRows[0].value };
   }
 
-  /**
-   * Dead Letter Queue에서 알림 재시도
-   * 관리자가 수동으로 재시도할 때 사용
-   */
   async retry(deadLetterId: number): Promise<Notification> {
-    const deadLetter = await this.prisma.deadLetterNotification.findUnique({
-      where: { id: deadLetterId },
-    });
-
+    const [deadLetter] = await this.db.select().from(deadLetterNotifications).where(eq(deadLetterNotifications.id, deadLetterId)).limit(1);
     if (!deadLetter) {
       throw new AppException(Errors.Notification.NOT_FOUND, `Dead letter notification ${deadLetterId} not found`);
     }
 
-    // 새 알림 생성 후 Dead Letter에서 삭제
-    const [notification] = await this.prisma.$transaction([
-      this.prisma.notification.create({
-        data: {
+    const notification = await this.db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(notifications)
+        .values({
           userId: deadLetter.userId,
           type: deadLetter.type,
           title: deadLetter.title,
@@ -184,31 +111,23 @@ export class DeadLetterService {
           deliveryChannel: deadLetter.deliveryChannel,
           retryCount: 0,
           maxRetries: DEFAULT_MAX_RETRIES,
-        },
-      }),
-      this.prisma.deadLetterNotification.delete({
-        where: { id: deadLetterId },
-      }),
-    ]);
+        })
+        .returning();
+      await tx.delete(deadLetterNotifications).where(eq(deadLetterNotifications.id, deadLetterId));
+      return created;
+    });
 
     this.logger.log(`Dead letter ${deadLetterId} restored as notification ${notification.id}`);
-
     return notification;
   }
 
-  /**
-   * Dead Letter Queue 정리 (오래된 항목 삭제)
-   */
-  async cleanup(retentionDays: number = 30): Promise<number> {
+  async cleanup(retentionDays = 30): Promise<number> {
     const threshold = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
-
-    const result = await this.prisma.deadLetterNotification.deleteMany({
-      where: {
-        movedAt: { lt: threshold },
-      },
-    });
-
-    this.logger.log(`Cleaned up ${result.count} old dead letter notifications`);
-    return result.count;
+    const rows = await this.db
+      .delete(deadLetterNotifications)
+      .where(sql`${deadLetterNotifications.movedAt} < ${threshold}`)
+      .returning({ id: deadLetterNotifications.id });
+    this.logger.log(`Cleaned up ${rows.length} old dead letter notifications`);
+    return rows.length;
   }
 }

@@ -1,8 +1,10 @@
 import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { eq, and, or, count, desc, lt, lte, gte, isNull, sql } from 'drizzle-orm';
+import { DrizzleService } from '../../db/drizzle.service';
+import { notifications, notificationSettings, type Notification } from '../../db/schema';
+import { NotificationStatus, NotificationType } from '../../contracts/enums';
 import { CreateNotificationDto, UpdateNotificationDto, NotificationQueryDto, SendNotificationDto } from '../dto/notification.dto';
-import { Notification, NotificationStatus, NotificationType } from '@prisma/client';
 import { AppException } from '../../common/exceptions/app.exception';
 import { Errors } from '../../common/exceptions/catalog/error-catalog';
 
@@ -13,32 +15,39 @@ export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly drizzle: DrizzleService,
     @Optional() @Inject('NOTIFICATION_GATEWAY') private readonly notificationGateway?: ClientProxy,
   ) {}
 
-  async create(createNotificationDto: CreateNotificationDto): Promise<Notification> {
-    this.logger.log(`Creating notification for user: ${createNotificationDto.userId}`);
+  private get db() {
+    return this.drizzle.db;
+  }
 
-    const notification = await this.prisma.notification.create({
-      data: createNotificationDto,
-    });
+  async create(dto: CreateNotificationDto): Promise<Notification> {
+    this.logger.log(`Creating notification for user: ${dto.userId}`);
 
-    // Emit real-time notification event to chat-gateway
+    const [notification] = await this.db
+      .insert(notifications)
+      .values({
+        userId: dto.userId,
+        type: dto.type,
+        title: dto.title,
+        message: dto.message,
+        data: dto.data,
+        deliveryChannel: dto.deliveryChannel,
+        scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : undefined,
+      })
+      .returning();
+
     this.emitNotificationCreated(notification);
-
     return notification;
   }
 
-  /**
-   * Emit notification.created event to chat-gateway for real-time delivery
-   */
   private emitNotificationCreated(notification: Notification): void {
     if (!this.notificationGateway) {
       this.logger.debug('NOTIFICATION_GATEWAY not available, skipping real-time delivery');
       return;
     }
-
     try {
       this.notificationGateway.emit('notification.created', {
         id: notification.id,
@@ -56,131 +65,79 @@ export class NotificationService {
     }
   }
 
-  async findAll(userId: string, query: NotificationQueryDto): Promise<{
-    notifications: Notification[];
-    total: number;
-    page: number;
-    totalPages: number;
-  }> {
+  async findAll(userId: string, query: NotificationQueryDto): Promise<{ notifications: Notification[]; total: number; page: number; totalPages: number }> {
     const { page = 1, limit = 20, type, status, unreadOnly } = query;
-    const skip = (page - 1) * limit;
+    const conds = [eq(notifications.userId, userId)];
+    if (type) conds.push(eq(notifications.type, type));
+    if (status) conds.push(eq(notifications.status, status));
+    if (unreadOnly) conds.push(isNull(notifications.readAt));
+    const where = and(...conds);
 
-    const where: any = { userId };
-
-    if (type) where.type = type;
-    if (status) where.status = status;
-    if (unreadOnly) where.readAt = null;
-
-    const [notifications, total] = await Promise.all([
-      this.prisma.notification.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limit,
-      }),
-      this.prisma.notification.count({ where }),
+    const [rows, totalRows] = await Promise.all([
+      this.db.select().from(notifications).where(where).orderBy(desc(notifications.createdAt)).limit(limit).offset((page - 1) * limit),
+      this.db.select({ value: count() }).from(notifications).where(where),
     ]);
-
-    return {
-      notifications,
-      total,
-      page,
-      totalPages: Math.ceil(total / limit),
-    };
+    const total = totalRows[0].value;
+    return { notifications: rows, total, page, totalPages: Math.ceil(total / limit) };
   }
 
-  async findAllAdmin(query: { page?: number; limit?: number; type?: string; status?: string; userId?: string }): Promise<{
-    notifications: Notification[];
-    total: number;
-    page: number;
-    totalPages: number;
-  }> {
-    const { page = 1, limit = 20, type, status, userId } = query;
-    const pageNum = Number(page) || 1;
-    const limitNum = Number(limit) || 20;
-    const skip = (pageNum - 1) * limitNum;
+  async findAllAdmin(query: { page?: number; limit?: number; type?: string; status?: string; userId?: string }): Promise<{ notifications: Notification[]; total: number; page: number; totalPages: number }> {
+    const pageNum = Number(query.page) || 1;
+    const limitNum = Number(query.limit) || 20;
+    const conds = [];
+    if (query.type) conds.push(eq(notifications.type, query.type as NotificationType));
+    if (query.status) conds.push(eq(notifications.status, query.status as NotificationStatus));
+    if (query.userId) conds.push(eq(notifications.userId, query.userId));
+    const where = conds.length ? and(...conds) : undefined;
 
-    const where: Record<string, unknown> = {};
-    if (type) where.type = type;
-    if (status) where.status = status;
-    if (userId) where.userId = userId;
-
-    const [notifications, total] = await Promise.all([
-      this.prisma.notification.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limitNum,
-      }),
-      this.prisma.notification.count({ where }),
+    const [rows, totalRows] = await Promise.all([
+      this.db.select().from(notifications).where(where).orderBy(desc(notifications.createdAt)).limit(limitNum).offset((pageNum - 1) * limitNum),
+      this.db.select({ value: count() }).from(notifications).where(where),
     ]);
-
-    return {
-      notifications,
-      total,
-      page: pageNum,
-      totalPages: Math.ceil(total / limitNum),
-    };
+    const total = totalRows[0].value;
+    return { notifications: rows, total, page: pageNum, totalPages: Math.ceil(total / limitNum) };
   }
 
   async findOne(id: number, userId: string): Promise<Notification> {
-    const notification = await this.prisma.notification.findFirst({
-      where: { id, userId },
-    });
-
-    if (!notification) {
-      throw new AppException(Errors.Notification.NOT_FOUND);
-    }
-
+    const [notification] = await this.db
+      .select()
+      .from(notifications)
+      .where(and(eq(notifications.id, id), eq(notifications.userId, userId)))
+      .limit(1);
+    if (!notification) throw new AppException(Errors.Notification.NOT_FOUND);
     return notification;
   }
 
-  async update(id: number, userId: string, updateNotificationDto: UpdateNotificationDto): Promise<Notification> {
-    await this.findOne(id, userId); // Check if exists and belongs to user
-
-    return this.prisma.notification.update({
-      where: { id },
-      data: updateNotificationDto,
-    });
+  async update(id: number, userId: string, dto: UpdateNotificationDto): Promise<Notification> {
+    await this.findOne(id, userId);
+    const set: { status?: NotificationStatus; readAt?: Date } = {};
+    if (dto.status !== undefined) set.status = dto.status;
+    if (dto.readAt !== undefined) set.readAt = new Date(dto.readAt);
+    const [row] = await this.db.update(notifications).set(set).where(eq(notifications.id, id)).returning();
+    return row;
   }
 
   async markAsRead(id: number, userId: string): Promise<Notification> {
-    return this.update(id, userId, {
-      status: NotificationStatus.READ,
-      readAt: new Date().toISOString(),
-    });
+    return this.update(id, userId, { status: NotificationStatus.READ, readAt: new Date().toISOString() });
   }
 
   async markAllAsRead(userId: string): Promise<{ count: number }> {
-    const result = await this.prisma.notification.updateMany({
-      where: {
-        userId,
-        readAt: null,
-      },
-      data: {
-        status: NotificationStatus.READ,
-        readAt: new Date(),
-      },
-    });
-
-    return { count: result.count };
+    const rows = await this.db
+      .update(notifications)
+      .set({ status: NotificationStatus.READ, readAt: new Date() })
+      .where(and(eq(notifications.userId, userId), isNull(notifications.readAt)))
+      .returning({ id: notifications.id });
+    return { count: rows.length };
   }
 
   async remove(id: number, userId: string): Promise<void> {
-    await this.findOne(id, userId); // Check if exists and belongs to user
-
-    await this.prisma.notification.delete({
-      where: { id },
-    });
+    await this.findOne(id, userId);
+    await this.db.delete(notifications).where(eq(notifications.id, id));
   }
 
   async getUnreadCount(userId: string): Promise<number> {
-    return this.prisma.notification.count({
-      where: {
-        userId,
-        readAt: null,
-      },
-    });
+    const [row] = await this.db.select({ value: count() }).from(notifications).where(and(eq(notifications.userId, userId), isNull(notifications.readAt)));
+    return row.value;
   }
 
   // 관리자 대시보드 - 알림 통계
@@ -188,23 +145,14 @@ export class NotificationService {
     const startDate = new Date(dateRange.startDate);
     const endDate = new Date(dateRange.endDate);
     endDate.setHours(23, 59, 59, 999);
-
-    const dateFilter = { createdAt: { gte: startDate, lte: endDate } };
+    const where = and(gte(notifications.createdAt, startDate), lte(notifications.createdAt, endDate));
 
     const [statusGroups, typeGroups] = await Promise.all([
-      this.prisma.notification.groupBy({
-        by: ['status'],
-        where: dateFilter,
-        _count: true,
-      }),
-      this.prisma.notification.groupBy({
-        by: ['type'],
-        where: dateFilter,
-        _count: true,
-      }),
+      this.db.select({ status: notifications.status, count: count() }).from(notifications).where(where).groupBy(notifications.status),
+      this.db.select({ type: notifications.type, count: count() }).from(notifications).where(where).groupBy(notifications.type),
     ]);
 
-    const statusMap = new Map(statusGroups.map((g) => [g.status, g._count]));
+    const statusMap = new Map(statusGroups.map((g) => [g.status, g.count]));
     const pending = statusMap.get(NotificationStatus.PENDING) ?? 0;
     const sent = statusMap.get(NotificationStatus.SENT) ?? 0;
     const failed = statusMap.get(NotificationStatus.FAILED) ?? 0;
@@ -212,166 +160,112 @@ export class NotificationService {
 
     const total = pending + sent + failed + read;
     const delivered = sent + read;
-    const deliveryRate = total > 0 ? delivered / total : 0;
-    const readRate = delivered > 0 ? read / delivered : 0;
-
     return {
       totalNotifications: total,
       sentNotifications: sent,
       deliveredNotifications: delivered,
       failedNotifications: failed,
       readNotifications: read,
-      notificationsByType: typeGroups.map((g) => ({ type: g.type, count: g._count })),
-      notificationsByStatus: statusGroups.map((g) => ({ status: g.status, count: g._count })),
-      deliveryRate,
-      readRate,
+      notificationsByType: typeGroups.map((g) => ({ type: g.type, count: g.count })),
+      notificationsByStatus: statusGroups.map((g) => ({ status: g.status, count: g.count })),
+      deliveryRate: total > 0 ? delivered / total : 0,
+      readRate: delivered > 0 ? read / delivered : 0,
     };
   }
 
-  async sendToMultipleUsers(sendNotificationDto: SendNotificationDto): Promise<Notification[]> {
-    const { userIds, ...notificationData } = sendNotificationDto;
-    
+  async sendToMultipleUsers(dto: SendNotificationDto): Promise<Notification[]> {
+    const { userIds, ...notificationData } = dto;
     this.logger.log(`Sending notification to ${userIds.length} users`);
-
-    const notifications = await Promise.all(
-      userIds.map(userId =>
-        this.create({
-          ...notificationData,
-          userId,
-        })
-      )
-    );
-
-    return notifications;
+    return Promise.all(userIds.map((userId) => this.create({ ...notificationData, userId })));
   }
 
   async findScheduledNotifications(): Promise<Notification[]> {
-    return this.prisma.notification.findMany({
-      where: {
-        scheduledAt: {
-          lte: new Date(),
-        },
-        status: NotificationStatus.PENDING,
-      },
-    });
+    return this.db
+      .select()
+      .from(notifications)
+      .where(and(lte(notifications.scheduledAt, new Date()), eq(notifications.status, NotificationStatus.PENDING)));
   }
 
   async markAsSent(id: number): Promise<Notification> {
-    return this.prisma.notification.update({
-      where: { id },
-      data: {
-        status: NotificationStatus.SENT,
-        sentAt: new Date(),
-      },
-    });
+    const [row] = await this.db.update(notifications).set({ status: NotificationStatus.SENT, sentAt: new Date() }).where(eq(notifications.id, id)).returning();
+    return row;
   }
 
   async markAsFailed(id: number): Promise<Notification> {
-    return this.prisma.notification.update({
-      where: { id },
-      data: {
-        status: NotificationStatus.FAILED,
-        retryCount: {
-          increment: 1,
-        },
-      },
-    });
+    const [row] = await this.db
+      .update(notifications)
+      .set({ status: NotificationStatus.FAILED, retryCount: sql`${notifications.retryCount} + 1` })
+      .where(eq(notifications.id, id))
+      .returning();
+    return row;
   }
 
-  async dismissByType(userId: string, type: NotificationType, dataFilter?: Record<string, any>): Promise<{ count: number }> {
-    const where: any = { userId, type, readAt: null };
+  async dismissByType(userId: string, type: NotificationType, dataFilter?: Record<string, unknown>): Promise<{ count: number }> {
+    const conds = [eq(notifications.userId, userId), eq(notifications.type, type), isNull(notifications.readAt)];
     if (dataFilter) {
       const entries = Object.entries(dataFilter);
       if (entries.length === 1) {
         const [key, value] = entries[0];
-        where.data = { path: [key], equals: value };
+        conds.push(sql`${notifications.data}->>${key} = ${String(value)}`);
       }
     }
-    const result = await this.prisma.notification.updateMany({
-      where,
-      data: { status: NotificationStatus.READ, readAt: new Date() },
-    });
-    return { count: result.count };
+    const rows = await this.db
+      .update(notifications)
+      .set({ status: NotificationStatus.READ, readAt: new Date() })
+      .where(and(...conds))
+      .returning({ id: notifications.id });
+    return { count: rows.length };
   }
 
   async deleteExpired(type: NotificationType, before: Date): Promise<number> {
-    const result = await this.prisma.notification.deleteMany({
-      where: { type, status: NotificationStatus.READ, createdAt: { lt: before } },
-    });
-    return result.count;
+    const rows = await this.db
+      .delete(notifications)
+      .where(and(eq(notifications.type, type), eq(notifications.status, NotificationStatus.READ), lt(notifications.createdAt, before)))
+      .returning({ id: notifications.id });
+    return rows.length;
   }
 
   async markExpiredAsRead(type: NotificationType, before: Date): Promise<number> {
-    const result = await this.prisma.notification.updateMany({
-      where: { type, readAt: null, createdAt: { lt: before } },
-      data: { status: NotificationStatus.READ, readAt: new Date() },
-    });
-    return result.count;
+    const rows = await this.db
+      .update(notifications)
+      .set({ status: NotificationStatus.READ, readAt: new Date() })
+      .where(and(eq(notifications.type, type), isNull(notifications.readAt), lt(notifications.createdAt, before)))
+      .returning({ id: notifications.id });
+    return rows.length;
   }
 
   async findFailedNotificationsForRetry(): Promise<Notification[]> {
-    return this.prisma.notification.findMany({
-      where: {
-        status: NotificationStatus.FAILED,
-        retryCount: {
-          lt: DEFAULT_MAX_RETRIES,
-        },
-      },
-    });
+    return this.db
+      .select()
+      .from(notifications)
+      .where(and(eq(notifications.status, NotificationStatus.FAILED), lt(notifications.retryCount, DEFAULT_MAX_RETRIES)));
   }
 
-  /**
-   * 지수 백오프를 적용한 재시도 대상 알림 조회
-   * retryCount에 따라 다음 재시도 시간이 계산됨:
-   * - retryCount 1: 1분 후
-   * - retryCount 2: 4분 후 (2^2)
-   * - retryCount 3: 8분 후 (2^3)
-   */
   async findFailedNotificationsForRetryWithBackoff(): Promise<Notification[]> {
     const now = new Date();
-
-    // 재시도 대상 알림 조회 (maxRetries 미만 && 백오프 시간 경과)
-    const notifications = await this.prisma.notification.findMany({
-      where: {
-        status: NotificationStatus.FAILED,
-        retryCount: {
-          lt: DEFAULT_MAX_RETRIES,
-        },
-      },
-    });
-
-    // 지수 백오프 필터링
-    return notifications.filter((notification) => {
-      const backoffMinutes = Math.pow(2, notification.retryCount); // 2^retryCount 분
-      const nextRetryTime = new Date(
-        notification.updatedAt.getTime() + backoffMinutes * 60 * 1000,
-      );
+    const rows = await this.db
+      .select()
+      .from(notifications)
+      .where(and(eq(notifications.status, NotificationStatus.FAILED), lt(notifications.retryCount, DEFAULT_MAX_RETRIES)));
+    return rows.filter((n) => {
+      const backoffMinutes = Math.pow(2, n.retryCount);
+      const nextRetryTime = new Date(n.updatedAt.getTime() + backoffMinutes * 60 * 1000);
       return now >= nextRetryTime;
     });
   }
 
-  /**
-   * 최대 재시도 횟수 초과한 알림 조회 (DLQ 이동 대상)
-   */
   async findPermanentlyFailedNotifications(): Promise<Notification[]> {
-    return this.prisma.notification.findMany({
-      where: {
-        status: NotificationStatus.FAILED,
-        retryCount: {
-          gte: DEFAULT_MAX_RETRIES,
-        },
-      },
-    });
+    return this.db
+      .select()
+      .from(notifications)
+      .where(and(eq(notifications.status, NotificationStatus.FAILED), gte(notifications.retryCount, DEFAULT_MAX_RETRIES)));
   }
 
-  /**
-   * 사용자 탈퇴 시 알림 및 설정 삭제
-   */
   async deleteAllByUser(userId: string): Promise<void> {
-    await this.prisma.$transaction([
-      this.prisma.notification.deleteMany({ where: { userId } }),
-      this.prisma.notificationSettings.deleteMany({ where: { userId } }),
-    ]);
+    await this.db.transaction(async (tx) => {
+      await tx.delete(notifications).where(eq(notifications.userId, userId));
+      await tx.delete(notificationSettings).where(eq(notificationSettings.userId, userId));
+    });
     this.logger.log(`Deleted all notifications and settings for user ${userId}`);
   }
 }

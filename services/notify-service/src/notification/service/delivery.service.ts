@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { DeliveryChannelType, Notification } from '@prisma/client';
+import { DeliveryChannelType } from '../../contracts/enums';
+import type { Notification } from '../../db/schema';
 import { NotificationService } from './notification.service';
 import { PreferencesService } from './preferences.service';
 import { PushService } from './push.service';

@@ -3,7 +3,7 @@ import { EventPattern, MessagePattern, Payload } from '@nestjs/microservices';
 import { NotificationService } from './service/notification.service';
 import { TemplateService } from './service/template.service';
 import { DeliveryService } from './service/delivery.service';
-import { NotificationType, DeliveryChannelType, Prisma } from '@prisma/client';
+import { NotificationType, DeliveryChannelType, JsonValue } from '../contracts/enums';
 import { NatsResponse } from '../common/types';
 
 /** BFF wraps payload as { data: ... } — unwrap if present */
@@ -88,7 +88,7 @@ interface SendNotificationPayload {
   type: NotificationType;
   title: string;
   message: string;
-  data?: Prisma.InputJsonValue;
+  data?: JsonValue;
   deliveryChannel?: DeliveryChannelType;
   scheduledAt?: string;
 }

@@ -6,10 +6,9 @@ import { SchedulerService } from './service/scheduler.service';
 import { DeliveryService } from './service/delivery.service';
 import { PushService } from './service/push.service';
 import { DeadLetterService } from './service/dead-letter.service';
-import { PrismaModule } from '../../prisma/prisma.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [],
   controllers: [],
   providers: [
     NotificationService,
