@@ -1,17 +1,12 @@
 import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
-import { PrismaService } from '../../../prisma/prisma.service';
-import { BookingStatus, OutboxStatus, TimeSlotCacheStatus, ParticipantStatus, ParticipantRole, TeamSelectionStatus } from '@prisma/client';
-import {
-  UpdateBookingDto,
-  BookingResponseDto,
-  SearchBookingDto,
-  BookingWithRelations,
-  GameTimeSlotAvailabilityDto,
-} from '../dto/booking.dto';
+import { eq, and, or, inArray, gte, lte, lt, count, sum, asc, desc, sql, type SQL } from 'drizzle-orm';
+import { DrizzleService, type DrizzleTx } from '../../db/drizzle.service';
+import { bookings, bookingHistory, bookingParticipants, gameCache, gameTimeSlotCache, bookingOutboxEvents, teamSelections } from '../../db/schema';
+import { BookingStatus, ParticipantStatus, ParticipantRole, TimeSlotCacheStatus, TeamSelectionStatus } from '../../contracts/enums';
+import { UpdateBookingDto, BookingResponseDto, SearchBookingDto, GameTimeSlotAvailabilityDto } from '../dto/booking.dto';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout, catchError, of } from 'rxjs';
 import { randomUUID } from 'crypto';
-import { NATS_TIMEOUTS } from '../../common/constants';
 import { OutboxProcessorService } from './outbox-processor.service';
 import { AppException } from '../../common/exceptions/app.exception';
 import { Errors } from '../../common/exceptions/catalog/error-catalog';
@@ -21,7 +16,7 @@ export class BookingService {
   private readonly logger = new Logger(BookingService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly drizzle: DrizzleService,
     private readonly outboxProcessor: OutboxProcessorService,
     @Optional() @Inject('NOTIFICATION_SERVICE') private readonly notificationPublisher?: ClientProxy,
     @Optional() @Inject('CLUB_SERVICE') private readonly courseServiceClient?: ClientProxy,
@@ -29,698 +24,279 @@ export class BookingService {
     @Optional() @Inject('CHAT_SERVICE') private readonly chatClient?: ClientProxy,
   ) {}
 
-  // 예약번호 생성 함수 - UUID 기반으로 예측 불가능하고 충돌 없는 번호 생성
+  private get db() {
+    return this.drizzle.db;
+  }
+
   private generateBookingNumber(): string {
     const uuid = randomUUID().replace(/-/g, '').toUpperCase();
     return `BK-${uuid.slice(0, 8)}-${uuid.slice(8, 12)}`;
   }
 
   async getBookingById(id: number): Promise<BookingResponseDto | null> {
-    const booking = await this.prisma.booking.findUnique({
-      where: { id },
-      include: {
-        payments: true,
-        participants: {
-          orderBy: { id: 'asc' }
-        },
-        histories: {
-          orderBy: { createdAt: 'desc' }
-        }
-      }
+    const booking = await this.db.query.bookings.findFirst({
+      where: eq(bookings.id, id),
+      with: { payments: true, participants: { orderBy: asc(bookingParticipants.id) }, histories: { orderBy: desc(bookingHistory.createdAt) } },
     });
-
     return booking ? BookingResponseDto.fromEntity(booking) : null;
   }
 
   async getBookingByNumber(bookingNumber: string): Promise<BookingResponseDto | null> {
-    const booking = await this.prisma.booking.findUnique({
-      where: { bookingNumber },
-      include: {
-        payments: true,
-        participants: {
-          orderBy: { id: 'asc' }
-        },
-        histories: {
-          orderBy: { createdAt: 'desc' }
-        }
-      }
+    const booking = await this.db.query.bookings.findFirst({
+      where: eq(bookings.bookingNumber, bookingNumber),
+      with: { payments: true, participants: { orderBy: asc(bookingParticipants.id) }, histories: { orderBy: desc(bookingHistory.createdAt) } },
     });
-
     return booking ? BookingResponseDto.fromEntity(booking) : null;
   }
 
   async getBookingsByUserId(userId: number): Promise<BookingResponseDto[]> {
-    // AGENT_PAY.md §11.3 — booker + 더치페이 참여자 모두 포함
-    const bookings = await this.prisma.booking.findMany({
-      where: {
-        OR: [
-          { userId },
-          { participants: { some: { userId } } },
-        ],
-      },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        payments: true,
-        participants: { orderBy: { id: 'asc' } },
-      },
+    const participantBookingIds = this.db.select({ id: bookingParticipants.bookingId }).from(bookingParticipants).where(eq(bookingParticipants.userId, userId));
+    const rows = await this.db.query.bookings.findMany({
+      where: or(eq(bookings.userId, userId), inArray(bookings.id, participantBookingIds)),
+      orderBy: desc(bookings.createdAt),
+      with: { payments: true, participants: { orderBy: asc(bookingParticipants.id) } },
     });
-
-    return bookings.map((booking) => BookingResponseDto.fromEntity(booking, false, userId));
+    return rows.map((booking) => BookingResponseDto.fromEntity(booking, false, userId));
   }
 
-  async searchBookings(searchDto: SearchBookingDto): Promise<{
-    bookings: BookingResponseDto[];
-    total: number;
-    page: number;
-    limit: number;
-  }> {
+  async searchBookings(searchDto: SearchBookingDto): Promise<{ bookings: BookingResponseDto[]; total: number; page: number; limit: number }> {
     const {
-      page = 1,
-      limit = 10,
-      status,
-      gameId,
-      clubId,
-      companyId,
-      userId,
-      paymentMethod,
-      startDate,
-      endDate,
-      sortBy = 'bookingDate',
-      sortOrder = 'desc',
-      timeFilter = 'all',
-      includeAsParticipant = false,
+      page = 1, limit = 10, status, gameId, clubId, companyId, userId, paymentMethod,
+      startDate, endDate, sortBy = 'bookingDate', sortOrder = 'desc', timeFilter = 'all', includeAsParticipant = false,
     } = searchDto;
-    const skip = (page - 1) * limit;
 
-    const where: any = {};
-    if (status) {
-      where.status = status as BookingStatus;
-    }
-    if (gameId) {
-      where.gameId = gameId;
-    }
-    if (clubId) {
-      where.clubId = clubId;
-    }
-    // companyId 필터: club-service에서 해당 회사의 clubId 목록을 조회하여 필터링
+    const conds: SQL[] = [];
+    if (status) conds.push(eq(bookings.status, status as BookingStatus));
+    if (gameId) conds.push(eq(bookings.gameId, gameId));
+    if (clubId) conds.push(eq(bookings.clubId, clubId));
+
     if (companyId && !clubId && this.courseServiceClient) {
       try {
-        const clubsResult = await firstValueFrom(
-          this.courseServiceClient.send('club.findByCompany', { companyId }).pipe(timeout(5000)),
-        );
+        const clubsResult = await firstValueFrom(this.courseServiceClient.send('club.findByCompany', { companyId }).pipe(timeout(5000)));
         const clubIds = (clubsResult?.data || []).map((c: any) => c.id);
-        if (clubIds.length > 0) {
-          where.clubId = { in: clubIds };
-        } else {
-          // 해당 회사에 클럽이 없으면 빈 결과 반환
-          return { bookings: [], total: 0, page, limit };
-        }
+        if (clubIds.length > 0) conds.push(inArray(bookings.clubId, clubIds));
+        else return { bookings: [], total: 0, page, limit };
       } catch (error) {
         this.logger.warn(`Failed to resolve clubIds for companyId=${companyId}: ${error.message}`);
       }
     }
+
     if (userId) {
-      // AGENT_PAY.md §11.3 — 마이페이지(includeAsParticipant=true)는 booker+더치페이 참여자 모두 노출
       if (includeAsParticipant) {
-        where.OR = [
-          { userId },
-          { participants: { some: { userId } } },
-        ];
+        const participantBookingIds = this.db.select({ id: bookingParticipants.bookingId }).from(bookingParticipants).where(eq(bookingParticipants.userId, userId));
+        conds.push(or(eq(bookings.userId, userId), inArray(bookings.id, participantBookingIds))!);
       } else {
-        where.userId = userId;
+        conds.push(eq(bookings.userId, userId));
       }
     }
-    if (paymentMethod) {
-      where.paymentMethod = paymentMethod;
-    }
+    if (paymentMethod) conds.push(eq(bookings.paymentMethod, paymentMethod));
 
-    // timeFilter 적용
     const now = new Date();
     now.setHours(0, 0, 0, 0);
-
-    if (timeFilter === 'upcoming') {
-      where.bookingDate = { gte: now };
-    } else if (timeFilter === 'past') {
-      where.bookingDate = { lt: now };
-    } else if (startDate || endDate) {
-      // timeFilter가 'all'이고 날짜 범위가 지정된 경우
-      where.bookingDate = {};
-      if (startDate) {
-        where.bookingDate.gte = new Date(startDate);
-      }
-      if (endDate) {
-        where.bookingDate.lte = new Date(endDate);
-      }
+    if (timeFilter === 'upcoming') conds.push(gte(bookings.bookingDate, now));
+    else if (timeFilter === 'past') conds.push(lt(bookings.bookingDate, now));
+    else {
+      if (startDate) conds.push(gte(bookings.bookingDate, new Date(startDate)));
+      if (endDate) conds.push(lte(bookings.bookingDate, new Date(endDate)));
     }
 
-    // 정렬 설정
-    const orderBy: any = {};
-    orderBy[sortBy] = sortOrder;
+    const where = conds.length ? and(...conds) : undefined;
+    const sortCol = (bookings as Record<string, any>)[sortBy] ?? bookings.bookingDate;
+    const orderBy = sortOrder === 'asc' ? asc(sortCol) : desc(sortCol);
 
-    const [bookings, total] = await Promise.all([
-      this.prisma.booking.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy,
-        include: {
-          payments: true,
-          // AGENT_PAY.md §11.3 — 마이페이지에서 myRole/myParticipantStatus 계산용
-          participants: includeAsParticipant ? { orderBy: { id: 'asc' } } : false,
-        },
+    const [rows, totalRows] = await Promise.all([
+      this.db.query.bookings.findMany({
+        where, orderBy, limit, offset: (page - 1) * limit,
+        with: { payments: true, ...(includeAsParticipant ? { participants: { orderBy: asc(bookingParticipants.id) } } : {}) },
       }),
-      this.prisma.booking.count({ where }),
+      this.db.select({ value: count() }).from(bookings).where(where),
     ]);
 
-    // includeAsParticipant=true 호출이면 userId를 currentUserId로 사용해 파생 필드 계산
     const currentUserId = includeAsParticipant ? userId : undefined;
-
-    return {
-      bookings: BookingResponseDto.fromEntities(bookings, true, currentUserId),
-      total,
-      page,
-      limit
-    };
+    return { bookings: BookingResponseDto.fromEntities(rows, true, currentUserId), total: totalRows[0].value, page, limit };
   }
 
   async updateBooking(id: number, dto: UpdateBookingDto): Promise<BookingResponseDto> {
-    const booking = await this.prisma.$transaction(async (prisma) => {
-      const existingBooking = await prisma.booking.findUnique({
-        where: { id }
-      });
-
-      if (!existingBooking) {
-        throw new AppException(Errors.Booking.NOT_FOUND);
-      }
-
-      // 변경 가능한 상태인지 확인
-      if (existingBooking.status === BookingStatus.CANCELLED ||
-          existingBooking.status === BookingStatus.COMPLETED) {
+    const booking = await this.db.transaction(async (tx) => {
+      const [existing] = await tx.select().from(bookings).where(eq(bookings.id, id)).limit(1);
+      if (!existing) throw new AppException(Errors.Booking.NOT_FOUND);
+      if (existing.status === BookingStatus.CANCELLED || existing.status === BookingStatus.COMPLETED) {
         throw new AppException(Errors.Booking.INVALID_STATUS);
       }
-
-      const updatedBooking = await prisma.booking.update({
-        where: { id },
-        data: {
-          playerCount: dto.playerCount,
-          specialRequests: dto.specialRequests,
-          userPhone: dto.userPhone,
-        },
-      });
-
-      // 히스토리 추가
-      await prisma.bookingHistory.create({
-        data: {
-          bookingId: id,
-          action: 'UPDATED',
-          userId: existingBooking.userId,
-          details: JSON.parse(JSON.stringify(dto))
-        }
-      });
-
-      return updatedBooking;
+      const [updated] = await tx.update(bookings).set({ playerCount: dto.playerCount, specialRequests: dto.specialRequests, userPhone: dto.userPhone }).where(eq(bookings.id, id)).returning();
+      await tx.insert(bookingHistory).values({ bookingId: id, action: 'UPDATED', userId: existing.userId!, details: JSON.parse(JSON.stringify(dto)) });
+      return updated;
     });
-
     return BookingResponseDto.fromEntity(booking);
   }
-
 
   // 예약 취소 공통 로직 (트랜잭션 내에서 호출)
-  private async executeCancellation(
-    prisma: any,
-    existingBooking: any,
-    reason: string,
-    historyDetails: Record<string, any>,
-  ) {
-    // 예약 취소
-    const cancelledBooking = await prisma.booking.update({
-      where: { id: existingBooking.id },
-      data: { status: BookingStatus.CANCELLED },
-    });
+  private async executeCancellation(tx: DrizzleTx, existing: typeof bookings.$inferSelect, reason: string, historyDetails: Record<string, any>) {
+    const [cancelled] = await tx.update(bookings).set({ status: BookingStatus.CANCELLED }).where(eq(bookings.id, existing.id)).returning();
 
-    // 로컬 캐시 가용성 복구
-    const slotCache = await prisma.gameTimeSlotCache.findUnique({
-      where: { gameTimeSlotId: existingBooking.gameTimeSlotId }
-    });
-
+    const [slotCache] = await tx.select().from(gameTimeSlotCache).where(eq(gameTimeSlotCache.gameTimeSlotId, existing.gameTimeSlotId)).limit(1);
     if (slotCache) {
-      const newBookedPlayers = Math.max(0, slotCache.bookedPlayers - existingBooking.playerCount);
+      const newBookedPlayers = Math.max(0, slotCache.bookedPlayers - existing.playerCount);
       const newAvailablePlayers = slotCache.maxPlayers - newBookedPlayers;
-
-      await prisma.gameTimeSlotCache.update({
-        where: { gameTimeSlotId: existingBooking.gameTimeSlotId },
-        data: {
-          bookedPlayers: newBookedPlayers,
-          availablePlayers: newAvailablePlayers,
-          isAvailable: true,
-          status: TimeSlotCacheStatus.AVAILABLE,
-          lastSyncAt: new Date(),
-        }
-      });
+      await tx.update(gameTimeSlotCache).set({
+        bookedPlayers: newBookedPlayers, availablePlayers: newAvailablePlayers, isAvailable: true, status: TimeSlotCacheStatus.AVAILABLE, lastSyncAt: new Date(),
+      }).where(eq(gameTimeSlotCache.gameTimeSlotId, existing.gameTimeSlotId));
     }
 
-    // 히스토리 추가
-    await prisma.bookingHistory.create({
-      data: {
-        bookingId: existingBooking.id,
-        action: 'CANCELLED',
-        userId: existingBooking.userId,
-        details: { reason, ...historyDetails },
-      }
-    });
+    await tx.insert(bookingHistory).values({ bookingId: existing.id, action: 'CANCELLED', userId: existing.userId!, details: { reason, ...historyDetails } });
 
-    // 카드/더치페이인 경우 환불 OutboxEvent 생성
-    if (existingBooking.paymentMethod === 'card' || existingBooking.paymentMethod === 'dutchpay') {
-      await prisma.bookingOutboxEvent.create({
-        data: {
-          aggregateType: 'Booking',
-          aggregateId: String(existingBooking.id),
-          eventType: 'payment.cancelByBookingId',
-          payload: {
-            bookingId: existingBooking.id,
-            cancelReason: reason,
-          } as any,
-          status: OutboxStatus.PENDING,
-        },
+    if (existing.paymentMethod === 'card' || existing.paymentMethod === 'dutchpay') {
+      await tx.insert(bookingOutboxEvents).values({
+        aggregateType: 'Booking', aggregateId: String(existing.id), eventType: 'payment.cancelByBookingId',
+        payload: { bookingId: existing.id, cancelReason: reason }, status: 'PENDING',
       });
     }
-
-    return cancelledBooking;
+    return cancelled;
   }
 
-  // 예약 확정 (PENDING -> CONFIRMED)
   async confirmBooking(id: number): Promise<BookingResponseDto> {
-    const booking = await this.prisma.$transaction(async (prisma) => {
-      const existingBooking = await prisma.booking.findUnique({
-        where: { id }
-      });
-
-      if (!existingBooking) {
-        throw new AppException(Errors.Booking.NOT_FOUND);
-      }
-
-      if (existingBooking.status !== BookingStatus.PENDING) {
-        throw new AppException(Errors.Booking.INVALID_STATUS,
-          `현재 상태(${existingBooking.status})에서는 확정할 수 없습니다`);
-      }
-
-      const confirmedBooking = await prisma.booking.update({
-        where: { id },
-        data: {
-          status: BookingStatus.CONFIRMED,
-        },
-      });
-
-      await prisma.bookingHistory.create({
-        data: {
-          bookingId: id,
-          action: 'CONFIRMED',
-          userId: existingBooking.userId,
-          details: {
-            confirmedBy: 'admin'
-          }
-        }
-      });
-
-      return confirmedBooking;
+    const booking = await this.db.transaction(async (tx) => {
+      const [existing] = await tx.select().from(bookings).where(eq(bookings.id, id)).limit(1);
+      if (!existing) throw new AppException(Errors.Booking.NOT_FOUND);
+      if (existing.status !== BookingStatus.PENDING) throw new AppException(Errors.Booking.INVALID_STATUS, `현재 상태(${existing.status})에서는 확정할 수 없습니다`);
+      const [confirmed] = await tx.update(bookings).set({ status: BookingStatus.CONFIRMED }).where(eq(bookings.id, id)).returning();
+      await tx.insert(bookingHistory).values({ bookingId: id, action: 'CONFIRMED', userId: existing.userId!, details: { confirmedBy: 'admin' } });
+      return confirmed;
     });
-
-    // CompanyMember 자동 등록 (트랜잭션 밖에서 비동기 호출)
     await this.registerCompanyMember(booking.clubId, booking.userId);
-
     return BookingResponseDto.fromEntity(booking);
   }
 
-  // 예약 완료 (CONFIRMED -> COMPLETED)
   async completeBooking(id: number): Promise<BookingResponseDto> {
-    const booking = await this.prisma.$transaction(async (prisma) => {
-      const existingBooking = await prisma.booking.findUnique({
-        where: { id }
-      });
-
-      if (!existingBooking) {
-        throw new AppException(Errors.Booking.NOT_FOUND);
-      }
-
-      if (existingBooking.status !== BookingStatus.CONFIRMED) {
-        throw new AppException(Errors.Booking.INVALID_STATUS,
-          `현재 상태(${existingBooking.status})에서는 완료 처리할 수 없습니다`);
-      }
-
-      const completedBooking = await prisma.booking.update({
-        where: { id },
-        data: {
-          status: BookingStatus.COMPLETED,
-        },
-      });
-
-      await prisma.bookingHistory.create({
-        data: {
-          bookingId: id,
-          action: 'COMPLETED',
-          userId: existingBooking.userId,
-          details: {
-            completedBy: 'admin'
-          }
-        }
-      });
-
-      return completedBooking;
+    const booking = await this.db.transaction(async (tx) => {
+      const [existing] = await tx.select().from(bookings).where(eq(bookings.id, id)).limit(1);
+      if (!existing) throw new AppException(Errors.Booking.NOT_FOUND);
+      if (existing.status !== BookingStatus.CONFIRMED) throw new AppException(Errors.Booking.INVALID_STATUS, `현재 상태(${existing.status})에서는 완료 처리할 수 없습니다`);
+      const [completed] = await tx.update(bookings).set({ status: BookingStatus.COMPLETED }).where(eq(bookings.id, id)).returning();
+      await tx.insert(bookingHistory).values({ bookingId: id, action: 'COMPLETED', userId: existing.userId!, details: { completedBy: 'admin' } });
+      return completed;
     });
-
     return BookingResponseDto.fromEntity(booking);
   }
 
-  // 노쇼 처리 (CONFIRMED -> NO_SHOW)
   async markNoShow(id: number): Promise<BookingResponseDto> {
-    const booking = await this.prisma.$transaction(async (prisma) => {
-      const existingBooking = await prisma.booking.findUnique({
-        where: { id }
-      });
-
-      if (!existingBooking) {
-        throw new AppException(Errors.Booking.NOT_FOUND);
-      }
-
-      if (existingBooking.status !== BookingStatus.CONFIRMED) {
-        throw new AppException(Errors.Booking.INVALID_STATUS,
-          `현재 상태(${existingBooking.status})에서는 노쇼 처리할 수 없습니다`);
-      }
-
-      const noShowBooking = await prisma.booking.update({
-        where: { id },
-        data: {
-          status: BookingStatus.NO_SHOW,
-        },
-      });
-
-      await prisma.bookingHistory.create({
-        data: {
-          bookingId: id,
-          action: 'NO_SHOW',
-          userId: existingBooking.userId,
-          details: {
-            markedBy: 'admin'
-          }
-        }
-      });
-
-      return noShowBooking;
+    const booking = await this.db.transaction(async (tx) => {
+      const [existing] = await tx.select().from(bookings).where(eq(bookings.id, id)).limit(1);
+      if (!existing) throw new AppException(Errors.Booking.NOT_FOUND);
+      if (existing.status !== BookingStatus.CONFIRMED) throw new AppException(Errors.Booking.INVALID_STATUS, `현재 상태(${existing.status})에서는 노쇼 처리할 수 없습니다`);
+      const [noShow] = await tx.update(bookings).set({ status: BookingStatus.NO_SHOW }).where(eq(bookings.id, id)).returning();
+      await tx.insert(bookingHistory).values({ bookingId: id, action: 'NO_SHOW', userId: existing.userId!, details: { markedBy: 'admin' } });
+      return noShow;
     });
-
     return BookingResponseDto.fromEntity(booking);
   }
 
-  // GameTimeSlot 가용성 조회 (Game 기반)
-  async getGameTimeSlotAvailability(
-    gameId: number,
-    date: string
-  ): Promise<GameTimeSlotAvailabilityDto[]> {
+  async getGameTimeSlotAvailability(gameId: number, date: string): Promise<GameTimeSlotAvailabilityDto[]> {
     const targetDate = new Date(date + 'T00:00:00.000Z');
-
-    const slots = await this.prisma.gameTimeSlotCache.findMany({
-      where: {
-        gameId,
-        date: targetDate
-      },
-      orderBy: {
-        startTime: 'asc'
-      }
-    });
-
+    const slots = await this.db.select().from(gameTimeSlotCache).where(and(eq(gameTimeSlotCache.gameId, gameId), eq(gameTimeSlotCache.date, targetDate))).orderBy(asc(gameTimeSlotCache.startTime));
     return GameTimeSlotAvailabilityDto.fromEntities(slots);
   }
 
-  // Game 캐시 동기화 메서드
   async syncGameCache(data: {
-    gameId: number;
-    name: string;
-    code: string;
-    description?: string;
-    frontNineCourseId: number;
-    frontNineCourseName: string;
-    backNineCourseId: number;
-    backNineCourseName: string;
-    totalHoles: number;
-    estimatedDuration: number;
-    breakDuration: number;
-    maxPlayers: number;
-    basePrice: number;
-    weekendPrice?: number;
-    holidayPrice?: number;
-    clubId: number;
-    clubName: string;
-    isActive: boolean;
+    gameId: number; name: string; code: string; description?: string; frontNineCourseId: number; frontNineCourseName: string;
+    backNineCourseId: number; backNineCourseName: string; totalHoles: number; estimatedDuration: number; breakDuration: number;
+    maxPlayers: number; basePrice: number; weekendPrice?: number; holidayPrice?: number; clubId: number; clubName: string; isActive: boolean;
   }): Promise<void> {
-    await this.prisma.gameCache.upsert({
-      where: { gameId: data.gameId },
-      update: {
-        name: data.name,
-        code: data.code,
-        description: data.description,
-        frontNineCourseId: data.frontNineCourseId,
-        frontNineCourseName: data.frontNineCourseName,
-        backNineCourseId: data.backNineCourseId,
-        backNineCourseName: data.backNineCourseName,
-        totalHoles: data.totalHoles,
-        estimatedDuration: data.estimatedDuration,
-        breakDuration: data.breakDuration,
-        maxPlayers: data.maxPlayers,
-        basePrice: data.basePrice,
-        weekendPrice: data.weekendPrice,
-        holidayPrice: data.holidayPrice,
-        clubId: data.clubId,
-        clubName: data.clubName,
-        isActive: data.isActive,
-        lastSyncAt: new Date(),
-      },
-      create: {
-        gameId: data.gameId,
-        name: data.name,
-        code: data.code,
-        description: data.description,
-        frontNineCourseId: data.frontNineCourseId,
-        frontNineCourseName: data.frontNineCourseName,
-        backNineCourseId: data.backNineCourseId,
-        backNineCourseName: data.backNineCourseName,
-        totalHoles: data.totalHoles,
-        estimatedDuration: data.estimatedDuration,
-        breakDuration: data.breakDuration,
-        maxPlayers: data.maxPlayers,
-        basePrice: data.basePrice,
-        weekendPrice: data.weekendPrice,
-        holidayPrice: data.holidayPrice,
-        clubId: data.clubId,
-        clubName: data.clubName,
-        isActive: data.isActive,
-      }
-    });
+    const values = {
+      gameId: data.gameId, name: data.name, code: data.code, description: data.description,
+      frontNineCourseId: data.frontNineCourseId, frontNineCourseName: data.frontNineCourseName, backNineCourseId: data.backNineCourseId, backNineCourseName: data.backNineCourseName,
+      totalHoles: data.totalHoles, estimatedDuration: data.estimatedDuration, breakDuration: data.breakDuration, maxPlayers: data.maxPlayers,
+      basePrice: data.basePrice, weekendPrice: data.weekendPrice, holidayPrice: data.holidayPrice, clubId: data.clubId, clubName: data.clubName, isActive: data.isActive,
+    };
+    await this.db.insert(gameCache).values(values).onConflictDoUpdate({ target: gameCache.gameId, set: { ...values, lastSyncAt: new Date(), updatedAt: new Date() } });
     this.logger.log(`Game cache synced for gameId: ${data.gameId}`);
   }
 
-  // GameTimeSlot 캐시 동기화 메서드
   async syncGameTimeSlotCache(data: {
-    gameTimeSlotId: number;
-    gameId: number;
-    gameName?: string;
-    gameCode?: string;
-    frontNineCourseName?: string;
-    backNineCourseName?: string;
-    clubId?: number;
-    clubName?: string;
-    date: string;
-    startTime: string;
-    endTime: string;
-    maxPlayers: number;
-    bookedPlayers: number;
-    price: number;
-    isPremium: boolean;
-    status: string;
+    gameTimeSlotId: number; gameId: number; gameName?: string; gameCode?: string; frontNineCourseName?: string; backNineCourseName?: string;
+    clubId?: number; clubName?: string; date: string; startTime: string; endTime: string; maxPlayers: number; bookedPlayers: number; price: number; isPremium: boolean; status: string;
   }): Promise<void> {
     const availablePlayers = data.maxPlayers - data.bookedPlayers;
     const status = (data.status as TimeSlotCacheStatus) || TimeSlotCacheStatus.AVAILABLE;
-
-    await this.prisma.gameTimeSlotCache.upsert({
-      where: { gameTimeSlotId: data.gameTimeSlotId },
-      update: {
-        gameId: data.gameId,
-        gameName: data.gameName,
-        gameCode: data.gameCode,
-        frontNineCourseName: data.frontNineCourseName,
-        backNineCourseName: data.backNineCourseName,
-        clubId: data.clubId,
-        clubName: data.clubName,
-        date: new Date(data.date),
-        startTime: data.startTime,
-        endTime: data.endTime,
-        maxPlayers: data.maxPlayers,
-        bookedPlayers: data.bookedPlayers,
-        availablePlayers,
-        isAvailable: availablePlayers > 0 && status === TimeSlotCacheStatus.AVAILABLE,
-        price: data.price,
-        isPremium: data.isPremium,
-        status,
-        lastSyncAt: new Date(),
-      },
-      create: {
-        gameTimeSlotId: data.gameTimeSlotId,
-        gameId: data.gameId,
-        gameName: data.gameName,
-        gameCode: data.gameCode,
-        frontNineCourseName: data.frontNineCourseName,
-        backNineCourseName: data.backNineCourseName,
-        clubId: data.clubId,
-        clubName: data.clubName,
-        date: new Date(data.date),
-        startTime: data.startTime,
-        endTime: data.endTime,
-        maxPlayers: data.maxPlayers,
-        bookedPlayers: data.bookedPlayers,
-        availablePlayers,
-        isAvailable: availablePlayers > 0 && status === TimeSlotCacheStatus.AVAILABLE,
-        price: data.price,
-        isPremium: data.isPremium,
-        status,
-      }
-    });
+    const isAvailable = availablePlayers > 0 && status === TimeSlotCacheStatus.AVAILABLE;
+    const values = {
+      gameTimeSlotId: data.gameTimeSlotId, gameId: data.gameId, gameName: data.gameName, gameCode: data.gameCode,
+      frontNineCourseName: data.frontNineCourseName, backNineCourseName: data.backNineCourseName, clubId: data.clubId, clubName: data.clubName,
+      date: new Date(data.date), startTime: data.startTime, endTime: data.endTime, maxPlayers: data.maxPlayers, bookedPlayers: data.bookedPlayers,
+      availablePlayers, isAvailable, price: data.price, isPremium: data.isPremium, status,
+    };
+    await this.db.insert(gameTimeSlotCache).values(values).onConflictDoUpdate({ target: gameTimeSlotCache.gameTimeSlotId, set: { ...values, lastSyncAt: new Date(), updatedAt: new Date() } });
     this.logger.log(`GameTimeSlot cache synced for gameTimeSlotId: ${data.gameTimeSlotId}`);
   }
 
-  /**
-   * 예약 확정 시 CompanyMember 자동 등록
-   * clubId → companyId 조회 → iam.companyMembers.addByBooking 호출
-   */
   private async registerCompanyMember(clubId: number | null, userId: number | null): Promise<void> {
     if (!clubId || !userId || !this.courseServiceClient || !this.iamService) return;
-
     try {
-      const clubResponse = await firstValueFrom(
-        this.courseServiceClient.send('club.findOne', { id: clubId }),
-      );
+      const clubResponse = await firstValueFrom(this.courseServiceClient.send('club.findOne', { id: clubId }));
       const companyId = clubResponse?.data?.companyId;
       if (!companyId) return;
-
-      await firstValueFrom(
-        this.iamService.send('iam.companyMembers.addByBooking', { companyId, userId }),
-      );
+      await firstValueFrom(this.iamService.send('iam.companyMembers.addByBooking', { companyId, userId }));
       this.logger.log(`CompanyMember registered: companyId=${companyId}, userId=${userId}`);
     } catch (error) {
       this.logger.warn(`Failed to register CompanyMember: clubId=${clubId}, userId=${userId}`, error?.message);
     }
   }
 
-  // 관리자 대시보드 - 예약 통계
   async getBookingStats(dateRange: { startDate: string; endDate: string }) {
     const startDate = new Date(dateRange.startDate);
     const endDate = new Date(dateRange.endDate);
     endDate.setHours(23, 59, 59, 999);
+    const where = and(gte(bookings.bookingDate, startDate), lte(bookings.bookingDate, endDate));
 
-    const dateFilter = { bookingDate: { gte: startDate, lte: endDate } };
-
-    const [totalBookings, statusGroups, revenueAgg] = await Promise.all([
-      this.prisma.booking.count({ where: dateFilter }),
-      this.prisma.booking.groupBy({
-        by: ['status'],
-        where: dateFilter,
-        _count: true,
-      }),
-      this.prisma.booking.aggregate({
-        where: dateFilter,
-        _sum: { totalPrice: true },
-      }),
+    const [totalRows, statusGroups, revenueRows] = await Promise.all([
+      this.db.select({ value: count() }).from(bookings).where(where),
+      this.db.select({ status: bookings.status, count: count() }).from(bookings).where(where).groupBy(bookings.status),
+      this.db.select({ sum: sum(bookings.totalPrice) }).from(bookings).where(where),
     ]);
-
-    const statusMap = new Map(statusGroups.map((g) => [g.status, g._count]));
+    const totalBookings = totalRows[0].value;
+    const statusMap = new Map(statusGroups.map((g) => [g.status, g.count]));
     const confirmedBookings = statusMap.get(BookingStatus.CONFIRMED) ?? 0;
     const cancelledBookings = statusMap.get(BookingStatus.CANCELLED) ?? 0;
     const completedBookings = statusMap.get(BookingStatus.COMPLETED) ?? 0;
-    const pendingBookings = (statusMap.get(BookingStatus.PENDING) ?? 0)
-      + (statusMap.get(BookingStatus.SLOT_RESERVED) ?? 0);
+    const pendingBookings = (statusMap.get(BookingStatus.PENDING) ?? 0) + (statusMap.get(BookingStatus.SLOT_RESERVED) ?? 0);
     const noShowBookings = statusMap.get(BookingStatus.NO_SHOW) ?? 0;
 
-    // 이전 동일 기간 계산
     const periodMs = endDate.getTime() - startDate.getTime();
     const prevStart = new Date(startDate.getTime() - periodMs - 1);
     const prevEnd = new Date(startDate.getTime() - 1);
-    const prevTotal = await this.prisma.booking.count({
-      where: { bookingDate: { gte: prevStart, lte: prevEnd } },
-    });
+    const [prevTotalRows] = await this.db.select({ value: count() }).from(bookings).where(and(gte(bookings.bookingDate, prevStart), lte(bookings.bookingDate, prevEnd)));
+    const prevTotal = prevTotalRows.value;
 
-    const bookingGrowthRate = prevTotal > 0
-      ? Math.round(((totalBookings - prevTotal) / prevTotal) * 100 * 10) / 10
-      : 0;
-
+    const bookingGrowthRate = prevTotal > 0 ? Math.round(((totalBookings - prevTotal) / prevTotal) * 100 * 10) / 10 : 0;
     const days = Math.max(1, Math.ceil(periodMs / (1000 * 60 * 60 * 24)));
     const averageBookingsPerDay = Math.round((totalBookings / days) * 10) / 10;
-    const revenue = Number(revenueAgg._sum.totalPrice ?? 0);
+    const revenue = Number(revenueRows[0].sum ?? 0);
 
-    return {
-      totalBookings,
-      confirmedBookings,
-      cancelledBookings,
-      completedBookings,
-      pendingBookings,
-      noShowBookings,
-      bookingGrowthRate,
-      averageBookingsPerDay,
-      count: totalBookings,
-      revenue,
-    };
+    return { totalBookings, confirmedBookings, cancelledBookings, completedBookings, pendingBookings, noShowBookings, bookingGrowthRate, averageBookingsPerDay, count: totalBookings, revenue };
   }
 
-  // 클럽 운영 통계 (OperationInfoTab용)
   async getClubOperationStats(clubId: number, dateRange: { startDate: string; endDate: string }) {
     const startDate = new Date(dateRange.startDate);
     const endDate = new Date(dateRange.endDate);
     endDate.setHours(23, 59, 59, 999);
-
     const validStatuses = ['CONFIRMED', 'COMPLETED'];
 
-    // 1. 게임별 예약 통계 (주중/주말 포함)
-    const gameStats: Array<{
-      gameId: number;
-      gameName: string | null;
-      totalBookings: number;
-      totalRevenue: number;
-      averagePrice: number;
-      bookedSlots: number;
-      weekdayBookings: number;
-      weekendBookings: number;
-    }> = await this.prisma.$queryRaw`
-      SELECT
-        game_id AS "gameId",
-        game_name AS "gameName",
-        COUNT(*)::int AS "totalBookings",
-        COALESCE(SUM(total_price), 0)::float AS "totalRevenue",
-        COALESCE(AVG(price_per_person), 0)::float AS "averagePrice",
+    const gameStats = (await this.db.execute(sql`
+      SELECT game_id AS "gameId", game_name AS "gameName", COUNT(*)::int AS "totalBookings",
+        COALESCE(SUM(total_price), 0)::float AS "totalRevenue", COALESCE(AVG(price_per_person), 0)::float AS "averagePrice",
         COUNT(DISTINCT game_time_slot_id)::int AS "bookedSlots",
         COUNT(*) FILTER (WHERE EXTRACT(DOW FROM booking_date) IN (0, 6))::int AS "weekendBookings",
         COUNT(*) FILTER (WHERE EXTRACT(DOW FROM booking_date) NOT IN (0, 6))::int AS "weekdayBookings"
-      FROM bookings
-      WHERE club_id = ${clubId}
-        AND booking_date >= ${startDate}
-        AND booking_date <= ${endDate}
-        AND status::text = ANY(${validStatuses})
-      GROUP BY game_id, game_name
-      ORDER BY COUNT(*) DESC
-    `;
+      FROM bookings WHERE club_id = ${clubId} AND booking_date >= ${startDate} AND booking_date <= ${endDate} AND status::text = ANY(${validStatuses})
+      GROUP BY game_id, game_name ORDER BY COUNT(*) DESC
+    `)) as unknown as Array<{ gameId: number; gameName: string | null; totalBookings: number; totalRevenue: number; averagePrice: number; bookedSlots: number; weekendBookings: number; weekdayBookings: number }>;
 
-    // 2. 게임별 인기 시간대 (start_time 기준 top 3)
-    const peakHoursRaw: Array<{ gameId: number; startTime: string; cnt: number }> = await this.prisma.$queryRaw`
-      SELECT
-        game_id AS "gameId",
-        start_time AS "startTime",
-        COUNT(*)::int AS cnt
-      FROM bookings
-      WHERE club_id = ${clubId}
-        AND booking_date >= ${startDate}
-        AND booking_date <= ${endDate}
-        AND status::text = ANY(${validStatuses})
-      GROUP BY game_id, start_time
-      ORDER BY game_id, cnt DESC
-    `;
+    const peakHoursRaw = (await this.db.execute(sql`
+      SELECT game_id AS "gameId", start_time AS "startTime", COUNT(*)::int AS cnt
+      FROM bookings WHERE club_id = ${clubId} AND booking_date >= ${startDate} AND booking_date <= ${endDate} AND status::text = ANY(${validStatuses})
+      GROUP BY game_id, start_time ORDER BY game_id, cnt DESC
+    `)) as unknown as Array<{ gameId: number; startTime: string; cnt: number }>;
 
-    // 게임별 top 3 시간대 매핑
     const peakHoursMap = new Map<number, string[]>();
     for (const row of peakHoursRaw) {
       const list = peakHoursMap.get(row.gameId) ?? [];
@@ -728,409 +304,167 @@ export class BookingService {
       peakHoursMap.set(row.gameId, list);
     }
 
-    // 3. 전체 인기 시간대 top 3 (stats.peakTimes)
-    const overallPeakTimes: Array<{ startTime: string }> = await this.prisma.$queryRaw`
-      SELECT start_time AS "startTime"
-      FROM bookings
-      WHERE club_id = ${clubId}
-        AND booking_date >= ${startDate}
-        AND booking_date <= ${endDate}
-        AND status::text = ANY(${validStatuses})
-      GROUP BY start_time
-      ORDER BY COUNT(*) DESC
-      LIMIT 3
-    `;
+    const overallPeakTimes = (await this.db.execute(sql`
+      SELECT start_time AS "startTime" FROM bookings
+      WHERE club_id = ${clubId} AND booking_date >= ${startDate} AND booking_date <= ${endDate} AND status::text = ANY(${validStatuses})
+      GROUP BY start_time ORDER BY COUNT(*) DESC LIMIT 3
+    `)) as unknown as Array<{ startTime: string }>;
 
-    // 4. 오늘 예약 현황
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayEnd = new Date(today);
     todayEnd.setHours(23, 59, 59, 999);
+    const [todayRows] = await this.db.select({ value: count() }).from(bookings).where(and(eq(bookings.clubId, clubId), gte(bookings.bookingDate, today), lte(bookings.bookingDate, todayEnd), inArray(bookings.status, [BookingStatus.CONFIRMED, BookingStatus.COMPLETED])));
+    const todayBookings = todayRows.value;
 
-    const todayBookings = await this.prisma.booking.count({
-      where: {
-        clubId,
-        bookingDate: { gte: today, lte: todayEnd },
-        status: { in: [BookingStatus.CONFIRMED, BookingStatus.COMPLETED] },
-      },
-    });
-
-    // 5. 집계
-    const totalBookings = gameStats.reduce((sum, g) => sum + g.totalBookings, 0);
-    const totalRevenue = gameStats.reduce((sum, g) => sum + g.totalRevenue, 0);
+    const totalBookings = gameStats.reduce((s, g) => s + g.totalBookings, 0);
+    const totalRevenue = gameStats.reduce((s, g) => s + g.totalRevenue, 0);
     const days = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
     const monthlyRevenue = Math.round((totalRevenue / days) * 30);
-
-    // 인기 코스 top 3 (gameName 기준)
-    const topCourses = gameStats
-      .filter((g) => g.gameName)
-      .slice(0, 3)
-      .map((g) => g.gameName as string);
-
-    // 전체 가동률 (예약된 슬롯 / 전체 슬롯)
-    const totalBookedSlots = gameStats.reduce((sum, g) => sum + g.bookedSlots, 0);
+    const topCourses = gameStats.filter((g) => g.gameName).slice(0, 3).map((g) => g.gameName as string);
+    const totalBookedSlots = gameStats.reduce((s, g) => s + g.bookedSlots, 0);
     let averageUtilization = 0;
 
-    // club-service에서 전체 슬롯 수 조회
     if (this.courseServiceClient) {
       try {
-        const slotStats = await firstValueFrom(
-          this.courseServiceClient.send('gameTimeSlots.stats', {
-            startDate: dateRange.startDate,
-            endDate: dateRange.endDate,
-            clubId,
-          }).pipe(timeout(5000), catchError(() => of(null))),
-        );
+        const slotStats = await firstValueFrom(this.courseServiceClient.send('gameTimeSlots.stats', { startDate: dateRange.startDate, endDate: dateRange.endDate, clubId }).pipe(timeout(5000), catchError(() => of(null))));
         const totalSlots = slotStats?.data?.totalSlots ?? slotStats?.totalSlots ?? 0;
-        if (totalSlots > 0) {
-          averageUtilization = Math.round((totalBookedSlots / totalSlots) * 100 * 10) / 10;
-        }
+        if (totalSlots > 0) averageUtilization = Math.round((totalBookedSlots / totalSlots) * 100 * 10) / 10;
       } catch {
         this.logger.warn(`Failed to fetch slot stats from club-service for clubId=${clubId}`);
       }
     }
 
     const analytics = gameStats.map((g) => ({
-      gameId: g.gameId,
-      gameName: g.gameName ?? `Game #${g.gameId}`,
-      totalBookings: g.totalBookings,
-      totalRevenue: g.totalRevenue,
-      averagePrice: Math.round(g.averagePrice),
-      bookedSlots: g.bookedSlots,
-      weekdayBookings: g.weekdayBookings,
-      weekendBookings: g.weekendBookings,
-      peakHours: peakHoursMap.get(g.gameId) ?? [],
+      gameId: g.gameId, gameName: g.gameName ?? `Game #${g.gameId}`, totalBookings: g.totalBookings, totalRevenue: g.totalRevenue,
+      averagePrice: Math.round(g.averagePrice), bookedSlots: g.bookedSlots, weekdayBookings: g.weekdayBookings, weekendBookings: g.weekendBookings, peakHours: peakHoursMap.get(g.gameId) ?? [],
     }));
 
     return {
-      stats: {
-        totalBookings,
-        totalRevenue,
-        averageUtilization,
-        monthlyRevenue,
-        topCourses,
-        peakTimes: overallPeakTimes.map((r) => r.startTime),
-      },
+      stats: { totalBookings, totalRevenue, averageUtilization, monthlyRevenue, topCourses, peakTimes: overallPeakTimes.map((r) => r.startTime) },
       analytics,
-      availability: {
-        bookedToday: todayBookings,
-      },
+      availability: { bookedToday: todayBookings },
     };
   }
 
-  // 관리자 대시보드 - 트렌드 차트 데이터
   async getDashboardStats(dateRange: { startDate: string; endDate: string }) {
     const startDate = new Date(dateRange.startDate);
     const endDate = new Date(dateRange.endDate);
     endDate.setHours(23, 59, 59, 999);
 
-    const dailyGroups = await this.prisma.booking.groupBy({
-      by: ['bookingDate'],
-      where: { bookingDate: { gte: startDate, lte: endDate } },
-      _count: true,
-      _sum: { totalPrice: true },
-      orderBy: { bookingDate: 'asc' },
-    });
+    const dailyGroups = await this.db
+      .select({ bookingDate: bookings.bookingDate, count: count(), sum: sum(bookings.totalPrice) })
+      .from(bookings)
+      .where(and(gte(bookings.bookingDate, startDate), lte(bookings.bookingDate, endDate)))
+      .groupBy(bookings.bookingDate)
+      .orderBy(asc(bookings.bookingDate));
 
-    const bookings = dailyGroups.map((g) => ({
-      date: g.bookingDate.toISOString().split('T')[0],
-      count: g._count,
-    }));
-
-    const revenue = dailyGroups.map((g) => ({
-      date: g.bookingDate.toISOString().split('T')[0],
-      amount: Number(g._sum.totalPrice ?? 0),
-    }));
-
-    return {
-      bookings,
-      revenue,
-      users: [],
-      courseUtilization: [],
-    };
+    const bookingsByDay = dailyGroups.map((g) => ({ date: g.bookingDate.toISOString().split('T')[0], count: g.count }));
+    const revenue = dailyGroups.map((g) => ({ date: g.bookingDate.toISOString().split('T')[0], amount: Number(g.sum ?? 0) }));
+    return { bookings: bookingsByDay, revenue, users: [], courseUtilization: [] };
   }
 
-  // 사용자 예약 통계 조회
   async getUserStats(userId: number): Promise<{ totalBookings: number }> {
-    const totalBookings = await this.prisma.booking.count({
-      where: { userId },
-    });
-
-    return { totalBookings };
+    const [row] = await this.db.select({ value: count() }).from(bookings).where(eq(bookings.userId, userId));
+    return { totalBookings: row.value };
   }
 
-  /**
-   * 진행 중인 예약 존재 여부 확인 (계정 삭제 제한 조건)
-   */
   async hasActiveBookings(userId: number): Promise<boolean> {
-    const count = await this.prisma.booking.count({
-      where: {
-        userId,
-        status: { in: ['PENDING', 'SLOT_RESERVED', 'CONFIRMED'] },
-      },
-    });
-    return count > 0;
+    const [row] = await this.db.select({ value: count() }).from(bookings).where(and(eq(bookings.userId, userId), inArray(bookings.status, [BookingStatus.PENDING, BookingStatus.SLOT_RESERVED, BookingStatus.CONFIRMED])));
+    return row.value > 0;
   }
 
-  /**
-   * 사용자 탈퇴 시 예약 데이터 익명화
-   */
   async anonymizeUserBookings(userId: number): Promise<number> {
-    const result = await this.prisma.booking.updateMany({
-      where: { userId },
-      data: {
-        userName: '[삭제된 사용자]',
-        userEmail: null,
-        userPhone: null,
-      },
-    });
-    return result.count;
+    const rows = await this.db.update(bookings).set({ userName: '[삭제된 사용자]', userEmail: null, userPhone: null }).where(eq(bookings.userId, userId)).returning({ id: bookings.id });
+    return rows.length;
   }
 
-  /**
-   * 참여자 결제 완료 처리
-   * - 참여자 미존재 시 split 데이터로 자동 생성 (upsert)
-   * - 전원 결제 완료 시 SLOT_RESERVED → CONFIRMED 전환
-   */
-  async markParticipantPaid(
-    bookingId: number,
-    userId: number,
-    userName?: string,
-    userEmail?: string,
-    amount?: number,
-  ) {
-    const booking = await this.prisma.booking.findUnique({
-      where: { id: bookingId },
-    });
+  async markParticipantPaid(bookingId: number, userId: number, userName?: string, userEmail?: string, amount?: number) {
+    const [booking] = await this.db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+    if (!booking) throw new AppException(Errors.Booking.NOT_FOUND);
 
-    if (!booking) {
-      throw new AppException(Errors.Booking.NOT_FOUND);
-    }
-
-    // 참여자 조회 → 없으면 split 데이터로 자동 생성
-    let participant = await this.prisma.bookingParticipant.findUnique({
-      where: { bookingId_userId: { bookingId, userId } },
-    });
+    let [participant] = await this.db.select().from(bookingParticipants).where(and(eq(bookingParticipants.bookingId, bookingId), eq(bookingParticipants.userId, userId))).limit(1);
 
     if (!participant) {
       if (!userName || !userEmail) {
-        this.logger.warn(
-          `Participant not found and missing info: booking=${bookingId}, user=${userId}`,
-        );
+        this.logger.warn(`Participant not found and missing info: booking=${bookingId}, user=${userId}`);
         throw new AppException(Errors.Group.PARTICIPANT_NOT_FOUND);
       }
-
       const isBooker = booking.userId === userId;
-      participant = await this.prisma.bookingParticipant.create({
-        data: {
-          bookingId,
-          userId,
-          userName,
-          userEmail,
-          role: isBooker ? ParticipantRole.BOOKER : ParticipantRole.MEMBER,
-          status: ParticipantStatus.PENDING,
-          amount: amount ?? Number(booking.pricePerPerson),
-        },
-      });
-      this.logger.log(
-        `Auto-created participant: booking=${bookingId}, user=${userId} (${userName})`,
-      );
+      [participant] = await this.db.insert(bookingParticipants).values({
+        bookingId, userId, userName, userEmail, role: isBooker ? ParticipantRole.BOOKER : ParticipantRole.MEMBER, status: ParticipantStatus.PENDING, amount: amount ?? Number(booking.pricePerPerson),
+      }).returning();
+      this.logger.log(`Auto-created participant: booking=${bookingId}, user=${userId} (${userName})`);
     }
 
-    // 결제 완료 처리
     if (participant.status !== ParticipantStatus.PAID) {
-      await this.prisma.bookingParticipant.update({
-        where: { id: participant.id },
-        data: {
-          status: ParticipantStatus.PAID,
-          paidAt: new Date(),
-        },
-      });
+      await this.db.update(bookingParticipants).set({ status: ParticipantStatus.PAID, paidAt: new Date() }).where(eq(bookingParticipants.id, participant.id));
     }
 
-    // 해당 booking의 모든 참여자 정산 상태 확인
-    const allParticipants = await this.prisma.bookingParticipant.findMany({
-      where: { bookingId },
-    });
-
-    const paidCount = allParticipants.filter(
-      (p) => p.status === ParticipantStatus.PAID,
-    ).length;
+    const allParticipants = await this.db.select().from(bookingParticipants).where(eq(bookingParticipants.bookingId, bookingId));
+    const paidCount = allParticipants.filter((p) => p.status === ParticipantStatus.PAID).length;
     const totalCount = allParticipants.length;
     const allPaid = paidCount === totalCount && totalCount >= booking.playerCount;
 
-    // 전원 결제 완료 → SLOT_RESERVED → CONFIRMED
-    // 알림/CompanyMember 등록은 PAYMENT_CONFIRMED saga가 일관 처리 (SAGA.md §6.6)
     if (allPaid && booking.status === BookingStatus.SLOT_RESERVED) {
-      await this.prisma.$transaction(async (prisma) => {
-        await prisma.booking.update({
-          where: { id: bookingId },
-          data: { status: BookingStatus.CONFIRMED },
-        });
-
-        await prisma.bookingHistory.create({
-          data: {
-            bookingId,
-            action: 'PAYMENT_CONFIRMED',
-            userId: booking.userId,
-            details: {
-              paidCount,
-              totalCount,
-              confirmedAt: new Date().toISOString(),
-              splitPayment: true,
-            },
-          },
-        });
-
-        await prisma.bookingHistory.create({
-          data: {
-            bookingId,
-            action: 'CONFIRMED',
-            userId: booking.userId,
-            details: {
-              confirmedAt: new Date().toISOString(),
-              paymentMethod: booking.paymentMethod,
-              splitPayment: true,
-            },
-          },
-        });
+      await this.db.transaction(async (tx) => {
+        await tx.update(bookings).set({ status: BookingStatus.CONFIRMED }).where(eq(bookings.id, bookingId));
+        await tx.insert(bookingHistory).values({ bookingId, action: 'PAYMENT_CONFIRMED', userId: booking.userId!, details: { paidCount, totalCount, confirmedAt: new Date().toISOString(), splitPayment: true } });
+        await tx.insert(bookingHistory).values({ bookingId, action: 'CONFIRMED', userId: booking.userId!, details: { confirmedAt: new Date().toISOString(), paymentMethod: booking.paymentMethod, splitPayment: true } });
       });
-
-      this.logger.log(
-        `Booking ${bookingId} CONFIRMED — all ${totalCount} participants paid (split payment)`,
-      );
-
-      // 결제 완료 outbox는 payment-service가 발행 (단건/더치 일관).
-      // 본 메서드는 응답(settled=true)으로 호출자에게 allPaid를 알린다.
+      this.logger.log(`Booking ${bookingId} CONFIRMED — all ${totalCount} participants paid (split payment)`);
     }
 
-    const settlementStatus =
-      allPaid ? 'COMPLETED' :
-      paidCount > 0 ? 'PARTIAL' : 'PENDING';
-
-    return {
-      settled: allPaid,
-      paidCount,
-      totalCount,
-      settlementStatus,
-    };
+    const settlementStatus = allPaid ? 'COMPLETED' : paidCount > 0 ? 'PARTIAL' : 'PENDING';
+    return { settled: allPaid, paidCount, totalCount, settlementStatus };
   }
 
-  /**
-   * 정산 상태 조회 (READ-ONLY)
-   * markParticipantPaid의 allPaid 공식을 재사용하는 단일 진실 공급원
-   */
   async getSettlementStatus(bookingId: number) {
-    const booking = await this.prisma.booking.findUnique({
-      where: { id: bookingId },
-    });
+    const [booking] = await this.db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+    if (!booking) throw new AppException(Errors.Booking.NOT_FOUND);
 
-    if (!booking) {
-      throw new AppException(Errors.Booking.NOT_FOUND);
-    }
-
-    const participants = await this.prisma.bookingParticipant.findMany({
-      where: { bookingId },
-    });
-
-    const paidCount = participants.filter(
-      (p) => p.status === ParticipantStatus.PAID,
-    ).length;
+    const participants = await this.db.select().from(bookingParticipants).where(eq(bookingParticipants.bookingId, bookingId));
+    const paidCount = participants.filter((p) => p.status === ParticipantStatus.PAID).length;
     const totalCount = participants.length;
     const allPaid = paidCount === totalCount && totalCount >= booking.playerCount;
 
     return {
-      bookingId,
-      bookingStatus: booking.status,
-      allPaid,
-      paidCount,
-      totalCount,
-      playerCount: booking.playerCount,
+      bookingId, bookingStatus: booking.status, allPaid, paidCount, totalCount, playerCount: booking.playerCount,
       settlementStatus: allPaid ? 'COMPLETED' : paidCount > 0 ? 'PARTIAL' : 'PENDING',
-      participants: participants.map((p) => ({
-        userId: p.userId,
-        userName: p.userName,
-        amount: Number(p.amount),
-        status: p.status,
-        paidAt: p.paidAt?.toISOString() || null,
-      })),
+      participants: participants.map((p) => ({ userId: p.userId, userName: p.userName, amount: Number(p.amount), status: p.status, paidAt: p.paidAt?.toISOString() || null })),
     };
   }
 
-  /**
-   * 그룹 예약 취소 (groupId 기반)
-   * executeCancellation 재사용 → 슬롯 캐시 복구 + 카드 환불 Outbox 포함
-   */
   async cancelGroupBookings(groupId: string) {
-    const bookings = await this.prisma.booking.findMany({
-      where: { groupId },
-    });
+    const groupBookings = await this.db.select().from(bookings).where(eq(bookings.groupId, groupId));
+    if (groupBookings.length === 0) throw new AppException(Errors.Group.NOT_FOUND);
 
-    if (bookings.length === 0) {
-      throw new AppException(Errors.Group.NOT_FOUND);
-    }
-
-    const cancelledBookings = await this.prisma.$transaction(async (tx) => {
+    const cancelledBookings = await this.db.transaction(async (tx) => {
       const results = [];
-
-      for (const booking of bookings) {
+      for (const booking of groupBookings) {
         if (booking.status === BookingStatus.CANCELLED) continue;
-
-        const cancelled = await this.executeCancellation(
-          tx,
-          booking,
-          'Group booking cancelled',
-          { groupId },
-        );
+        const cancelled = await this.executeCancellation(tx, booking, 'Group booking cancelled', { groupId });
         results.push(cancelled);
-
-        // 참여자 전원 취소
-        await tx.bookingParticipant.updateMany({
-          where: { bookingId: booking.id },
-          data: { status: ParticipantStatus.CANCELLED },
-        });
+        await tx.update(bookingParticipants).set({ status: ParticipantStatus.CANCELLED }).where(eq(bookingParticipants.bookingId, booking.id));
       }
-
-      // TeamSelection도 취소
-      await tx.teamSelection.updateMany({
-        where: { groupId },
-        data: { status: TeamSelectionStatus.CANCELLED },
-      });
-
+      await tx.update(teamSelections).set({ status: TeamSelectionStatus.CANCELLED }).where(eq(teamSelections.groupId, groupId));
       return results;
     });
 
-    // 트랜잭션 후: club-service 슬롯 해제 + 예약 취소 이벤트
     for (const booking of cancelledBookings) {
       if (this.courseServiceClient) {
-        this.courseServiceClient.emit('gameTimeSlots.release', {
-          timeSlotId: booking.gameTimeSlotId,
-          playerCount: booking.playerCount,
-        });
+        this.courseServiceClient.emit('gameTimeSlots.release', { timeSlotId: booking.gameTimeSlotId, playerCount: booking.playerCount });
       }
-
       if (this.notificationPublisher) {
         this.notificationPublisher.emit('booking.cancelled', {
-          bookingId: booking.id,
-          bookingNumber: booking.bookingNumber,
-          userId: booking.userId,
-          gameId: booking.gameId,
-          gameName: booking.gameName,
-          bookingDate: booking.bookingDate.toISOString(),
-          timeSlot: booking.startTime,
-          reason: 'Group booking cancelled',
-          cancelledAt: new Date().toISOString(),
-          userEmail: booking.userEmail,
-          userName: booking.userName,
+          bookingId: booking.id, bookingNumber: booking.bookingNumber, userId: booking.userId, gameId: booking.gameId, gameName: booking.gameName,
+          bookingDate: booking.bookingDate.toISOString(), timeSlot: booking.startTime, reason: 'Group booking cancelled', cancelledAt: new Date().toISOString(), userEmail: booking.userEmail, userName: booking.userName,
         });
       }
     }
 
-    // 카드/더치페이 환불 Outbox 트리거
     const hasCardPayment = cancelledBookings.some((b) => b.paymentMethod === 'card' || b.paymentMethod === 'dutchpay');
-    if (hasCardPayment) {
-      setImmediate(() => this.outboxProcessor.triggerImmediate());
-    }
+    if (hasCardPayment) setImmediate(() => this.outboxProcessor.triggerImmediate());
 
     return { cancelled: true, groupId };
   }
