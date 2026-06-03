@@ -2,13 +2,13 @@
 // agent-service / agent_db — Drizzle schema
 // Hermes 5-Layer Memory — Layer 3 (Semantic Memory)
 // 설계: docs/workflow/AGENT_MEMORY.md §5
-// (UNI-82: Prisma → Drizzle 전환 파일럿)
+// (UNI-82: Drizzle 전환 파일럿)
 // ==============================================
 import { pgTable, integer, jsonb, text, boolean, timestamp, index } from 'drizzle-orm/pg-core';
 
 /**
  * 사용자별 개인화 메모리 (부킹 패턴 / 선호도 / 친구 관계).
- * 컬럼명은 기존 Prisma 매핑과 동일하게 유지 (introspect 호환, DB 무변경).
+ * 컬럼명은 기존 DB 매핑과 동일하게 유지 (introspect 호환, DB 무변경).
  */
 export const userMemory = pgTable(
   'user_memory',

@@ -37,7 +37,7 @@ export class AdminService {
   }
 
   /**
-   * 컨트롤러에서 전달하는 Prisma 형태의 WHERE 절(any)을 Drizzle 조건으로 변환.
+   * 컨트롤러에서 전달하는 WHERE 절(any)을 Drizzle 조건으로 변환.
    * 지원: OR(name/email contains insensitive), isActive, companies.some(companyId/companyRoleCode/isActive)
    */
   private buildAdminWhere(where?: any): SQL | undefined {
@@ -291,7 +291,7 @@ export class AdminService {
       },
     });
 
-    this.logger.log(`[PERF] AdminService.findByEmail (prisma query): ${Date.now() - startTime}ms`);
+    this.logger.log(`[PERF] AdminService.findByEmail (db query): ${Date.now() - startTime}ms`);
 
     if (!admin) {
       this.logger.log(`[PERF] AdminService.findByEmail NOT FOUND - total: ${Date.now() - startTime}ms`);

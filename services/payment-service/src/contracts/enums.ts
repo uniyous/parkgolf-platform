@@ -75,5 +75,5 @@ export const REFUND_STATUS_VALUES = vals(RefundStatus);
 export const WEBHOOK_STATUS_VALUES = vals(WebhookStatus);
 export const OUTBOX_STATUS_VALUES = vals(OutboxStatus);
 
-/** jsonb 값 (Prisma.InputJsonValue 대체) */
+/** jsonb 값 */
 export type JsonValue = string | number | boolean | null | { [k: string]: JsonValue } | JsonValue[];

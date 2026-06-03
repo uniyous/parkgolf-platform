@@ -5,7 +5,7 @@ import postgres from 'postgres';
 import * as schema from './schema';
 
 /**
- * Drizzle + postgres-js DB 제공자 (UNI-85). PrismaService 대체.
+ * Drizzle + postgres-js DB 제공자 (UNI-85).
  * notify_db는 마이그레이션 보유 → 연결만.
  */
 @Injectable()

@@ -125,8 +125,8 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
       }
     }
 
-    if (this.isPrismaError(exception)) {
-      return this.handlePrismaError(exception, timestamp);
+    if (this.isDbError(exception)) {
+      return this.handleDbError(exception, timestamp);
     }
 
     const message = exception instanceof Error ? exception.message : Errors.System.INTERNAL.message;
@@ -171,12 +171,12 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
         if (typeof errorObj.statusCode === 'number') return errorObj.statusCode;
       }
     }
-    if (this.isPrismaError(exception)) return this.getPrismaHttpStatus(exception);
+    if (this.isDbError(exception)) return this.getDbHttpStatus(exception);
     return HttpStatus.INTERNAL_SERVER_ERROR;
   }
 
-  // postgres-js 드라이버 에러(SQLSTATE) 탐지 (Prisma 덕타이핑 대체)
-  private isPrismaError(exception: unknown): boolean {
+  // postgres-js 드라이버 에러(SQLSTATE) 탐지
+  private isDbError(exception: unknown): boolean {
     return (
       exception instanceof Error &&
       exception.constructor.name === 'PostgresError' &&
@@ -184,7 +184,7 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
     );
   }
 
-  private handlePrismaError(exception: unknown, timestamp: string): StandardErrorResponse {
+  private handleDbError(exception: unknown, timestamp: string): StandardErrorResponse {
     const dbError = exception as { code: string; message: string };
     switch (dbError.code) {
       case '23505':
@@ -196,7 +196,7 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
     }
   }
 
-  private getPrismaHttpStatus(exception: unknown): number {
+  private getDbHttpStatus(exception: unknown): number {
     const dbError = exception as { code: string };
     switch (dbError.code) {
       case '23505': return HttpStatus.CONFLICT;

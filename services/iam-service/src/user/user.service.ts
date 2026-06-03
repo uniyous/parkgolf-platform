@@ -64,7 +64,7 @@ export class UserService {
                 .returning();
             return this.omitPassword(newUser);
         } catch (error) {
-            this.logger.error(`Prisma error during user creation: ${error.message}`);
+            this.logger.error(`DB error during user creation: ${error.message}`);
             throw new BadRequestException(`Could not create user: ${error.message}`);
         }
     }

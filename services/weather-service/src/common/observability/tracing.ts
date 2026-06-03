@@ -9,7 +9,7 @@
  *   OTEL_TRACES_SAMPLER    sampling 정책 (기본: parentbased_traceidratio)
  *   OTEL_TRACES_SAMPLER_ARG 비율 (기본: 1.0 = 100%)
  *
- * 자동 계측: HTTP / NestJS / Prisma / outbound axios / NATS(부분) / Redis 등
+ * 자동 계측: HTTP / NestJS / outbound axios / NATS(부분) / Redis 등
  */
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { Resource } from '@opentelemetry/resources';

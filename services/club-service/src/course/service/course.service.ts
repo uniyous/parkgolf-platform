@@ -174,7 +174,7 @@ export class CourseService {
     const [activeRow] = await this.db.select({ value: count() }).from(courses).where(activeWhere);
     const active = activeRow.value;
 
-    // groupBy를 별도 호출 (Prisma $transaction 타입 추론 이슈 회피)
+    // groupBy를 별도 호출
     const statusGroups = await this.db
       .select({ status: courses.status, count: count(courses.id) })
       .from(courses)

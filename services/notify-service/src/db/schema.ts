@@ -1,6 +1,6 @@
 // ==============================================
 // notify-service / notify_db — Drizzle schema (UNI-85)
-// 컬럼명 기존 Prisma 유지(@map snake_case / 무map은 그대로). @updatedAt → $defaultFn.
+// 컬럼명 기존 DB 유지(@map snake_case / 무map은 그대로). @updatedAt → $defaultFn.
 // ==============================================
 import { pgTable, pgEnum, serial, integer, text, boolean, jsonb, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
 import {
@@ -93,7 +93,7 @@ export const deadLetterNotifications = pgTable(
   ],
 );
 
-// 모델 행 타입 (@prisma/client 모델 타입 대체)
+// 모델 행 타입
 export type Notification = typeof notifications.$inferSelect;
 export type NotificationTemplate = typeof notificationTemplates.$inferSelect;
 export type NotificationSettings = typeof notificationSettings.$inferSelect;
