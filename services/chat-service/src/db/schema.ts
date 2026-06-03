@@ -20,9 +20,10 @@ export const chatRooms = pgTable(
     type: roomTypeEnum('type').notNull().default('CHANNEL'),
     bookingId: integer('bookingId'),
     createdAt: timestamp('createdAt', { precision: 3 }).notNull().defaultNow(),
+    // Prisma @updatedAt 컬럼은 DB 디폴트가 없음(app 관리) → defaultNow(DEFAULT emit) 금지, $defaultFn으로 값 주입
     updatedAt: timestamp('updatedAt', { precision: 3 })
       .notNull()
-      .defaultNow()
+      .$defaultFn(() => new Date())
       .$onUpdate(() => new Date()),
   },
   (t) => [index('chat_rooms_bookingId_idx').on(t.bookingId), index('chat_rooms_type_bookingId_idx').on(t.type, t.bookingId)],
