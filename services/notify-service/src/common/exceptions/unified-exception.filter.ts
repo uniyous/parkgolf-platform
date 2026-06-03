@@ -239,10 +239,11 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
   /**
    * Prisma 에러 여부 확인
    */
+  // postgres-js 드라이버 에러(SQLSTATE) 탐지 (Prisma 덕타이핑 대체)
   private isPrismaError(exception: unknown): boolean {
     return (
       exception instanceof Error &&
-      exception.constructor.name.startsWith('Prisma') &&
+      exception.constructor.name === 'PostgresError' &&
       'code' in exception
     );
   }
@@ -254,7 +255,7 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
     const prismaError = exception as { code: string; message: string };
 
     switch (prismaError.code) {
-      case 'P2002': // Unique constraint violation
+      case '23505': // unique_violation (was P2002)
         return {
           success: false,
           error: {
@@ -272,7 +273,7 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
           },
           timestamp,
         };
-      case 'P2003': // Foreign key constraint violation
+      case '23503': // foreign_key_violation (was P2003)
         return {
           success: false,
           error: {
@@ -300,11 +301,10 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
     const prismaError = exception as { code: string };
 
     switch (prismaError.code) {
-      case 'P2002':
+      case '23505':
         return HttpStatus.CONFLICT;
-      case 'P2025':
-        return HttpStatus.NOT_FOUND;
-      case 'P2003':
+      case '23503':
+      case '23502':
         return HttpStatus.BAD_REQUEST;
       default:
         return HttpStatus.INTERNAL_SERVER_ERROR;
