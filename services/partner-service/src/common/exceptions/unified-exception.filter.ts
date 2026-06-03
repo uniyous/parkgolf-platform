@@ -191,6 +191,8 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
         return { success: false, error: { code: Errors.Database.UNIQUE_VIOLATION.code, message: Errors.Database.UNIQUE_VIOLATION.message }, timestamp };
       case '23503':
         return { success: false, error: { code: Errors.Database.FK_VIOLATION.code, message: Errors.Database.FK_VIOLATION.message }, timestamp };
+      case '23502':
+        return { success: false, error: { code: Errors.Validation.INVALID_INPUT.code, message: Errors.Validation.INVALID_INPUT.message }, timestamp };
       default:
         return { success: false, error: { code: Errors.Database.CONNECTION_ERROR.code, message: dbError.message || Errors.System.INTERNAL.message }, timestamp };
     }

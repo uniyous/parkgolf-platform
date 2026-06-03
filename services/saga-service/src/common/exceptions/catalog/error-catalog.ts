@@ -54,6 +54,15 @@ export const ExternalErrors = defineErrors({
 });
 
 // ============================================
+// 데이터베이스 에러 (DB_xxx)
+// ============================================
+export const DatabaseErrors = defineErrors({
+  UNIQUE_VIOLATION: { code: 'DB_001', message: '중복된 데이터입니다', httpStatus: 409 },
+  FK_VIOLATION: { code: 'DB_003', message: '참조 무결성 위반', httpStatus: 400 },
+  CONNECTION_ERROR: { code: 'DB_004', message: '데이터베이스 연결 오류', httpStatus: 503 },
+});
+
+// ============================================
 // 시스템 에러 (SYS_xxx)
 // ============================================
 export const SystemErrors = defineErrors({
@@ -71,5 +80,6 @@ export const Errors = {
   Saga: SagaErrors,
   Validation: ValidationErrors,
   External: ExternalErrors,
+  Database: DatabaseErrors,
   System: SystemErrors,
 } as const;

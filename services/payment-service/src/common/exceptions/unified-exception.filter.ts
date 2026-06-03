@@ -214,7 +214,7 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
     const dbError = exception as { code: string; message: string };
 
     switch (dbError.code) {
-      case '23505': // unique_violation (was P2002)
+      case '23505': // unique_violation
         return {
           success: false,
           error: {
@@ -223,12 +223,21 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
           },
           timestamp,
         };
-      case '23503': // foreign_key_violation (was P2003)
+      case '23503': // foreign_key_violation
         return {
           success: false,
           error: {
             code: Errors.Database.FK_VIOLATION.code,
             message: Errors.Database.FK_VIOLATION.message,
+          },
+          timestamp,
+        };
+      case '23502': // not_null_violation
+        return {
+          success: false,
+          error: {
+            code: Errors.Validation.INVALID_INPUT.code,
+            message: Errors.Validation.INVALID_INPUT.message,
           },
           timestamp,
         };
