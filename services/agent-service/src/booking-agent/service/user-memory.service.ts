@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { eq } from 'drizzle-orm';
+import { DrizzleService } from '../../db/drizzle.service';
+import { userMemory } from '../../db/schema';
 
 /**
  * Hermes 5-Layer Memory — Layer 3 (Semantic Memory)
@@ -54,10 +56,14 @@ export interface BookingCompletedEvent {
 export class UserMemoryService {
   private readonly logger = new Logger(UserMemoryService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
 
   async get(userId: number): Promise<UserMemorySnapshot | null> {
-    const row = await this.prisma.userMemory.findUnique({ where: { userId } });
+    const [row] = await this.drizzle.db
+      .select()
+      .from(userMemory)
+      .where(eq(userMemory.userId, userId))
+      .limit(1);
     if (!row) return null;
     return {
       userId: row.userId,
@@ -73,11 +79,13 @@ export class UserMemoryService {
    * 프라이버시 토글 — 사용자가 OFF 시 메모리 미활용.
    */
   async setEnabled(userId: number, enabled: boolean): Promise<void> {
-    await this.prisma.userMemory.upsert({
-      where: { userId },
-      create: { userId, enabled },
-      update: { enabled },
-    });
+    await this.drizzle.db
+      .insert(userMemory)
+      .values({ userId, enabled })
+      .onConflictDoUpdate({
+        target: userMemory.userId,
+        set: { enabled, updatedAt: new Date() },
+      });
   }
 
   /**
@@ -142,22 +150,25 @@ export class UserMemoryService {
       // recentSummary: 마지막 1줄
       const recentSummary = `${event.clubName} · ${event.date} ${event.startTime} · ${event.playerCount}명 · ${event.paymentMethod}`;
 
-      await this.prisma.userMemory.upsert({
-        where: { userId: event.userId },
-        create: {
+      await this.drizzle.db
+        .insert(userMemory)
+        .values({
           userId: event.userId,
-          preferences: preferences as unknown as object,
-          favoriteClubs: favoriteClubs as unknown as object,
-          frequentTeammates: frequentTeammates as unknown as object,
+          preferences,
+          favoriteClubs,
+          frequentTeammates,
           recentSummary,
-        },
-        update: {
-          preferences: preferences as unknown as object,
-          favoriteClubs: favoriteClubs as unknown as object,
-          frequentTeammates: frequentTeammates as unknown as object,
-          recentSummary,
-        },
-      });
+        })
+        .onConflictDoUpdate({
+          target: userMemory.userId,
+          set: {
+            preferences,
+            favoriteClubs,
+            frequentTeammates,
+            recentSummary,
+            updatedAt: new Date(),
+          },
+        });
 
       this.logger.debug(`UserMemory merged: user=${event.userId}, clubs=${favoriteClubs.length}, teammates=${frequentTeammates.length}`);
     } catch (err: unknown) {
@@ -210,7 +221,7 @@ export class UserMemoryService {
    * 사용자 계정 삭제 시 정리.
    */
   async deleteByUser(userId: number): Promise<void> {
-    await this.prisma.userMemory.deleteMany({ where: { userId } });
+    await this.drizzle.db.delete(userMemory).where(eq(userMemory.userId, userId));
   }
 
   // ─── 내부 ───────────────────────────────────────────
