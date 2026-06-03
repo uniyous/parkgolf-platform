@@ -1,5 +1,5 @@
 import { IsString, IsNumber, IsOptional, IsEnum, Min, MaxLength } from 'class-validator';
-import { PaymentMethod, PaymentStatus } from '@prisma/client';
+import { PaymentMethod, PaymentStatus } from '../../contracts/enums';
 
 /**
  * 결제 준비 요청 DTO
