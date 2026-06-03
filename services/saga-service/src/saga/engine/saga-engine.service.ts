@@ -1,9 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../../../prisma/prisma.service';
-import { SagaStatus, StepStatus } from '@prisma/client';
+import { eq, and, count, asc, desc, gte, lte, inArray, type SQL } from 'drizzle-orm';
+import { DrizzleService } from '../../db/drizzle.service';
+import { sagaExecutions, sagaSteps } from '../../db/schema';
+import { SagaStatus, StepStatus } from '../../contracts/enums';
 import { SagaRegistry } from './saga-registry';
 import { StepExecutorService } from './step-executor.service';
-import { SagaDefinition, StepDefinition } from '../definitions/saga-definition.interface';
+import { SagaDefinition } from '../definitions/saga-definition.interface';
 import { NatsResponse, type SagaMeta } from '../../common/types/response.types';
 import { PgBossService } from '../../common/pgboss/pgboss.service';
 
@@ -19,11 +21,15 @@ export class SagaEngineService {
   private readonly logger = new Logger(SagaEngineService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly drizzle: DrizzleService,
     private readonly registry: SagaRegistry,
     private readonly stepExecutor: StepExecutorService,
     private readonly pgboss: PgBossService,
   ) {}
+
+  private get db() {
+    return this.drizzle.db;
+  }
 
   /**
    * Saga 시작
@@ -51,9 +57,11 @@ export class SagaEngineService {
     this.logger.log(`[SagaEngine] correlationId=${correlationId}, triggeredBy=${triggeredBy}`);
 
     // 중복 Saga 체크
-    const existing = await this.prisma.sagaExecution.findUnique({
-      where: { correlationId },
-    });
+    const [existing] = await this.db
+      .select()
+      .from(sagaExecutions)
+      .where(eq(sagaExecutions.correlationId, correlationId))
+      .limit(1);
     if (existing && existing.status !== SagaStatus.FAILED) {
       this.logger.warn(`[SagaEngine] Duplicate saga: ${correlationId}, status=${existing.status}`);
       const existingPayload = (existing.payload as Record<string, unknown>) ?? {};
@@ -64,41 +72,41 @@ export class SagaEngineService {
       });
     }
 
-    // SagaExecution 생성 + 모든 SagaStep 레코드 생성
-    const sagaExecution = await this.prisma.$transaction(async (prisma) => {
+    // SagaExecution 생성 + 모든 SagaStep 레코드 생성 (트랜잭션)
+    const sagaExecution = await this.db.transaction(async (tx) => {
       // FAILED 상태의 이전 실행이 있으면 삭제 후 재생성
       if (existing && existing.status === SagaStatus.FAILED) {
         this.logger.log(`[SagaEngine] Removing FAILED saga ${existing.id} for retry: ${correlationId}`);
-        await prisma.sagaStep.deleteMany({ where: { sagaExecutionId: existing.id } });
-        await prisma.sagaExecution.delete({ where: { id: existing.id } });
+        await tx.delete(sagaSteps).where(eq(sagaSteps.sagaExecutionId, existing.id));
+        await tx.delete(sagaExecutions).where(eq(sagaExecutions.id, existing.id));
       }
 
-      const execution = await prisma.sagaExecution.create({
-        data: {
+      const [execution] = await tx
+        .insert(sagaExecutions)
+        .values({
           sagaType,
           correlationId,
           status: SagaStatus.STARTED,
           currentStep: 0,
           totalSteps: definition.steps.length,
-          payload: payload as any,
+          payload,
           triggeredBy,
           triggeredById,
-        },
-      });
+        })
+        .returning();
 
       // 모든 Step 레코드 미리 생성
-      for (let i = 0; i < definition.steps.length; i++) {
-        const step = definition.steps[i];
-        await prisma.sagaStep.create({
-          data: {
+      if (definition.steps.length > 0) {
+        await tx.insert(sagaSteps).values(
+          definition.steps.map((step, i) => ({
             sagaExecutionId: execution.id,
             stepIndex: i,
             stepName: step.name,
             actionPattern: step.action,
             status: StepStatus.PENDING,
             compensatePattern: step.compensate,
-          },
-        });
+          })),
+        );
       }
 
       return execution;
@@ -119,10 +127,10 @@ export class SagaEngineService {
         },
       );
       if (timeoutJobId) {
-        await this.prisma.sagaExecution.update({
-          where: { id: sagaExecution.id },
-          data: { timeoutJobId },
-        });
+        await this.db
+          .update(sagaExecutions)
+          .set({ timeoutJobId })
+          .where(eq(sagaExecutions.id, sagaExecution.id));
       }
     } catch (err) {
       this.logger.warn(
@@ -143,14 +151,9 @@ export class SagaEngineService {
       try {
         await this.pgboss.cancel(SAGA_TIMEOUT_RECOVERY_QUEUE, timeoutJobId);
       } catch (err) {
-        // 이미 처리됐거나 cancel 실패해도 saga 자체는 종료된 상태이므로 문제 없음
         this.logger.debug(`[SagaEngine] timeout task cancel skipped: ${err instanceof Error ? err.message : 'unknown'}`);
       }
     }
-
-    // payment-timeout one-off 잡은 executeSteps에서 createBooking step 직후(bookingId 확보)에
-    // 등록한다 (UNI-38 #6). 완료 시점이 아닌 생성 시점에 등록해야 saga가 뒤에서 멈춰
-    // PENDING으로 남는 예약도 3분 후 PAYMENT_TIMEOUT으로 회수된다.
 
     const { sagaStatus, failReason, ...dataPayload } = result as {
       sagaStatus: string;
@@ -167,15 +170,11 @@ export class SagaEngineService {
 
   /**
    * Saga timeout 복구 (pg-boss worker에서 호출)
-   *
-   * - saga가 15분 이상 active 상태로 남아있으면 호출됨
-   * - 멱등성: 이미 종료된 saga면 skip
-   * - 보상 트랜잭션 자동 실행하여 정합성 회복
    */
   async recoverTimedOutSaga(sagaExecutionId: number) {
-    const saga = await this.prisma.sagaExecution.findUnique({
-      where: { id: sagaExecutionId },
-      include: { steps: true },
+    const saga = await this.db.query.sagaExecutions.findFirst({
+      where: eq(sagaExecutions.id, sagaExecutionId),
+      with: { steps: true },
     });
 
     if (!saga) {
@@ -200,14 +199,14 @@ export class SagaEngineService {
 
     const definition = this.registry.get(saga.sagaType);
     if (!definition) {
-      await this.prisma.sagaExecution.update({
-        where: { id: sagaExecutionId },
-        data: {
+      await this.db
+        .update(sagaExecutions)
+        .set({
           status: SagaStatus.REQUIRES_MANUAL,
           failReason: `Timed out + saga definition not found: ${saga.sagaType}`,
           failedAt: new Date(),
-        },
-      });
+        })
+        .where(eq(sagaExecutions.id, sagaExecutionId));
       return { recovered: false, reason: 'definition_missing' };
     }
 
@@ -225,29 +224,22 @@ export class SagaEngineService {
 
     const finalStatus = compensated ? SagaStatus.FAILED : SagaStatus.REQUIRES_MANUAL;
 
-    await this.prisma.sagaExecution.update({
-      where: { id: sagaExecutionId },
-      data: {
+    await this.db
+      .update(sagaExecutions)
+      .set({
         status: finalStatus,
         failReason: 'Saga timeout — auto recovery via pg-boss',
         failedAt: new Date(),
-      },
-    });
+      })
+      .where(eq(sagaExecutions.id, sagaExecutionId));
 
-    this.logger.warn(
-      `[SagaEngine] Saga ${sagaExecutionId} timeout recovery complete: ${finalStatus}`,
-    );
+    this.logger.warn(`[SagaEngine] Saga ${sagaExecutionId} timeout recovery complete: ${finalStatus}`);
 
     return { recovered: true, finalStatus, compensated };
   }
 
   /**
-   * Step들을 순차 실행
-   */
-  /**
    * 결제 타임아웃 one-off 잡 등록 (UNI-38 #6).
-   * createBooking step 직후 호출 — 3분 뒤 워커가 PENDING/SLOT_RESERVED면 PAYMENT_TIMEOUT 트리거.
-   * singletonKey로 중복 enqueue 방지(멱등). saga는 multi-pod이므로 반복 cron이 아닌 one-off만 사용.
    */
   private async schedulePaymentTimeout(bookingId: number): Promise<void> {
     try {
@@ -270,6 +262,9 @@ export class SagaEngineService {
     }
   }
 
+  /**
+   * Step들을 순차 실행
+   */
   private async executeSteps(
     sagaExecutionId: number,
     definition: SagaDefinition,
@@ -289,23 +284,19 @@ export class SagaEngineService {
       }
 
       // SagaExecution 상태 업데이트
-      await this.prisma.sagaExecution.update({
-        where: { id: sagaExecutionId },
-        data: { status: SagaStatus.STEP_EXECUTING, currentStep: i },
-      });
+      await this.db
+        .update(sagaExecutions)
+        .set({ status: SagaStatus.STEP_EXECUTING, currentStep: i })
+        .where(eq(sagaExecutions.id, sagaExecutionId));
 
       // Step용 요청 데이터 빌드
       const requestPayload = stepDef.buildRequest(currentPayload);
 
       // Step 시작 기록
-      await this.prisma.sagaStep.updateMany({
-        where: { sagaExecutionId, stepIndex: i },
-        data: {
-          status: StepStatus.EXECUTING,
-          startedAt: new Date(),
-          requestPayload: requestPayload as any,
-        },
-      });
+      await this.db
+        .update(sagaSteps)
+        .set({ status: StepStatus.EXECUTING, startedAt: new Date(), requestPayload })
+        .where(and(eq(sagaSteps.sagaExecutionId, sagaExecutionId), eq(sagaSteps.stepIndex, i)));
 
       this.logger.log(`[SagaEngine] Step ${i + 1}/${definition.steps.length} ${stepDef.name} executing`);
 
@@ -314,51 +305,38 @@ export class SagaEngineService {
 
       if (result.success) {
         // Step 성공
-        await this.prisma.sagaStep.updateMany({
-          where: { sagaExecutionId, stepIndex: i },
-          data: {
-            status: StepStatus.COMPLETED,
-            completedAt: new Date(),
-            responsePayload: (result.data || {}) as any,
-          },
-        });
+        await this.db
+          .update(sagaSteps)
+          .set({ status: StepStatus.COMPLETED, completedAt: new Date(), responsePayload: result.data || {} })
+          .where(and(eq(sagaSteps.sagaExecutionId, sagaExecutionId), eq(sagaSteps.stepIndex, i)));
 
         // 응답을 payload에 병합
         if (stepDef.mergeResponse && result.data) {
           currentPayload = stepDef.mergeResponse(currentPayload, result.data);
         }
 
-        await this.prisma.sagaExecution.update({
-          where: { id: sagaExecutionId },
-          data: { status: SagaStatus.STEP_COMPLETED, payload: currentPayload as any },
-        });
+        await this.db
+          .update(sagaExecutions)
+          .set({ status: SagaStatus.STEP_COMPLETED, payload: currentPayload })
+          .where(eq(sagaExecutions.id, sagaExecutionId));
 
         // CREATE_BOOKING: bookingId 확보 즉시 결제 타임아웃 one-off 잡 등록 (UNI-38 #6).
-        // 완료가 아닌 이 시점에 등록해야 이후 step이 멈추거나 saga가 중단돼 PENDING으로
-        // 남아도 3분 후 PAYMENT_TIMEOUT으로 슬롯이 회수된다. (onsite는 3분 시점 CONFIRMED면 워커가 skip)
         if (
           !timeoutScheduled &&
           definition.name === 'CREATE_BOOKING' &&
           typeof (currentPayload as { bookingId?: number }).bookingId === 'number'
         ) {
           timeoutScheduled = true;
-          await this.schedulePaymentTimeout(
-            (currentPayload as { bookingId: number }).bookingId,
-          );
+          await this.schedulePaymentTimeout((currentPayload as { bookingId: number }).bookingId);
         }
       } else {
         // Step 실패
-        await this.prisma.sagaStep.updateMany({
-          where: { sagaExecutionId, stepIndex: i },
-          data: {
-            status: StepStatus.FAILED,
-            completedAt: new Date(),
-            errorMessage: result.error,
-          },
-        });
+        await this.db
+          .update(sagaSteps)
+          .set({ status: StepStatus.FAILED, completedAt: new Date(), errorMessage: result.error })
+          .where(and(eq(sagaSteps.sagaExecutionId, sagaExecutionId), eq(sagaSteps.stepIndex, i)));
 
         if (stepDef.optional) {
-          // Optional step 실패 → SKIPPED 후 계속
           this.logger.warn(`[SagaEngine] Optional step ${stepDef.name} failed, skipping: ${result.error}`);
           await this.updateStepStatus(sagaExecutionId, i, StepStatus.SKIPPED);
           continue;
@@ -366,42 +344,29 @@ export class SagaEngineService {
 
         // 필수 Step 실패 → 보상 시작
         this.logger.error(`[SagaEngine] Step ${stepDef.name} FAILED: ${result.error}`);
-        await this.prisma.sagaExecution.update({
-          where: { id: sagaExecutionId },
-          data: { status: SagaStatus.STEP_FAILED, failReason: result.error },
-        });
+        await this.db
+          .update(sagaExecutions)
+          .set({ status: SagaStatus.STEP_FAILED, failReason: result.error })
+          .where(eq(sagaExecutions.id, sagaExecutionId));
 
-        // 보상 트랜잭션 실행
-        const compensationSuccess = await this.runCompensation(
-          sagaExecutionId, definition, i, currentPayload,
-        );
+        const compensationSuccess = await this.runCompensation(sagaExecutionId, definition, i, currentPayload);
 
-        const finalStatus = compensationSuccess
-          ? SagaStatus.FAILED
-          : SagaStatus.REQUIRES_MANUAL;
+        const finalStatus = compensationSuccess ? SagaStatus.FAILED : SagaStatus.REQUIRES_MANUAL;
 
-        await this.prisma.sagaExecution.update({
-          where: { id: sagaExecutionId },
-          data: {
-            status: finalStatus,
-            failReason: result.error,
-            failedAt: new Date(),
-          },
-        });
+        await this.db
+          .update(sagaExecutions)
+          .set({ status: finalStatus, failReason: result.error, failedAt: new Date() })
+          .where(eq(sagaExecutions.id, sagaExecutionId));
 
         return { sagaStatus: finalStatus, ...currentPayload, failReason: result.error };
       }
     }
 
     // 모든 Step 성공
-    await this.prisma.sagaExecution.update({
-      where: { id: sagaExecutionId },
-      data: {
-        status: SagaStatus.COMPLETED,
-        completedAt: new Date(),
-        payload: currentPayload as any,
-      },
-    });
+    await this.db
+      .update(sagaExecutions)
+      .set({ status: SagaStatus.COMPLETED, completedAt: new Date(), payload: currentPayload })
+      .where(eq(sagaExecutions.id, sagaExecutionId));
 
     return { sagaStatus: 'COMPLETED', ...currentPayload };
   }
@@ -417,14 +382,13 @@ export class SagaEngineService {
   ): Promise<boolean> {
     this.logger.log(`[SagaEngine] Starting compensation from step ${failedStepIndex - 1} down to 0`);
 
-    await this.prisma.sagaExecution.update({
-      where: { id: sagaExecutionId },
-      data: { status: SagaStatus.COMPENSATING },
-    });
+    await this.db
+      .update(sagaExecutions)
+      .set({ status: SagaStatus.COMPENSATING })
+      .where(eq(sagaExecutions.id, sagaExecutionId));
 
     let allCompensated = true;
 
-    // 실패한 Step 이전의 완료된 Step을 역순으로 보상
     for (let i = failedStepIndex - 1; i >= 0; i--) {
       const stepDef = definition.steps[i];
 
@@ -434,9 +398,11 @@ export class SagaEngineService {
       }
 
       // 해당 Step이 실제로 완료되었는지 확인
-      const sagaStep = await this.prisma.sagaStep.findFirst({
-        where: { sagaExecutionId, stepIndex: i },
-      });
+      const [sagaStep] = await this.db
+        .select()
+        .from(sagaSteps)
+        .where(and(eq(sagaSteps.sagaExecutionId, sagaExecutionId), eq(sagaSteps.stepIndex, i)))
+        .limit(1);
 
       if (!sagaStep || sagaStep.status !== StepStatus.COMPLETED) {
         this.logger.log(`[SagaEngine] Step ${stepDef.name} was not completed, skipping compensation`);
@@ -453,10 +419,10 @@ export class SagaEngineService {
       );
 
       if (result.success) {
-        await this.prisma.sagaStep.updateMany({
-          where: { sagaExecutionId, stepIndex: i },
-          data: { status: StepStatus.COMPENSATED },
-        });
+        await this.db
+          .update(sagaSteps)
+          .set({ status: StepStatus.COMPENSATED })
+          .where(and(eq(sagaSteps.sagaExecutionId, sagaExecutionId), eq(sagaSteps.stepIndex, i)));
         this.logger.log(`[SagaEngine] Compensation for ${stepDef.name} SUCCESS`);
       } else {
         this.logger.error(`[SagaEngine] Compensation for ${stepDef.name} FAILED: ${result.error}`);
@@ -468,10 +434,10 @@ export class SagaEngineService {
       ? SagaStatus.COMPENSATION_COMPLETED
       : SagaStatus.COMPENSATION_FAILED;
 
-    await this.prisma.sagaExecution.update({
-      where: { id: sagaExecutionId },
-      data: { status: compensationStatus },
-    });
+    await this.db
+      .update(sagaExecutions)
+      .set({ status: compensationStatus })
+      .where(eq(sagaExecutions.id, sagaExecutionId));
 
     return allCompensated;
   }
@@ -480,9 +446,11 @@ export class SagaEngineService {
    * 실패한 Saga 재시도
    */
   async retrySaga(sagaExecutionId: number) {
-    const execution = await this.prisma.sagaExecution.findUnique({
-      where: { id: sagaExecutionId },
-    });
+    const [execution] = await this.db
+      .select()
+      .from(sagaExecutions)
+      .where(eq(sagaExecutions.id, sagaExecutionId))
+      .limit(1);
 
     if (!execution) {
       return NatsResponse.success({ error: 'Saga not found' });
@@ -500,27 +468,16 @@ export class SagaEngineService {
     this.logger.log(`[SagaEngine] Retrying saga ${sagaExecutionId} (${execution.sagaType})`);
 
     // 상태 초기화
-    await this.prisma.sagaExecution.update({
-      where: { id: sagaExecutionId },
-      data: {
-        status: SagaStatus.STARTED,
-        currentStep: 0,
-        failReason: null,
-        failedAt: null,
-      },
-    });
+    await this.db
+      .update(sagaExecutions)
+      .set({ status: SagaStatus.STARTED, currentStep: 0, failReason: null, failedAt: null })
+      .where(eq(sagaExecutions.id, sagaExecutionId));
 
     // Step 상태 초기화
-    await this.prisma.sagaStep.updateMany({
-      where: { sagaExecutionId },
-      data: {
-        status: StepStatus.PENDING,
-        retryCount: 0,
-        errorMessage: null,
-        startedAt: null,
-        completedAt: null,
-      },
-    });
+    await this.db
+      .update(sagaSteps)
+      .set({ status: StepStatus.PENDING, retryCount: 0, errorMessage: null, startedAt: null, completedAt: null })
+      .where(eq(sagaSteps.sagaExecutionId, sagaExecutionId));
 
     const payload = execution.payload as Record<string, unknown>;
     const result = await this.executeSteps(sagaExecutionId, definition, payload);
@@ -529,12 +486,14 @@ export class SagaEngineService {
   }
 
   /**
-   * Saga 수동 완료 처리 (sagaStatus는 이미 result에 포함)
+   * Saga 수동 완료 처리
    */
   async resolveSaga(sagaExecutionId: number, adminNote?: string) {
-    const execution = await this.prisma.sagaExecution.findUnique({
-      where: { id: sagaExecutionId },
-    });
+    const [execution] = await this.db
+      .select()
+      .from(sagaExecutions)
+      .where(eq(sagaExecutions.id, sagaExecutionId))
+      .limit(1);
 
     if (!execution) {
       return NatsResponse.success({ error: 'Saga not found' });
@@ -544,18 +503,18 @@ export class SagaEngineService {
       return NatsResponse.success({ error: `Cannot resolve saga in status: ${execution.status}` });
     }
 
-    await this.prisma.sagaExecution.update({
-      where: { id: sagaExecutionId },
-      data: {
+    await this.db
+      .update(sagaExecutions)
+      .set({
         status: SagaStatus.COMPLETED,
         completedAt: new Date(),
         payload: {
           ...(execution.payload as Record<string, unknown>),
           resolvedManually: true,
           adminNote,
-        } as any,
-      },
-    });
+        },
+      })
+      .where(eq(sagaExecutions.id, sagaExecutionId));
 
     this.logger.log(`[SagaEngine] Saga ${sagaExecutionId} manually resolved`);
     return NatsResponse.success({ sagaExecutionId, sagaStatus: 'COMPLETED', resolvedManually: true });
@@ -564,38 +523,34 @@ export class SagaEngineService {
   /**
    * Saga 목록 조회
    */
-  async listSagas(filters: {
-    sagaType?: string;
-    status?: string;
-    page?: number;
-    limit?: number;
-  }) {
+  async listSagas(filters: { sagaType?: string; status?: string; page?: number; limit?: number }) {
     const { sagaType, status, page = 1, limit = 20 } = filters;
-    const where: Record<string, unknown> = {};
-    if (sagaType) where.sagaType = sagaType;
-    if (status) where.status = status;
+    const conds: SQL[] = [];
+    if (sagaType) conds.push(eq(sagaExecutions.sagaType, sagaType));
+    if (status) conds.push(eq(sagaExecutions.status, status as SagaStatus));
+    const where = conds.length ? and(...conds) : undefined;
 
-    const [sagas, total] = await Promise.all([
-      this.prisma.sagaExecution.findMany({
+    const [sagas, totalRows] = await Promise.all([
+      this.db.query.sagaExecutions.findMany({
         where,
-        include: { steps: { orderBy: { stepIndex: 'asc' } } },
-        orderBy: { startedAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
+        with: { steps: { orderBy: asc(sagaSteps.stepIndex) } },
+        orderBy: desc(sagaExecutions.startedAt),
+        limit,
+        offset: (page - 1) * limit,
       }),
-      this.prisma.sagaExecution.count({ where }),
+      this.db.select({ value: count() }).from(sagaExecutions).where(where),
     ]);
 
-    return NatsResponse.paginated(sagas, total, page, limit);
+    return NatsResponse.paginated(sagas, totalRows[0].value, page, limit);
   }
 
   /**
    * Saga 상세 조회
    */
   async getSaga(sagaExecutionId: number) {
-    const saga = await this.prisma.sagaExecution.findUnique({
-      where: { id: sagaExecutionId },
-      include: { steps: { orderBy: { stepIndex: 'asc' } } },
+    const saga = await this.db.query.sagaExecutions.findFirst({
+      where: eq(sagaExecutions.id, sagaExecutionId),
+      with: { steps: { orderBy: asc(sagaSteps.stepIndex) } },
     });
 
     if (!saga) {
@@ -609,26 +564,33 @@ export class SagaEngineService {
    * Saga 통계
    */
   async getStats(dateRange?: { startDate: string; endDate: string }) {
-    const where: Record<string, unknown> = {};
-    if (dateRange) {
-      where.startedAt = {
-        gte: new Date(dateRange.startDate),
-        lte: new Date(dateRange.endDate),
-      };
-    }
+    const base = dateRange
+      ? and(
+          gte(sagaExecutions.startedAt, new Date(dateRange.startDate)),
+          lte(sagaExecutions.startedAt, new Date(dateRange.endDate)),
+        )
+      : undefined;
 
-    const [total, completed, failed, requiresManual, active] = await Promise.all([
-      this.prisma.sagaExecution.count({ where }),
-      this.prisma.sagaExecution.count({ where: { ...where, status: SagaStatus.COMPLETED } }),
-      this.prisma.sagaExecution.count({ where: { ...where, status: SagaStatus.FAILED } }),
-      this.prisma.sagaExecution.count({ where: { ...where, status: SagaStatus.REQUIRES_MANUAL } }),
-      this.prisma.sagaExecution.count({
-        where: {
-          ...where,
-          status: { in: [SagaStatus.STARTED, SagaStatus.STEP_EXECUTING, SagaStatus.STEP_COMPLETED] },
-        },
-      }),
+    const countWhere = (extra?: SQL) =>
+      this.db
+        .select({ value: count() })
+        .from(sagaExecutions)
+        .where(extra ? (base ? and(base, extra) : extra) : base);
+
+    const results = await Promise.all([
+      countWhere(),
+      countWhere(eq(sagaExecutions.status, SagaStatus.COMPLETED)),
+      countWhere(eq(sagaExecutions.status, SagaStatus.FAILED)),
+      countWhere(eq(sagaExecutions.status, SagaStatus.REQUIRES_MANUAL)),
+      countWhere(
+        inArray(sagaExecutions.status, [
+          SagaStatus.STARTED,
+          SagaStatus.STEP_EXECUTING,
+          SagaStatus.STEP_COMPLETED,
+        ]),
+      ),
     ]);
+    const [total, completed, failed, requiresManual, active] = results.map((r) => r[0].value);
 
     return NatsResponse.success({
       total,
@@ -641,10 +603,10 @@ export class SagaEngineService {
   }
 
   private updateStepStatus(sagaExecutionId: number, stepIndex: number, status: StepStatus) {
-    return this.prisma.sagaStep.updateMany({
-      where: { sagaExecutionId, stepIndex },
-      data: { status, completedAt: new Date() },
-    });
+    return this.db
+      .update(sagaSteps)
+      .set({ status, completedAt: new Date() })
+      .where(and(eq(sagaSteps.sagaExecutionId, sagaExecutionId), eq(sagaSteps.stepIndex, stepIndex)));
   }
 
   private buildCorrelationId(sagaType: string, payload: Record<string, unknown>): string {
