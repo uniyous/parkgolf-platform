@@ -2,7 +2,7 @@
  * NATS 응답 타입
  */
 
-import { ClubStatus } from '@prisma/client';
+import { ClubStatus } from '../../contracts/enums';
 
 // ===== 타입 =====
 

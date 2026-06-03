@@ -1,6 +1,9 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { GameTimeSlot, Prisma, TimeSlotStatus } from '@prisma/client';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { eq, and, lt, gte, lte, asc, count, sql } from 'drizzle-orm';
+import { DrizzleService } from '../../db/drizzle.service';
+import { TimeSlotStatus } from '../../contracts/enums';
+import type { GameTimeSlot } from '../../db/schema';
+import { gameTimeSlots, games, processedSlotReservations } from '../../db/schema';
 import {
   CreateGameTimeSlotDto,
   UpdateGameTimeSlotDto,
@@ -15,9 +18,13 @@ const IDEMPOTENCY_TTL_MS = 60000; // 1분 TTL
 export class GameTimeSlotService {
   private readonly logger = new Logger(GameTimeSlotService.name);
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(private readonly drizzle: DrizzleService) {
     // 5분마다 만료된 레코드 정리
     setInterval(() => this.cleanupExpiredReservations(), 5 * 60 * 1000);
+  }
+
+  private get db() {
+    return this.drizzle.db;
   }
 
   /**
@@ -25,13 +32,12 @@ export class GameTimeSlotService {
    */
   private async cleanupExpiredReservations(): Promise<void> {
     try {
-      const result = await this.prisma.processedSlotReservation.deleteMany({
-        where: {
-          expiresAt: { lt: new Date() },
-        },
-      });
-      if (result.count > 0) {
-        this.logger.log(`[Saga] Cleaned up ${result.count} expired processed reservations`);
+      const deleted = await this.db
+        .delete(processedSlotReservations)
+        .where(lt(processedSlotReservations.expiresAt, new Date()))
+        .returning();
+      if (deleted.length > 0) {
+        this.logger.log(`[Saga] Cleaned up ${deleted.length} expired processed reservations`);
       }
     } catch (error) {
       this.logger.error(`[Saga] Failed to cleanup expired reservations: ${error.message}`);
@@ -41,16 +47,17 @@ export class GameTimeSlotService {
   async create(createDto: CreateGameTimeSlotDto): Promise<GameTimeSlot> {
     this.logger.log(`Creating time slot for game ${createDto.gameId} on ${createDto.date}`);
 
-    const game = await this.prisma.game.findUnique({
-      where: { id: createDto.gameId },
+    const game = await this.db.query.games.findFirst({
+      where: eq(games.id, createDto.gameId),
     });
     if (!game) {
       throw new NotFoundException(`Game with ID ${createDto.gameId} not found`);
     }
 
     try {
-      return await this.prisma.gameTimeSlot.create({
-        data: {
+      const [created] = await this.db
+        .insert(gameTimeSlots)
+        .values({
           gameId: createDto.gameId,
           date: new Date(createDto.date),
           startTime: createDto.startTime,
@@ -61,10 +68,14 @@ export class GameTimeSlotService {
           isPremium: createDto.isPremium ?? false,
           status: createDto.status ?? 'AVAILABLE',
           isActive: createDto.isActive ?? true,
-        },
-        include: {
+        })
+        .returning();
+
+      return await this.db.query.gameTimeSlots.findFirst({
+        where: eq(gameTimeSlots.id, created.id),
+        with: {
           game: {
-            include: {
+            with: {
               frontNineCourse: true,
               backNineCourse: true,
             },
@@ -72,12 +83,11 @@ export class GameTimeSlotService {
         },
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
-          throw new ConflictException(
-            `Time slot already exists for game ${createDto.gameId} on ${createDto.date} at ${createDto.startTime}`
-          );
-        }
+      // unique 제약 위반 (game_id, date, start_time)
+      if (error?.code === '23505') {
+        throw new ConflictException(
+          `Time slot already exists for game ${createDto.gameId} on ${createDto.date} at ${createDto.startTime}`
+        );
       }
       throw error;
     }
@@ -91,31 +101,29 @@ export class GameTimeSlotService {
   }> {
     const { gameId, date, startDate, endDate, status, isActive, availableOnly, page = 1, limit = 50 } = query;
 
-    const where: Prisma.GameTimeSlotWhereInput = {};
-    if (gameId) where.gameId = gameId;
-    if (date) where.date = new Date(date);
-    if (startDate || endDate) {
-      where.date = {};
-      if (startDate) where.date.gte = new Date(startDate);
-      if (endDate) where.date.lte = new Date(endDate);
-    }
-    if (status) where.status = status;
-    if (isActive !== undefined) where.isActive = isActive;
+    const conditions = [];
+    if (gameId) conditions.push(eq(gameTimeSlots.gameId, gameId));
+    if (date) conditions.push(eq(gameTimeSlots.date, new Date(date)));
+    if (startDate) conditions.push(gte(gameTimeSlots.date, new Date(startDate)));
+    if (endDate) conditions.push(lte(gameTimeSlots.date, new Date(endDate)));
+    if (status) conditions.push(eq(gameTimeSlots.status, status));
+    if (isActive !== undefined) conditions.push(eq(gameTimeSlots.isActive, isActive));
     if (availableOnly) {
-      where.status = 'AVAILABLE';
-      where.isActive = true;
+      conditions.push(eq(gameTimeSlots.status, 'AVAILABLE'));
+      conditions.push(eq(gameTimeSlots.isActive, true));
     }
 
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
     const skip = (page - 1) * limit;
 
-    const [slots, total] = await this.prisma.$transaction([
-      this.prisma.gameTimeSlot.findMany({
+    const [slots, [totalRow]] = await Promise.all([
+      // 목록 조회 시 필요한 필드만 선택 (성능 최적화)
+      this.db.query.gameTimeSlots.findMany({
         where,
-        skip,
-        take: limit,
-        orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
-        // 목록 조회 시 필요한 필드만 선택 (성능 최적화)
-        select: {
+        offset: skip,
+        limit,
+        orderBy: [asc(gameTimeSlots.date), asc(gameTimeSlots.startTime)],
+        columns: {
           id: true,
           gameId: true,
           date: true,
@@ -130,9 +138,11 @@ export class GameTimeSlotService {
           isActive: true,
           createdAt: true,
           updatedAt: true,
-          // game 정보는 기본만 포함
+        },
+        // game 정보는 기본만 포함
+        with: {
           game: {
-            select: {
+            columns: {
               id: true,
               name: true,
               code: true,
@@ -140,18 +150,18 @@ export class GameTimeSlotService {
           },
         },
       }),
-      this.prisma.gameTimeSlot.count({ where }),
+      this.db.select({ value: count() }).from(gameTimeSlots).where(where),
     ]);
 
-    return { data: slots, total, page, limit };
+    return { data: slots, total: totalRow.value, page, limit };
   }
 
   async findOne(id: number): Promise<GameTimeSlot> {
-    const slot = await this.prisma.gameTimeSlot.findUnique({
-      where: { id },
-      include: {
+    const slot = await this.db.query.gameTimeSlots.findFirst({
+      where: eq(gameTimeSlots.id, id),
+      with: {
         game: {
-          include: {
+          with: {
             frontNineCourse: true,
             backNineCourse: true,
             club: true,
@@ -168,14 +178,14 @@ export class GameTimeSlotService {
   }
 
   async findByGameAndDate(gameId: number, date: string): Promise<any[]> {
-    return this.prisma.gameTimeSlot.findMany({
-      where: {
-        gameId,
-        date: new Date(date),
-        isActive: true,
-      },
-      orderBy: { startTime: 'asc' },
-      select: {
+    return this.db.query.gameTimeSlots.findMany({
+      where: and(
+        eq(gameTimeSlots.gameId, gameId),
+        eq(gameTimeSlots.date, new Date(date)),
+        eq(gameTimeSlots.isActive, true),
+      ),
+      orderBy: asc(gameTimeSlots.startTime),
+      columns: {
         id: true,
         gameId: true,
         date: true,
@@ -197,9 +207,9 @@ export class GameTimeSlotService {
 
     await this.findOne(id);
 
-    return this.prisma.gameTimeSlot.update({
-      where: { id },
-      data: {
+    await this.db
+      .update(gameTimeSlots)
+      .set({
         startTime: updateDto.startTime,
         endTime: updateDto.endTime,
         maxPlayers: updateDto.maxPlayers,
@@ -209,10 +219,14 @@ export class GameTimeSlotService {
         isPremium: updateDto.isPremium,
         status: updateDto.status,
         isActive: updateDto.isActive,
-      },
-      include: {
+      })
+      .where(eq(gameTimeSlots.id, id));
+
+    return this.db.query.gameTimeSlots.findFirst({
+      where: eq(gameTimeSlots.id, id),
+      with: {
         game: {
-          include: {
+          with: {
             frontNineCourse: true,
             backNineCourse: true,
           },
@@ -226,17 +240,23 @@ export class GameTimeSlotService {
 
     await this.findOne(id);
 
-    return this.prisma.gameTimeSlot.delete({
-      where: { id },
-    });
+    const [deleted] = await this.db
+      .delete(gameTimeSlots)
+      .where(eq(gameTimeSlots.id, id))
+      .returning();
+    return deleted;
   }
 
   async generateTimeSlots(dto: GenerateTimeSlotsDto): Promise<{ created: number; skipped: number }> {
     this.logger.log(`Generating time slots for game ${dto.gameId} from ${dto.startDate} to ${dto.endDate}`);
 
-    const game = await this.prisma.game.findUnique({
-      where: { id: dto.gameId },
-      include: { weeklySchedules: { where: { isActive: true } } },
+    const game = await this.db.query.games.findFirst({
+      where: eq(games.id, dto.gameId),
+      with: {
+        weeklySchedules: {
+          where: (ws, { eq }) => eq(ws.isActive, true),
+        },
+      },
     });
 
     if (!game) {
@@ -249,7 +269,7 @@ export class GameTimeSlotService {
 
     const startDate = new Date(dto.startDate);
     const endDate = new Date(dto.endDate);
-    const slotsToCreate: Prisma.GameTimeSlotCreateManyInput[] = [];
+    const slotsToCreate: (typeof gameTimeSlots.$inferInsert)[] = [];
 
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
       const dayOfWeek = d.getDay();
@@ -305,22 +325,28 @@ export class GameTimeSlotService {
     }
 
     if (dto.overwrite) {
-      await this.prisma.gameTimeSlot.deleteMany({
-        where: {
-          gameId: dto.gameId,
-          date: { gte: startDate, lte: endDate },
-        },
-      });
+      await this.db
+        .delete(gameTimeSlots)
+        .where(and(
+          eq(gameTimeSlots.gameId, dto.gameId),
+          gte(gameTimeSlots.date, startDate),
+          lte(gameTimeSlots.date, endDate),
+        ));
     }
 
-    const result = await this.prisma.gameTimeSlot.createMany({
-      data: slotsToCreate,
-      skipDuplicates: true,
-    });
+    const inserted = slotsToCreate.length > 0
+      ? await this.db
+          .insert(gameTimeSlots)
+          .values(slotsToCreate)
+          .onConflictDoNothing()
+          .returning({ id: gameTimeSlots.id })
+      : [];
+
+    const createdCount = inserted.length;
 
     return {
-      created: result.count,
-      skipped: slotsToCreate.length - result.count,
+      created: createdCount,
+      skipped: slotsToCreate.length - createdCount,
     };
   }
 
@@ -360,10 +386,12 @@ export class GameTimeSlotService {
   }
 
   async releaseSlot(id: number, playerCount: number): Promise<GameTimeSlot> {
-    return this.prisma.$transaction(async (tx) => {
-      const slot = await tx.gameTimeSlot.findUnique({
-        where: { id },
-      });
+    return this.db.transaction(async (tx) => {
+      const [slot] = await tx
+        .select()
+        .from(gameTimeSlots)
+        .where(eq(gameTimeSlots.id, id))
+        .limit(1);
 
       if (!slot) {
         throw new NotFoundException(`GameTimeSlot with ID ${id} not found`);
@@ -373,13 +401,15 @@ export class GameTimeSlotService {
       const newTotalOccupied = newBookedPlayers + slot.externalBooked;
       const newStatus = newTotalOccupied < slot.maxPlayers ? 'AVAILABLE' : 'FULLY_BOOKED';
 
-      return tx.gameTimeSlot.update({
-        where: { id },
-        data: {
+      const [updated] = await tx
+        .update(gameTimeSlots)
+        .set({
           bookedPlayers: newBookedPlayers,
           status: newStatus,
-        },
-      });
+        })
+        .where(eq(gameTimeSlots.id, id))
+        .returning();
+      return updated;
     });
   }
 
@@ -391,26 +421,44 @@ export class GameTimeSlotService {
     utilizationRate: number;
     totalRevenue: number;
   }> {
-    const where: Prisma.GameTimeSlotWhereInput = { isActive: true };
+    const conditions = [eq(gameTimeSlots.isActive, true)];
 
-    if (query.gameId) where.gameId = query.gameId;
-    if (query.clubId) where.game = { clubId: query.clubId };
-    if (query.startDate || query.endDate) {
-      where.date = {};
-      if (query.startDate) where.date.gte = new Date(query.startDate);
-      if (query.endDate) where.date.lte = new Date(query.endDate);
+    if (query.gameId) conditions.push(eq(gameTimeSlots.gameId, query.gameId));
+    if (query.startDate) conditions.push(gte(gameTimeSlots.date, new Date(query.startDate)));
+    if (query.endDate) conditions.push(lte(gameTimeSlots.date, new Date(query.endDate)));
+
+    // clubId 필터: game.clubId 기준 → games 조인
+    let gameIdsForClub: number[] | undefined;
+    if (query.clubId) {
+      const clubGames = await this.db
+        .select({ id: games.id })
+        .from(games)
+        .where(eq(games.clubId, query.clubId));
+      gameIdsForClub = clubGames.map(g => g.id);
+      // clubId에 해당하는 게임이 없으면 빈 결과
+      if (gameIdsForClub.length === 0) {
+        return {
+          totalSlots: 0,
+          availableSlots: 0,
+          bookedSlots: 0,
+          closedSlots: 0,
+          utilizationRate: 0,
+          totalRevenue: 0,
+        };
+      }
+      conditions.push(sql`${gameTimeSlots.gameId} = ANY(${gameIdsForClub})`);
     }
 
-    const slots = await this.prisma.gameTimeSlot.findMany({
-      where,
-      select: {
-        status: true,
-        bookedPlayers: true,
-        externalBooked: true,
-        maxPlayers: true,
-        price: true,
-      },
-    });
+    const slots = await this.db
+      .select({
+        status: gameTimeSlots.status,
+        bookedPlayers: gameTimeSlots.bookedPlayers,
+        externalBooked: gameTimeSlots.externalBooked,
+        maxPlayers: gameTimeSlots.maxPlayers,
+        price: gameTimeSlots.price,
+      })
+      .from(gameTimeSlots)
+      .where(and(...conditions));
 
     const totalSlots = slots.length;
     const availableSlots = slots.filter(s => s.status === 'AVAILABLE').length;
@@ -452,11 +500,11 @@ export class GameTimeSlotService {
     const MAX_RETRIES = 3;
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      const slot = await this.prisma.gameTimeSlot.findUnique({
-        where: { id: timeSlotId },
-        include: {
+      const slot = await this.db.query.gameTimeSlots.findFirst({
+        where: eq(gameTimeSlots.id, timeSlotId),
+        with: {
           game: {
-            include: {
+            with: {
               frontNineCourse: true,
               backNineCourse: true,
               club: true,
@@ -480,22 +528,26 @@ export class GameTimeSlotService {
           : TimeSlotStatus.AVAILABLE;
 
       // Optimistic Lock: version 체크 후 갱신
-      const updated = await this.prisma.gameTimeSlot.updateMany({
-        where: { id: timeSlotId, version: slot.version },
-        data: {
+      const updated = await this.db
+        .update(gameTimeSlots)
+        .set({
           externalBooked,
           status: newStatus,
           version: slot.version + 1,
-        },
-      });
+        })
+        .where(and(
+          eq(gameTimeSlots.id, timeSlotId),
+          eq(gameTimeSlots.version, slot.version),
+        ))
+        .returning();
 
-      if (updated.count > 0) {
+      if (updated.length > 0) {
         // 성공 — 갱신된 슬롯 반환
-        return this.prisma.gameTimeSlot.findUniqueOrThrow({
-          where: { id: timeSlotId },
-          include: {
+        const refetched = await this.db.query.gameTimeSlots.findFirst({
+          where: eq(gameTimeSlots.id, timeSlotId),
+          with: {
             game: {
-              include: {
+              with: {
                 frontNineCourse: true,
                 backNineCourse: true,
                 club: true,
@@ -503,6 +555,10 @@ export class GameTimeSlotService {
             },
           },
         });
+        if (!refetched) {
+          throw new NotFoundException(`GameTimeSlot with ID ${timeSlotId} not found`);
+        }
+        return refetched;
       }
 
       // version 충돌 → 재시도
@@ -524,17 +580,15 @@ export class GameTimeSlotService {
     date: string,
     startTime: string,
   ): Promise<GameTimeSlot | null> {
-    return this.prisma.gameTimeSlot.findUnique({
-      where: {
-        gameId_date_startTime: {
-          gameId,
-          date: new Date(date),
-          startTime,
-        },
-      },
-      include: {
+    const slot = await this.db.query.gameTimeSlots.findFirst({
+      where: and(
+        eq(gameTimeSlots.gameId, gameId),
+        eq(gameTimeSlots.date, new Date(date)),
+        eq(gameTimeSlots.startTime, startTime),
+      ),
+      with: {
         game: {
-          include: {
+          with: {
             frontNineCourse: true,
             backNineCourse: true,
             club: true,
@@ -542,6 +596,8 @@ export class GameTimeSlotService {
         },
       },
     });
+
+    return slot ?? null;
   }
 
   /**
@@ -557,8 +613,8 @@ export class GameTimeSlotService {
     price: number;
     externalBooked: number;
   }): Promise<GameTimeSlot> {
-    const game = await this.prisma.game.findUnique({
-      where: { id: data.gameId },
+    const game = await this.db.query.games.findFirst({
+      where: eq(games.id, data.gameId),
     });
 
     if (!game) {
@@ -569,13 +625,14 @@ export class GameTimeSlotService {
     const isWeekend = [0, 6].includes(dateObj.getDay());
     const price = isWeekend && game.weekendPrice
       ? game.weekendPrice
-      : new Prisma.Decimal(data.price || Number(game.basePrice));
+      : (data.price || Number(game.basePrice));
 
     const totalOccupied = data.externalBooked;
     const status = totalOccupied >= data.maxPlayers ? 'FULLY_BOOKED' : 'AVAILABLE';
 
-    const slot = await this.prisma.gameTimeSlot.create({
-      data: {
+    const [slot] = await this.db
+      .insert(gameTimeSlots)
+      .values({
         gameId: data.gameId,
         date: dateObj,
         startTime: data.startTime,
@@ -586,8 +643,8 @@ export class GameTimeSlotService {
         price,
         isPremium: isWeekend,
         status,
-      },
-    });
+      })
+      .returning();
 
     this.logger.log(`[Partner] Created GameTimeSlot ${slot.id} from partner: game=${data.gameId}, date=${data.date}, time=${data.startTime}`);
     return slot;
@@ -597,21 +654,24 @@ export class GameTimeSlotService {
    * 외부에서 삭제된 슬롯 CLOSED 처리 (partner-service 연동)
    */
   async closeExternal(gameTimeSlotId: number): Promise<GameTimeSlot> {
-    const slot = await this.prisma.gameTimeSlot.findUnique({
-      where: { id: gameTimeSlotId },
-    });
+    const [slot] = await this.db
+      .select()
+      .from(gameTimeSlots)
+      .where(eq(gameTimeSlots.id, gameTimeSlotId))
+      .limit(1);
 
     if (!slot) {
       throw new NotFoundException(`GameTimeSlot with ID ${gameTimeSlotId} not found`);
     }
 
-    const updated = await this.prisma.gameTimeSlot.update({
-      where: { id: gameTimeSlotId },
-      data: {
+    const [updated] = await this.db
+      .update(gameTimeSlots)
+      .set({
         status: 'CLOSED',
         externalBooked: 0,
-      },
-    });
+      })
+      .where(eq(gameTimeSlots.id, gameTimeSlotId))
+      .returning();
 
     this.logger.log(`[Partner] Closed GameTimeSlot ${gameTimeSlotId}: external slot removed`);
     return updated;
@@ -639,14 +699,14 @@ export class GameTimeSlotService {
 
     // Idempotency 체크: DB에서 이미 처리된 예약인지 확인
     const idempotencyStart = Date.now();
-    const existingReservation = await this.prisma.processedSlotReservation.findUnique({
-      where: {
-        bookingId_gameTimeSlotId: {
-          bookingId,
-          gameTimeSlotId: timeSlotId,
-        },
-      },
-    });
+    const [existingReservation] = await this.db
+      .select()
+      .from(processedSlotReservations)
+      .where(and(
+        eq(processedSlotReservations.bookingId, bookingId),
+        eq(processedSlotReservations.gameTimeSlotId, timeSlotId),
+      ))
+      .limit(1);
     this.logger.log(`[Saga] Idempotency check completed in ${Date.now() - idempotencyStart}ms`);
 
     if (existingReservation) {
@@ -664,15 +724,14 @@ export class GameTimeSlotService {
 
       try {
         const txStart = Date.now();
-        // Prisma transaction timeout: 30초 (Cloud Run cold start + Cloud SQL 지연 대응)
-        const result = await this.prisma.$transaction(async (tx) => {
+        const result = await this.db.transaction(async (tx) => {
           // 1. 현재 슬롯 상태 조회
           const slotQueryStart = Date.now();
-          const slot = await tx.gameTimeSlot.findUnique({
-            where: { id: timeSlotId },
-            include: {
+          const slot = await tx.query.gameTimeSlots.findFirst({
+            where: eq(gameTimeSlots.id, timeSlotId),
+            with: {
               game: {
-                include: {
+                with: {
                   frontNineCourse: true,
                   backNineCourse: true,
                   club: true,
@@ -717,21 +776,22 @@ export class GameTimeSlotService {
             : TimeSlotStatus.AVAILABLE;
 
           const updateStart = Date.now();
-          const updatedSlot = await tx.gameTimeSlot.updateMany({
-            where: {
-              id: timeSlotId,
-              version: currentVersion, // Optimistic Lock
-            },
-            data: {
+          const updatedRows = await tx
+            .update(gameTimeSlots)
+            .set({
               bookedPlayers: newBookedPlayers,
               status: newStatus,
               version: currentVersion + 1,
-            },
-          });
+            })
+            .where(and(
+              eq(gameTimeSlots.id, timeSlotId),
+              eq(gameTimeSlots.version, currentVersion), // Optimistic Lock
+            ))
+            .returning();
           this.logger.log(`[Saga] Slot update completed in ${Date.now() - updateStart}ms`);
 
           // Version mismatch 체크
-          if (updatedSlot.count === 0) {
+          if (updatedRows.length === 0) {
             throw new ConflictException('Concurrent modification detected. Please retry.');
           }
 
@@ -746,21 +806,18 @@ export class GameTimeSlotService {
             version: currentVersion + 1,
             updatedAt: new Date(),
           };
-        }, {
-          timeout: 30000, // 30초 (Cloud Run cold start + Cloud SQL 지연 대응)
-          maxWait: 10000, // 최대 10초 대기
         });
         this.logger.log(`[Saga] Transaction completed in ${Date.now() - txStart}ms`);
 
         // 성공 시 DB에 idempotency 레코드 추가 (중복 요청 방지)
         const idempotencyCreateStart = Date.now();
-        await this.prisma.processedSlotReservation.create({
-          data: {
+        await this.db
+          .insert(processedSlotReservations)
+          .values({
             bookingId,
             gameTimeSlotId: timeSlotId,
             expiresAt: new Date(Date.now() + IDEMPOTENCY_TTL_MS),
-          },
-        });
+          });
         this.logger.log(`[Saga] Idempotency record created in ${Date.now() - idempotencyCreateStart}ms`);
         this.logger.log(`[Saga] ========== reserveSlotForSaga SUCCESS (total: ${Date.now() - startTime}ms) ==========`);
         return { success: true, slot: result };
@@ -800,10 +857,12 @@ export class GameTimeSlotService {
     this.logger.log(`[Saga] Releasing slot ${timeSlotId} for ${playerCount} players (bookingId: ${bookingId}, reason: ${reason})`);
 
     try {
-      const result = await this.prisma.$transaction(async (tx) => {
-        const slot = await tx.gameTimeSlot.findUnique({
-          where: { id: timeSlotId },
-        });
+      const result = await this.db.transaction(async (tx) => {
+        const [slot] = await tx
+          .select()
+          .from(gameTimeSlots)
+          .where(eq(gameTimeSlots.id, timeSlotId))
+          .limit(1);
 
         if (!slot) {
           throw new NotFoundException(`GameTimeSlot with ID ${timeSlotId} not found`);
@@ -813,17 +872,16 @@ export class GameTimeSlotService {
         const newTotalOccupied = newBookedPlayers + slot.externalBooked;
         const newStatus = newTotalOccupied < slot.maxPlayers ? 'AVAILABLE' : 'FULLY_BOOKED';
 
-        return await tx.gameTimeSlot.update({
-          where: { id: timeSlotId },
-          data: {
+        const [updated] = await tx
+          .update(gameTimeSlots)
+          .set({
             bookedPlayers: newBookedPlayers,
             status: newStatus,
             version: slot.version + 1,
-          },
-        });
-      }, {
-        timeout: 30000, // 30초
-        maxWait: 10000, // 최대 10초 대기
+          })
+          .where(eq(gameTimeSlots.id, timeSlotId))
+          .returning();
+        return updated;
       });
 
       this.logger.log(`[Saga] Slot ${timeSlotId} released successfully`);

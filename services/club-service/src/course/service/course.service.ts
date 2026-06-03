@@ -1,13 +1,20 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Course, Prisma } from '@prisma/client';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { and, asc, count, desc, eq, gte, ilike, lte, type SQL } from 'drizzle-orm';
+import { DrizzleService } from '../../db/drizzle.service';
+import { pgCode } from '../../db/db-error';
+import { courses, holes } from '../../db/schema';
+import type { Course } from '../../db/schema';
 import { CreateCourseDto, FindCoursesQueryDto, UpdateCourseDto } from '../dto/course.dto';
 
 @Injectable()
 export class CourseService {
   private readonly logger = new Logger(CourseService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
+
+  private get db() {
+    return this.drizzle.db;
+  }
 
   async create(createDto: CreateCourseDto): Promise<Course> {
     this.logger.log(`Attempting to create a course with name: ${createDto.name} for company ID: ${createDto.companyId}`);
@@ -16,8 +23,9 @@ export class CourseService {
     // companyId is a cross-database reference to iam_db.companies
 
     try {
-      return await this.prisma.course.create({
-        data: {
+      const [row] = await this.db
+        .insert(courses)
+        .values({
           name: createDto.name,
           code: createDto.code,
           subtitle: createDto.subtitle,
@@ -33,10 +41,11 @@ export class CourseService {
           imageUrl: createDto.imageUrl,
           description: createDto.description,
           status: createDto.status,
-        },
-      });
+        })
+        .returning();
+      return row;
     } catch (error: unknown) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      if (pgCode(error) === '23505') {
         throw new ConflictException(`A course with name "${createDto.name}" already exists for company ID ${createDto.companyId}.`);
       }
       throw error;
@@ -47,55 +56,56 @@ export class CourseService {
     const { companyId, clubId, name, status, page = 1, limit = 10, includeHoles = false } = query;
     this.logger.log(`Fetching courses with query: ${JSON.stringify(query)}`);
 
-    const where: Prisma.CourseWhereInput = {};
+    const conds: SQL[] = [];
     if (companyId) {
-      where.companyId = companyId;
+      conds.push(eq(courses.companyId, companyId));
     }
     if (clubId) {
-      where.clubId = clubId;
+      conds.push(eq(courses.clubId, clubId));
     }
     if (name) {
-      where.name = { contains: name, mode: 'insensitive' }; // 대소문자 구분 없이 부분 일치 검색
+      conds.push(ilike(courses.name, `%${name}%`)); // 대소문자 구분 없이 부분 일치 검색
     }
     if (status) {
-      where.status = status;
+      conds.push(eq(courses.status, status));
     }
+    const where = conds.length ? and(...conds) : undefined;
 
     const skip = (page - 1) * limit;
 
     // includeHoles가 true이면 holes 정보 포함
-    const include = includeHoles ? {
-      holes: {
-        orderBy: { holeNumber: 'asc' as const },
-      },
-    } : undefined;
+    const data = await this.db.query.courses.findMany({
+      where,
+      offset: skip,
+      limit,
+      orderBy: desc(courses.createdAt),
+      with: includeHoles
+        ? {
+            holes: {
+              orderBy: asc(holes.holeNumber),
+            },
+          }
+        : undefined,
+    });
 
-    const [courses, total] = await this.prisma.$transaction([
-      this.prisma.course.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        include,
-      }),
-      this.prisma.course.count({ where }),
-    ]);
+    const [totalRow] = await this.db.select({ value: count() }).from(courses).where(where);
+    const total = totalRow.value;
 
-    return { data: courses, total, page, limit };
+    return { data, total, page, limit };
   }
 
   async findOne(id: number): Promise<Course> {
     this.logger.log(`Fetching course with ID: ${id}`);
-    const course = await this.prisma.course.findUnique({
-      where: { id },
-      include: {
+    const course = await this.db.query.courses.findFirst({
+      where: eq(courses.id, id),
+      with: {
         // company relation removed - use NATS 'iam.companies.getById' for Company data
         club: true,
         holes: {
-          include: {
+          with: {
             teeBoxes: true,
           },
-          orderBy: { holeNumber: 'asc' },
+          orderBy: asc(holes.holeNumber),
         },
       },
     });
@@ -115,9 +125,9 @@ export class CourseService {
     // companyId is a cross-database reference to iam_db.companies
 
     try {
-      return await this.prisma.course.update({
-        where: { id },
-        data: {
+      const [row] = await this.db
+        .update(courses)
+        .set({
           name: updateDto.name,
           code: updateDto.code,
           subtitle: updateDto.subtitle,
@@ -133,14 +143,12 @@ export class CourseService {
           imageUrl: updateDto.imageUrl,
           description: updateDto.description,
           status: updateDto.status,
-        },
-      });
+        })
+        .where(eq(courses.id, id))
+        .returning();
+      return row;
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002' &&
-        error.meta?.target === 'Course_companyId_name_key'
-      ) {
+      if (error?.code === '23505' && error?.constraint === 'Course_companyId_name_key') {
         throw new ConflictException(`A course with name "${updateDto.name}" might already exist for the company.`);
       }
       throw error;
@@ -152,29 +160,30 @@ export class CourseService {
     activeCourses: number;
     coursesByStatus: Record<string, number>;
   }> {
-    const where: Prisma.CourseWhereInput = {};
+    const conds: SQL[] = [];
     if (dateRange) {
-      where.createdAt = {
-        gte: new Date(dateRange.startDate),
-        lte: new Date(dateRange.endDate),
-      };
+      conds.push(gte(courses.createdAt, new Date(dateRange.startDate)));
+      conds.push(lte(courses.createdAt, new Date(dateRange.endDate)));
     }
+    const where = conds.length ? and(...conds) : undefined;
 
-    const [total, active] = await this.prisma.$transaction([
-      this.prisma.course.count({ where }),
-      this.prisma.course.count({ where: { ...where, isActive: true } }),
-    ]);
+    const [totalRow] = await this.db.select({ value: count() }).from(courses).where(where);
+    const total = totalRow.value;
+
+    const activeWhere = and(...conds, eq(courses.isActive, true));
+    const [activeRow] = await this.db.select({ value: count() }).from(courses).where(activeWhere);
+    const active = activeRow.value;
 
     // groupBy를 별도 호출 (Prisma $transaction 타입 추론 이슈 회피)
-    const statusGroups = await this.prisma.course.groupBy({
-      by: ['status'],
-      where,
-      _count: { id: true },
-    });
+    const statusGroups = await this.db
+      .select({ status: courses.status, count: count(courses.id) })
+      .from(courses)
+      .where(where)
+      .groupBy(courses.status);
 
     const coursesByStatus = statusGroups.reduce(
       (acc, item) => {
-        acc[item.status] = item._count.id;
+        acc[item.status] = item.count;
         return acc;
       },
       {} as Record<string, number>,
@@ -189,21 +198,21 @@ export class CourseService {
     await this.findOne(id);
 
     // onDelete: Restrict 이므로, 관련된 Hole, Game이 있으면 삭제 불가
-    // 먼저 하위 레코드를 삭제하거나, Prisma 스키마에서 onDelete 규칙을 변경해야 함.
+    // 먼저 하위 레코드를 삭제하거나, 스키마에서 onDelete 규칙을 변경해야 함.
     try {
-      return await this.prisma.course.delete({
-        where: { id },
-      });
+      const [row] = await this.db.delete(courses).where(eq(courses.id, id)).returning();
+      if (!row) {
+        throw new NotFoundException(`Course with ID ${id} not found.`);
+      }
+      return row;
     } catch (error: unknown) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
-          throw new NotFoundException(`Course with ID ${id} not found.`);
-        }
-        if (error.code === 'P2003' || error.code === 'P2014') {
-          throw new ConflictException(
-            `Cannot delete course with ID ${id} as it has related records (e.g., holes, games). Please delete them first.`,
-          );
-        }
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      if (pgCode(error) === '23503') {
+        throw new ConflictException(
+          `Cannot delete course with ID ${id} as it has related records (e.g., holes, games). Please delete them first.`,
+        );
       }
       throw error;
     }

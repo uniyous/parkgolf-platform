@@ -1,7 +1,7 @@
 // Policy DTOs for cancellation, refund, no-show, and operating policies
 import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsNumber, IsInt, IsArray, ValidateNested, IsEnum, Min, Max } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
-import { PolicyScope } from '@prisma/client';
+import { PolicyScope } from '../../contracts/enums';
 
 // =====================================================
 // Common: PolicyScope

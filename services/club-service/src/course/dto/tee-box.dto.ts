@@ -1,4 +1,5 @@
-import { TeeBox as TeeBoxModel, TeeBoxLevel } from '@prisma/client';
+import { TeeBoxLevel } from '../../contracts/enums';
+import type { TeeBox as TeeBoxModel } from '../../db/schema';
 import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
 export class CreateTeeBoxDto {
