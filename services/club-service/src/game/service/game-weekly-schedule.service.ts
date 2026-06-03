@@ -1,6 +1,8 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { GameWeeklySchedule, Prisma } from '@prisma/client';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { and, asc, eq } from 'drizzle-orm';
+import { DrizzleService } from '../../db/drizzle.service';
+import { games, gameWeeklySchedules } from '../../db/schema';
+import type { GameWeeklySchedule } from '../../db/schema';
 import {
   CreateGameWeeklyScheduleDto,
   UpdateGameWeeklyScheduleDto,
@@ -12,39 +14,42 @@ import {
 export class GameWeeklyScheduleService {
   private readonly logger = new Logger(GameWeeklyScheduleService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
+
+  private get db() {
+    return this.drizzle.db;
+  }
 
   async create(createDto: CreateGameWeeklyScheduleDto): Promise<GameWeeklySchedule> {
     this.logger.log(`Creating weekly schedule for game ${createDto.gameId}, day ${createDto.dayOfWeek}`);
 
-    const game = await this.prisma.game.findUnique({
-      where: { id: createDto.gameId },
-    });
+    const [game] = await this.db.select().from(games).where(eq(games.id, createDto.gameId)).limit(1);
     if (!game) {
       throw new NotFoundException(`Game with ID ${createDto.gameId} not found`);
     }
 
     try {
-      return await this.prisma.gameWeeklySchedule.create({
-        data: {
+      const [created] = await this.db
+        .insert(gameWeeklySchedules)
+        .values({
           gameId: createDto.gameId,
           dayOfWeek: createDto.dayOfWeek,
           startTime: createDto.startTime,
           endTime: createDto.endTime,
           interval: createDto.interval ?? 10,
           isActive: createDto.isActive ?? true,
-        },
-        include: {
-          game: true,
-        },
+        })
+        .returning();
+
+      return this.db.query.gameWeeklySchedules.findFirst({
+        where: eq(gameWeeklySchedules.id, created.id),
+        with: { game: true },
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
-          throw new ConflictException(
-            `Weekly schedule for game ${createDto.gameId} on day ${createDto.dayOfWeek} at ${createDto.startTime} already exists`
-          );
-        }
+      if (error?.code === '23505') {
+        throw new ConflictException(
+          `Weekly schedule for game ${createDto.gameId} on day ${createDto.dayOfWeek} at ${createDto.startTime} already exists`
+        );
       }
       throw error;
     }
@@ -53,24 +58,24 @@ export class GameWeeklyScheduleService {
   async findAll(query: FindGameWeeklySchedulesQueryDto): Promise<GameWeeklySchedule[]> {
     const { gameId, dayOfWeek, isActive } = query;
 
-    const where: Prisma.GameWeeklyScheduleWhereInput = {};
-    if (gameId) where.gameId = gameId;
-    if (dayOfWeek !== undefined) where.dayOfWeek = dayOfWeek;
-    if (isActive !== undefined) where.isActive = isActive;
+    const conditions = [];
+    if (gameId) conditions.push(eq(gameWeeklySchedules.gameId, gameId));
+    if (dayOfWeek !== undefined) conditions.push(eq(gameWeeklySchedules.dayOfWeek, dayOfWeek));
+    if (isActive !== undefined) conditions.push(eq(gameWeeklySchedules.isActive, isActive));
 
-    return this.prisma.gameWeeklySchedule.findMany({
-      where,
-      orderBy: [{ gameId: 'asc' }, { dayOfWeek: 'asc' }, { startTime: 'asc' }],
-      include: {
+    return this.db.query.gameWeeklySchedules.findMany({
+      where: conditions.length ? and(...conditions) : undefined,
+      orderBy: [asc(gameWeeklySchedules.gameId), asc(gameWeeklySchedules.dayOfWeek), asc(gameWeeklySchedules.startTime)],
+      with: {
         game: true,
       },
     });
   }
 
   async findOne(id: number): Promise<GameWeeklySchedule> {
-    const schedule = await this.prisma.gameWeeklySchedule.findUnique({
-      where: { id },
-      include: {
+    const schedule = await this.db.query.gameWeeklySchedules.findFirst({
+      where: eq(gameWeeklySchedules.id, id),
+      with: {
         game: true,
       },
     });
@@ -83,9 +88,9 @@ export class GameWeeklyScheduleService {
   }
 
   async findByGame(gameId: number): Promise<GameWeeklySchedule[]> {
-    return this.prisma.gameWeeklySchedule.findMany({
-      where: { gameId, isActive: true },
-      orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
+    return this.db.query.gameWeeklySchedules.findMany({
+      where: and(eq(gameWeeklySchedules.gameId, gameId), eq(gameWeeklySchedules.isActive, true)),
+      orderBy: [asc(gameWeeklySchedules.dayOfWeek), asc(gameWeeklySchedules.startTime)],
     });
   }
 
@@ -94,15 +99,19 @@ export class GameWeeklyScheduleService {
 
     await this.findOne(id);
 
-    return this.prisma.gameWeeklySchedule.update({
-      where: { id },
-      data: {
+    await this.db
+      .update(gameWeeklySchedules)
+      .set({
         startTime: updateDto.startTime,
         endTime: updateDto.endTime,
         interval: updateDto.interval,
         isActive: updateDto.isActive,
-      },
-      include: {
+      })
+      .where(eq(gameWeeklySchedules.id, id));
+
+    return this.db.query.gameWeeklySchedules.findFirst({
+      where: eq(gameWeeklySchedules.id, id),
+      with: {
         game: true,
       },
     });
@@ -113,17 +122,18 @@ export class GameWeeklyScheduleService {
 
     await this.findOne(id);
 
-    return this.prisma.gameWeeklySchedule.delete({
-      where: { id },
-    });
+    const [deleted] = await this.db
+      .delete(gameWeeklySchedules)
+      .where(eq(gameWeeklySchedules.id, id))
+      .returning();
+
+    return deleted;
   }
 
   async bulkCreate(dto: BulkCreateGameWeeklyScheduleDto): Promise<{ created: number }> {
     this.logger.log(`Bulk creating weekly schedules for game ${dto.gameId}`);
 
-    const game = await this.prisma.game.findUnique({
-      where: { id: dto.gameId },
-    });
+    const [game] = await this.db.select().from(games).where(eq(games.id, dto.gameId)).limit(1);
     if (!game) {
       throw new NotFoundException(`Game with ID ${dto.gameId} not found`);
     }
@@ -132,7 +142,7 @@ export class GameWeeklyScheduleService {
       ? [0, 1, 2, 3, 4, 5, 6] // 일~토
       : [1, 2, 3, 4, 5]; // 월~금
 
-    const schedulesToCreate: Prisma.GameWeeklyScheduleCreateManyInput[] = daysToCreate.map(dayOfWeek => ({
+    const schedulesToCreate = daysToCreate.map(dayOfWeek => ({
       gameId: dto.gameId,
       dayOfWeek,
       startTime: dto.startTime,
@@ -141,21 +151,23 @@ export class GameWeeklyScheduleService {
       isActive: true,
     }));
 
-    const result = await this.prisma.gameWeeklySchedule.createMany({
-      data: schedulesToCreate,
-      skipDuplicates: true,
-    });
+    const result = await this.db
+      .insert(gameWeeklySchedules)
+      .values(schedulesToCreate)
+      .onConflictDoNothing()
+      .returning();
 
-    return { created: result.count };
+    return { created: result.length };
   }
 
   async removeByGame(gameId: number): Promise<{ deleted: number }> {
     this.logger.log(`Deleting all weekly schedules for game ${gameId}`);
 
-    const result = await this.prisma.gameWeeklySchedule.deleteMany({
-      where: { gameId },
-    });
+    const result = await this.db
+      .delete(gameWeeklySchedules)
+      .where(eq(gameWeeklySchedules.gameId, gameId))
+      .returning();
 
-    return { deleted: result.count };
+    return { deleted: result.length };
   }
 }

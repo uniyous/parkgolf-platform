@@ -13,7 +13,8 @@ import {
   Max,
   ValidateNested,
 } from 'class-validator';
-import { Club, Course, ClubType, BookingMode } from '@prisma/client';
+import { ClubType, BookingMode } from '../../contracts/enums';
+import type { Club, Course } from '../../db/schema';
 import { CourseResponseDto } from '../../course/dto/course.dto';
 
 export enum ClubStatus {

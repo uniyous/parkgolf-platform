@@ -1,30 +1,37 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Game, Prisma } from '@prisma/client';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { eq, and, count, desc, asc, ilike, sql, type SQL } from 'drizzle-orm';
+import { DrizzleService } from '../../db/drizzle.service';
+import { pgCode } from '../../db/db-error';
+import type { Game } from '../../db/schema';
+import { games, courses, clubs } from '../../db/schema';
 import { CreateGameDto, UpdateGameDto, FindGamesQueryDto, SearchGamesQueryDto } from '../dto/game.dto';
 
 @Injectable()
 export class GameService {
   private readonly logger = new Logger(GameService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
+
+  private get db() {
+    return this.drizzle.db;
+  }
 
   async create(createDto: CreateGameDto): Promise<Game> {
     this.logger.log(`Creating game: ${createDto.name} (${createDto.code})`);
 
     // Club 존재 확인
-    const club = await this.prisma.club.findUnique({
-      where: { id: createDto.clubId },
-    });
+    const [club] = await this.db.select().from(clubs).where(eq(clubs.id, createDto.clubId)).limit(1);
     if (!club) {
       throw new NotFoundException(`Club with ID ${createDto.clubId} not found`);
     }
 
     // Front/Back Nine Course 존재 확인
-    const [frontCourse, backCourse] = await Promise.all([
-      this.prisma.course.findUnique({ where: { id: createDto.frontNineCourseId } }),
-      this.prisma.course.findUnique({ where: { id: createDto.backNineCourseId } }),
+    const [frontResult, backResult] = await Promise.all([
+      this.db.select().from(courses).where(eq(courses.id, createDto.frontNineCourseId)).limit(1),
+      this.db.select().from(courses).where(eq(courses.id, createDto.backNineCourseId)).limit(1),
     ]);
+    const frontCourse = frontResult[0];
+    const backCourse = backResult[0];
 
     if (!frontCourse) {
       throw new NotFoundException(`Front nine course with ID ${createDto.frontNineCourseId} not found`);
@@ -39,8 +46,9 @@ export class GameService {
     }
 
     try {
-      return await this.prisma.game.create({
-        data: {
+      const [created] = await this.db
+        .insert(games)
+        .values({
           name: createDto.name,
           code: createDto.code,
           description: createDto.description,
@@ -57,23 +65,25 @@ export class GameService {
           slotMode: createDto.slotMode ?? 'TEE_TIME',
           status: createDto.status ?? 'ACTIVE',
           isActive: createDto.isActive ?? true,
-        },
-        include: {
+        })
+        .returning();
+
+      return await this.db.query.games.findFirst({
+        where: eq(games.id, created.id),
+        with: {
           frontNineCourse: true,
           backNineCourse: true,
           club: true,
         },
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
-          const target = error.meta?.target as string[];
-          if (target?.includes('code')) {
-            throw new ConflictException(`Game with code "${createDto.code}" already exists`);
-          }
-          if (target?.includes('front_nine_course_id') && target?.includes('back_nine_course_id')) {
-            throw new ConflictException('This course combination already exists as a game');
-          }
+      if (pgCode(error) === '23505') {
+        const constraint = String(error?.constraint ?? '');
+        if (constraint === 'games_code_key') {
+          throw new ConflictException(`Game with code "${createDto.code}" already exists`);
+        }
+        if (constraint === 'games_front_nine_course_id_back_nine_course_id_key') {
+          throw new ConflictException('This course combination already exists as a game');
         }
       }
       throw error;
@@ -83,47 +93,51 @@ export class GameService {
   async findAll(query: FindGamesQueryDto): Promise<{ data: Game[]; total: number; page: number; limit: number }> {
     const { companyId, clubId, name, status, isActive, page = 1, limit = 10 } = query;
 
-    // REST 쿼리 파라미터가 문자열로 전달될 수 있어 Prisma skip/take(Int)용으로 변환
-    // (예: ?limit=20 → "20" → Prisma take 타입 에러 방지)
+    // REST 쿼리 파라미터가 문자열로 전달될 수 있어 skip/take(Int)용으로 변환
+    // (예: ?limit=20 → "20" → take 타입 에러 방지)
     const pageNum = Number(page) || 1;
     const limitNum = Number(limit) || 10;
 
-    const where: Prisma.GameWhereInput = {};
-    if (companyId) where.club = { companyId: Number(companyId) };
-    if (clubId) where.clubId = Number(clubId);
-    if (name) where.name = { contains: name, mode: 'insensitive' };
-    if (status) where.status = status;
-    if (isActive !== undefined) where.isActive = isActive;
+    const conds: SQL[] = [];
+    if (companyId) conds.push(sql`${games.clubId} IN (SELECT ${clubs.id} FROM ${clubs} WHERE ${clubs.companyId} = ${Number(companyId)})`);
+    if (clubId) conds.push(eq(games.clubId, Number(clubId)));
+    if (name) conds.push(ilike(games.name, `%${name}%`));
+    if (status) conds.push(eq(games.status, status));
+    if (isActive !== undefined) conds.push(eq(games.isActive, isActive));
+
+    const where = conds.length ? and(...conds) : undefined;
 
     const skip = (pageNum - 1) * limitNum;
 
-    const [games, total] = await this.prisma.$transaction([
-      this.prisma.game.findMany({
+    const [gamesList, countRows] = await Promise.all([
+      this.db.query.games.findMany({
         where,
-        skip,
-        take: limitNum,
-        orderBy: { createdAt: 'desc' },
-        include: {
+        offset: skip,
+        limit: limitNum,
+        orderBy: desc(games.createdAt),
+        with: {
           frontNineCourse: true,
           backNineCourse: true,
           club: true,
         },
       }),
-      this.prisma.game.count({ where }),
+      this.db.select({ value: count() }).from(games).where(where),
     ]);
 
-    return { data: games, total, page: pageNum, limit: limitNum };
+    const total = countRows[0].value;
+
+    return { data: gamesList, total, page: pageNum, limit: limitNum };
   }
 
   async findOne(id: number): Promise<Game> {
-    const game = await this.prisma.game.findUnique({
-      where: { id },
-      include: {
+    const game = await this.db.query.games.findFirst({
+      where: eq(games.id, id),
+      with: {
         frontNineCourse: {
-          include: { holes: true },
+          with: { holes: true },
         },
         backNineCourse: {
-          include: { holes: true },
+          with: { holes: true },
         },
         club: true,
         weeklySchedules: true,
@@ -138,13 +152,13 @@ export class GameService {
   }
 
   async findByClub(clubId: number): Promise<Game[]> {
-    return this.prisma.game.findMany({
-      where: { clubId, isActive: true },
-      include: {
+    return this.db.query.games.findMany({
+      where: and(eq(games.clubId, clubId), eq(games.isActive, true)),
+      with: {
         frontNineCourse: true,
         backNineCourse: true,
       },
-      orderBy: { name: 'asc' },
+      orderBy: asc(games.name),
     });
   }
 
@@ -155,27 +169,31 @@ export class GameService {
 
     // Course 변경 시 존재 확인
     if (updateDto.frontNineCourseId) {
-      const course = await this.prisma.course.findUnique({
-        where: { id: updateDto.frontNineCourseId },
-      });
+      const [course] = await this.db
+        .select()
+        .from(courses)
+        .where(eq(courses.id, updateDto.frontNineCourseId))
+        .limit(1);
       if (!course) {
         throw new NotFoundException(`Front nine course with ID ${updateDto.frontNineCourseId} not found`);
       }
     }
 
     if (updateDto.backNineCourseId) {
-      const course = await this.prisma.course.findUnique({
-        where: { id: updateDto.backNineCourseId },
-      });
+      const [course] = await this.db
+        .select()
+        .from(courses)
+        .where(eq(courses.id, updateDto.backNineCourseId))
+        .limit(1);
       if (!course) {
         throw new NotFoundException(`Back nine course with ID ${updateDto.backNineCourseId} not found`);
       }
     }
 
     try {
-      return await this.prisma.game.update({
-        where: { id },
-        data: {
+      const [updated] = await this.db
+        .update(games)
+        .set({
           name: updateDto.name,
           code: updateDto.code,
           description: updateDto.description,
@@ -192,18 +210,21 @@ export class GameService {
           slotMode: updateDto.slotMode,
           status: updateDto.status,
           isActive: updateDto.isActive,
-        },
-        include: {
+        })
+        .where(eq(games.id, id))
+        .returning();
+
+      return await this.db.query.games.findFirst({
+        where: eq(games.id, updated.id),
+        with: {
           frontNineCourse: true,
           backNineCourse: true,
           club: true,
         },
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
-          throw new ConflictException('Game code or course combination already exists');
-        }
+      if (pgCode(error) === '23505') {
+        throw new ConflictException('Game code or course combination already exists');
       }
       throw error;
     }
@@ -215,16 +236,13 @@ export class GameService {
     await this.findOne(id);
 
     try {
-      return await this.prisma.game.delete({
-        where: { id },
-      });
+      const [deleted] = await this.db.delete(games).where(eq(games.id, id)).returning();
+      return deleted;
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2003' || error.code === 'P2014') {
-          throw new ConflictException(
-            `Cannot delete game with ID ${id}. Please delete related time slots and schedules first.`
-          );
-        }
+      if (pgCode(error) === '23503') {
+        throw new ConflictException(
+          `Cannot delete game with ID ${id}. Please delete related time slots and schedules first.`
+        );
       }
       throw error;
     }
@@ -275,38 +293,7 @@ export class GameService {
 
     // 검색 조건과 타임슬롯을 한 번에 조회
     // 시간 필터: TEE_TIME은 start_time 범위, SESSION은 시간 overlap 방식
-    const gamesWithData = await this.prisma.$queryRaw<Array<{
-      // Game fields
-      game_id: number;
-      game_name: string;
-      game_code: string;
-      game_description: string | null;
-      slot_mode: string;
-      total_holes: number;
-      estimated_duration: number;
-      break_duration: number;
-      max_players: number;
-      base_price: string;
-      weekend_price: string | null;
-      holiday_price: string | null;
-      game_status: string;
-      game_is_active: boolean;
-      // Club fields
-      club_id: number;
-      club_name: string;
-      club_location: string;
-      club_address: string;
-      club_phone: string;
-      // Course fields
-      front_course_id: number;
-      front_course_name: string;
-      front_course_code: string;
-      back_course_id: number;
-      back_course_name: string;
-      back_course_code: string;
-      // TimeSlot aggregated JSON
-      time_slots: string;
-    }>>`
+    const gamesWithData = (await this.db.execute(sql`
       WITH available_slots AS (
         SELECT
           gts.game_id,
@@ -401,10 +388,41 @@ export class GameService {
         CASE WHEN ${sortBy} = 'createdAt' AND ${sortOrder} = 'asc' THEN g.created_at END ASC,
         CASE WHEN ${sortBy} = 'createdAt' AND ${sortOrder} = 'desc' THEN g.created_at END DESC
       LIMIT ${limit} OFFSET ${(page - 1) * limit}
-    `;
+    `)) as unknown as Array<{
+      // Game fields
+      game_id: number;
+      game_name: string;
+      game_code: string;
+      game_description: string | null;
+      slot_mode: string;
+      total_holes: number;
+      estimated_duration: number;
+      break_duration: number;
+      max_players: number;
+      base_price: string;
+      weekend_price: string | null;
+      holiday_price: string | null;
+      game_status: string;
+      game_is_active: boolean;
+      // Club fields
+      club_id: number;
+      club_name: string;
+      club_location: string;
+      club_address: string;
+      club_phone: string;
+      // Course fields
+      front_course_id: number;
+      front_course_name: string;
+      front_course_code: string;
+      back_course_id: number;
+      back_course_name: string;
+      back_course_code: string;
+      // TimeSlot aggregated JSON
+      time_slots: string;
+    }>;
 
     // 전체 개수 조회 (별도 쿼리 - 페이징 필요)
-    const countResult = await this.prisma.$queryRaw<[{ count: bigint }]>`
+    const countResult = (await this.db.execute(sql`
       SELECT COUNT(DISTINCT g.id) AS count
       FROM games g
       INNER JOIN game_time_slots gts ON g.id = gts.game_id
@@ -441,7 +459,7 @@ export class GameService {
         AND (${clubId ?? null}::int IS NULL OR g.club_id = ${clubId ?? null})
         AND (${minPrice ?? null}::decimal IS NULL OR g.base_price >= ${minPrice ?? null})
         AND (${maxPrice ?? null}::decimal IS NULL OR g.base_price <= ${maxPrice ?? null})
-    `;
+    `)) as unknown as Array<{ count: bigint }>;
 
     const total = Number(countResult[0]?.count ?? 0);
 

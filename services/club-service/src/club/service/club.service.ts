@@ -1,8 +1,10 @@
 import { Injectable, Inject, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout } from 'rxjs';
-import { PrismaService } from '../../../prisma/prisma.service';
-import { Prisma, Club } from '@prisma/client';
+import { eq, and, or, ne, gte, lte, ilike, asc, desc, count, arrayContains, sql, type SQL } from 'drizzle-orm';
+import { DrizzleService } from '../../db/drizzle.service';
+import { clubs, courses, holes } from '../../db/schema';
+import type { Club } from '../../db/schema';
 import {
   CreateClubDto,
   UpdateClubDto,
@@ -27,9 +29,13 @@ export class ClubService {
   private readonly logger = new Logger(ClubService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly drizzle: DrizzleService,
     @Inject('LOCATION_SERVICE') private readonly locationClient: ClientProxy,
   ) {}
+
+  private get db() {
+    return this.drizzle.db;
+  }
 
   /**
    * 주소 → 좌표 변환 (location-service 연동)
@@ -56,12 +62,9 @@ export class ClubService {
    */
   async create(createClubDto: CreateClubDto): Promise<ClubWithRelations> {
     // 같은 회사 내에서 클럽명 중복 확인
-    const existingClub = await this.prisma.club.findFirst({
-      where: {
-        companyId: createClubDto.companyId,
-        name: createClubDto.name,
-      },
-    });
+    const [existingClub] = await this.db.select().from(clubs)
+      .where(and(eq(clubs.companyId, createClubDto.companyId), eq(clubs.name, createClubDto.name)))
+      .limit(1);
 
     if (existingClub) {
       throw new BadRequestException('Club with this name already exists in the company');
@@ -77,26 +80,22 @@ export class ClubService {
       }
     }
 
-    const club = await this.prisma.club.create({
-      data: {
-        ...createClubDto,
-        latitude,
-        longitude,
-        operatingHours: createClubDto.operatingHours ? JSON.parse(JSON.stringify(createClubDto.operatingHours)) : undefined,
-        seasonInfo: createClubDto.seasonInfo ? JSON.parse(JSON.stringify(createClubDto.seasonInfo)) : undefined,
-        facilities: createClubDto.facilities || [],
-      },
-      include: {
-        courses: {
-          include: {
-            holes: true,
-          },
-        },
-      },
+    const [created] = await this.db.insert(clubs).values({
+      ...createClubDto,
+      latitude,
+      longitude,
+      operatingHours: createClubDto.operatingHours ? JSON.parse(JSON.stringify(createClubDto.operatingHours)) : undefined,
+      seasonInfo: createClubDto.seasonInfo ? JSON.parse(JSON.stringify(createClubDto.seasonInfo)) : undefined,
+      facilities: createClubDto.facilities || [],
+    }).returning();
+
+    const club = await this.db.query.clubs.findFirst({
+      where: eq(clubs.id, created.id),
+      with: { courses: { with: { holes: true } } },
     });
 
-    this.logger.log(`Club created: ${club.name} (ID: ${club.id})`);
-    return club;
+    this.logger.log(`Club created: ${created.name} (ID: ${created.id})`);
+    return club as ClubWithRelations;
   }
 
   /**
@@ -123,52 +122,47 @@ export class ClubService {
     const limitNum = parseInt(limit.toString(), 10) || 20;
 
     // 검색 조건 구성
-    const where: Prisma.ClubWhereInput = {
-      isActive: true,
-      ...(companyId && { companyId }),
-      ...(search && {
-        OR: [
-          { name: { contains: search, mode: 'insensitive' } },
-          { location: { contains: search, mode: 'insensitive' } },
-          { address: { contains: search, mode: 'insensitive' } },
-        ],
-      }),
-      ...(location && { location: { contains: location, mode: 'insensitive' } }),
-      ...(status && { status }),
-      ...(bookingMode && { bookingMode }),
-      ...(minHoles && { totalHoles: { gte: minHoles } }),
-      ...(maxHoles && { totalHoles: { lte: maxHoles } }),
-      ...(facilities && facilities.length > 0 && {
-        facilities: { hasEvery: facilities },
-      }),
-    };
+    const conds: SQL[] = [eq(clubs.isActive, true)];
+    if (companyId) conds.push(eq(clubs.companyId, companyId));
+    if (search) {
+      conds.push(or(
+        ilike(clubs.name, `%${search}%`),
+        ilike(clubs.location, `%${search}%`),
+        ilike(clubs.address, `%${search}%`),
+      )!);
+    }
+    if (location) conds.push(ilike(clubs.location, `%${location}%`));
+    if (status) conds.push(eq(clubs.status, status));
+    if (bookingMode) conds.push(eq(clubs.bookingMode, bookingMode));
+    if (minHoles) conds.push(gte(clubs.totalHoles, minHoles));
+    if (maxHoles) conds.push(lte(clubs.totalHoles, maxHoles));
+    if (facilities && facilities.length > 0) conds.push(arrayContains(clubs.facilities, facilities));
+
+    const where = and(...conds);
 
     // 정렬 조건
-    const orderBy: Prisma.ClubOrderByWithRelationInput = {
-      [sortBy]: sortOrder,
-    };
+    const sortCol = (clubs as Record<string, any>)[sortBy] ?? clubs.name;
+    const orderBy = sortOrder === 'asc' ? asc(sortCol) : desc(sortCol);
 
     // 총 개수 조회
-    const total = await this.prisma.club.count({ where });
+    const [totalRow] = await this.db.select({ value: count() }).from(clubs).where(where);
+    const total = totalRow.value;
 
     // 페이징 계산
     const skip = (pageNum - 1) * limitNum;
     const totalPages = Math.ceil(total / limitNum);
 
     // 데이터 조회
-    const clubs = await this.prisma.club.findMany({
+    const clubRows = await this.db.query.clubs.findMany({
       where,
       orderBy,
-      skip,
-      take: limitNum,
-      include: {
-        // company relation removed - use NATS 'iam.companies.getById' for Company data
-        courses: true,
-      },
+      offset: skip,
+      limit: limitNum,
+      with: { courses: true },
     });
 
     return {
-      data: clubs,
+      data: clubRows as ClubWithRelations[],
       page: pageNum,
       limit: limitNum,
       total,
@@ -180,36 +174,24 @@ export class ClubService {
    * 골프클럽 상세 조회
    */
   async findOne(id: number): Promise<ClubWithRelations> {
-    const club = await this.prisma.club.findUnique({
-      where: { id, isActive: true },
-      include: {
-        // company relation removed - use NATS 'iam.companies.getById' for Company data
-        courses: {
-          include: {
-            holes: {
-              include: {
-                teeBoxes: true,
-              },
-            },
-          },
-        },
-      },
+    const club = await this.db.query.clubs.findFirst({
+      where: and(eq(clubs.id, id), eq(clubs.isActive, true)),
+      with: { courses: { with: { holes: { with: { teeBoxes: true } } } } },
     });
 
     if (!club) {
       throw new NotFoundException(`Club with ID ${id} not found`);
     }
 
-    return club;
+    return club as ClubWithRelations;
   }
 
   /**
    * 골프클럽 수정
    */
   async update(id: number, updateClubDto: UpdateClubDto): Promise<ClubWithRelations> {
-    const existingClub = await this.prisma.club.findUnique({
-      where: { id, isActive: true },
-    });
+    const [existingClub] = await this.db.select().from(clubs)
+      .where(and(eq(clubs.id, id), eq(clubs.isActive, true))).limit(1);
 
     if (!existingClub) {
       throw new NotFoundException(`Club with ID ${id} not found`);
@@ -218,13 +200,9 @@ export class ClubService {
     // 이름 변경 시 중복 확인
     if (updateClubDto.name && updateClubDto.name !== existingClub.name) {
       const companyId = updateClubDto.companyId || existingClub.companyId;
-      const duplicateClub = await this.prisma.club.findFirst({
-        where: {
-          companyId,
-          name: updateClubDto.name,
-          id: { not: id },
-        },
-      });
+      const [duplicateClub] = await this.db.select().from(clubs)
+        .where(and(eq(clubs.companyId, companyId), eq(clubs.name, updateClubDto.name), ne(clubs.id, id)))
+        .limit(1);
 
       if (duplicateClub) {
         throw new BadRequestException('Club with this name already exists in the company');
@@ -242,44 +220,35 @@ export class ClubService {
       }
     }
 
-    const club = await this.prisma.club.update({
-      where: { id },
-      data: {
-        ...updateClubDto,
-        latitude,
-        longitude,
-        operatingHours: updateClubDto.operatingHours ? JSON.parse(JSON.stringify(updateClubDto.operatingHours)) : undefined,
-        seasonInfo: updateClubDto.seasonInfo ? JSON.parse(JSON.stringify(updateClubDto.seasonInfo)) : undefined,
-      },
-      include: {
-        courses: {
-          include: {
-            holes: true,
-          },
-        },
-      },
+    const [updated] = await this.db.update(clubs).set({
+      ...updateClubDto,
+      latitude,
+      longitude,
+      operatingHours: updateClubDto.operatingHours ? JSON.parse(JSON.stringify(updateClubDto.operatingHours)) : undefined,
+      seasonInfo: updateClubDto.seasonInfo ? JSON.parse(JSON.stringify(updateClubDto.seasonInfo)) : undefined,
+    }).where(eq(clubs.id, id)).returning();
+
+    const club = await this.db.query.clubs.findFirst({
+      where: eq(clubs.id, updated.id),
+      with: { courses: { with: { holes: true } } },
     });
 
-    this.logger.log(`Club updated: ${club.name} (ID: ${club.id})`);
-    return club;
+    this.logger.log(`Club updated: ${updated.name} (ID: ${updated.id})`);
+    return club as ClubWithRelations;
   }
 
   /**
    * 골프클럽 삭제 (soft delete)
    */
   async remove(id: number): Promise<void> {
-    const club = await this.prisma.club.findUnique({
-      where: { id, isActive: true },
-    });
+    const [club] = await this.db.select().from(clubs)
+      .where(and(eq(clubs.id, id), eq(clubs.isActive, true))).limit(1);
 
     if (!club) {
       throw new NotFoundException(`Club with ID ${id} not found`);
     }
 
-    await this.prisma.club.update({
-      where: { id },
-      data: { isActive: false },
-    });
+    await this.db.update(clubs).set({ isActive: false }).where(eq(clubs.id, id));
 
     this.logger.log(`Club deleted: ${club.name} (ID: ${club.id})`);
   }
@@ -288,17 +257,12 @@ export class ClubService {
    * 회사별 골프클럽 목록 조회
    */
   async findByCompany(companyId: number): Promise<ClubWithRelations[]> {
-    return this.prisma.club.findMany({
-      where: {
-        companyId,
-        isActive: true,
-      },
-      include: {
-        // company relation removed - use NATS 'iam.companies.getById' for Company data
-        courses: true,
-      },
-      orderBy: { name: 'asc' },
+    const rows = await this.db.query.clubs.findMany({
+      where: and(eq(clubs.companyId, companyId), eq(clubs.isActive, true)),
+      with: { courses: true },
+      orderBy: asc(clubs.name),
     });
+    return rows as ClubWithRelations[];
   }
 
   /**
@@ -312,16 +276,20 @@ export class ClubService {
     byBookingMode: { platform: number; partner: number };
     byClubType: { paid: number; free: number };
   }> {
+    const c = async (where: SQL) => {
+      const [r] = await this.db.select({ value: count() }).from(clubs).where(where);
+      return r.value;
+    };
     const [total, active, inactive, maintenance, platform, partner, paid, free] =
       await Promise.all([
-        this.prisma.club.count({ where: { isActive: true } }),
-        this.prisma.club.count({ where: { isActive: true, status: 'ACTIVE' } }),
-        this.prisma.club.count({ where: { isActive: true, status: 'INACTIVE' } }),
-        this.prisma.club.count({ where: { isActive: true, status: 'MAINTENANCE' } }),
-        this.prisma.club.count({ where: { isActive: true, bookingMode: 'PLATFORM' } }),
-        this.prisma.club.count({ where: { isActive: true, bookingMode: 'PARTNER' } }),
-        this.prisma.club.count({ where: { isActive: true, clubType: 'PAID' } }),
-        this.prisma.club.count({ where: { isActive: true, clubType: 'FREE' } }),
+        c(eq(clubs.isActive, true)),
+        c(and(eq(clubs.isActive, true), eq(clubs.status, 'ACTIVE'))!),
+        c(and(eq(clubs.isActive, true), eq(clubs.status, 'INACTIVE'))!),
+        c(and(eq(clubs.isActive, true), eq(clubs.status, 'MAINTENANCE'))!),
+        c(and(eq(clubs.isActive, true), eq(clubs.bookingMode, 'PLATFORM'))!),
+        c(and(eq(clubs.isActive, true), eq(clubs.bookingMode, 'PARTNER'))!),
+        c(and(eq(clubs.isActive, true), eq(clubs.clubType, 'PAID'))!),
+        c(and(eq(clubs.isActive, true), eq(clubs.clubType, 'FREE'))!),
       ]);
 
     return {
@@ -340,7 +308,7 @@ export class ClubService {
   async findNearby(dto: FindNearbyDto): Promise<NearbyClubResponseDto[]> {
     const { latitude, longitude, radiusKm = 30, limit = 20 } = dto;
 
-    const clubs = await this.prisma.$queryRaw<(Club & { distance: number })[]>`
+    const clubRows = (await this.db.execute(sql`
       SELECT
         id, name, location, address, phone, email, website,
         status, latitude, longitude, facilities,
@@ -369,12 +337,12 @@ export class ClubService {
         )) <= ${radiusKm}
       ORDER BY distance ASC
       LIMIT ${limit}
-    `;
+    `)) as unknown as (Club & { distance: number })[];
 
-    return clubs.map((club) => {
-      const dto = ClubResponseDto.fromEntity(club);
+    return clubRows.map((club) => {
+      const resDto = ClubResponseDto.fromEntity(club);
       return {
-        ...dto,
+        ...resDto,
         distance: Math.round(club.distance * 100) / 100,
       };
     });

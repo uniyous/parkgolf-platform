@@ -10,7 +10,8 @@ import {
   IsNotEmpty,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { Game, Club, Course, SlotMode } from '@prisma/client';
+import { SlotMode } from '../../contracts/enums';
+import type { Game, Club, Course } from '../../db/schema';
 import { ClubResponseDto, ClubWithRelations } from '../../club/dto/club.dto';
 import { CourseResponseDto, CourseWithRelations } from '../../course/dto/course.dto';
 
