@@ -6,9 +6,6 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
-COPY prisma ./prisma
-RUN npx prisma generate
-
 COPY . .
 RUN npm run build
 
@@ -20,12 +17,9 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --only=production
 
-COPY prisma ./prisma
-RUN npx prisma generate
-
 COPY --from=builder /app/dist ./dist
 
 ENV PORT=8080
 EXPOSE 8080
 
-CMD ["node", "dist/src/main"]
+CMD ["node", "dist/main"]

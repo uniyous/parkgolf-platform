@@ -128,9 +128,9 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
       }
     }
 
-    // Prisma 에러 처리
-    if (this.isPrismaError(exception)) {
-      return this.handlePrismaError(exception, timestamp);
+    // DB 드라이버 에러 처리 (postgres-js SQLSTATE)
+    if (this.isDbError(exception)) {
+      return this.handleDbError(exception, timestamp);
     }
 
     // 기타 에러
@@ -191,25 +191,26 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
         }
       }
     }
-    if (this.isPrismaError(exception)) {
-      return this.getPrismaHttpStatus(exception);
+    if (this.isDbError(exception)) {
+      return this.getDbHttpStatus(exception);
     }
     return HttpStatus.INTERNAL_SERVER_ERROR;
   }
 
-  private isPrismaError(exception: unknown): boolean {
+  /** postgres-js 드라이버 에러 (SQLSTATE code 보유) */
+  private isDbError(exception: unknown): boolean {
     return (
       exception instanceof Error &&
-      exception.constructor.name.startsWith('Prisma') &&
+      exception.constructor.name === 'PostgresError' &&
       'code' in exception
     );
   }
 
-  private handlePrismaError(exception: unknown, timestamp: string): StandardErrorResponse {
-    const prismaError = exception as { code: string; message: string };
+  private handleDbError(exception: unknown, timestamp: string): StandardErrorResponse {
+    const dbError = exception as { code: string; message: string };
 
-    switch (prismaError.code) {
-      case 'P2002':
+    switch (dbError.code) {
+      case '23505': // unique_violation (was P2002)
         return {
           success: false,
           error: {
@@ -218,16 +219,7 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
           },
           timestamp,
         };
-      case 'P2025':
-        return {
-          success: false,
-          error: {
-            code: Errors.Database.NOT_FOUND.code,
-            message: Errors.Database.NOT_FOUND.message,
-          },
-          timestamp,
-        };
-      case 'P2003':
+      case '23503': // foreign_key_violation (was P2003)
         return {
           success: false,
           error: {
@@ -241,22 +233,21 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
           success: false,
           error: {
             code: Errors.Database.CONNECTION_ERROR.code,
-            message: prismaError.message || Errors.System.INTERNAL.message,
+            message: dbError.message || Errors.System.INTERNAL.message,
           },
           timestamp,
         };
     }
   }
 
-  private getPrismaHttpStatus(exception: unknown): number {
-    const prismaError = exception as { code: string };
+  private getDbHttpStatus(exception: unknown): number {
+    const dbError = exception as { code: string };
 
-    switch (prismaError.code) {
-      case 'P2002':
+    switch (dbError.code) {
+      case '23505':
         return HttpStatus.CONFLICT;
-      case 'P2025':
-        return HttpStatus.NOT_FOUND;
-      case 'P2003':
+      case '23503':
+      case '23502':
         return HttpStatus.BAD_REQUEST;
       default:
         return HttpStatus.INTERNAL_SERVER_ERROR;

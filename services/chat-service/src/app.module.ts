@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ChatModule } from './chat/chat.module';
 import { RoomModule } from './room/room.module';
-import { PrismaModule } from '../prisma/prisma.module';
+import { DrizzleModule } from './db/drizzle.module';
 import { CommonModule } from './common/common.module';
 
 @Module({
@@ -12,7 +12,7 @@ import { CommonModule } from './common/common.module';
       envFilePath: [`.env.${process.env.NODE_ENV}`, '.env'],
     }),
     CommonModule,
-    PrismaModule,
+    DrizzleModule,
     RoomModule,
     ChatModule,
   ],
