@@ -1,22 +1,88 @@
 import { Injectable, ConflictException, NotFoundException, UnauthorizedException, Logger } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { DrizzleService } from '../db/drizzle.service';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminDto } from './dto/update-admin.dto';
 import * as bcrypt from 'bcrypt';
-import { Admin, Prisma } from '@prisma/client';
+import type { Admin } from '../db/schema';
+import {
+  admins,
+  adminCompanies,
+  companies,
+  permissionMasters,
+  roleMasters,
+  rolePermissions,
+  adminActivityLogs,
+} from '../db/schema';
+import {
+  eq,
+  and,
+  or,
+  ne,
+  inArray,
+  ilike,
+  count,
+  asc,
+  desc,
+  type SQL,
+} from 'drizzle-orm';
 
 @Injectable()
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
+
+  private get db() {
+    return this.drizzle.db;
+  }
+
+  /**
+   * 컨트롤러에서 전달하는 Prisma 형태의 WHERE 절(any)을 Drizzle 조건으로 변환.
+   * 지원: OR(name/email contains insensitive), isActive, companies.some(companyId/companyRoleCode/isActive)
+   */
+  private buildAdminWhere(where?: any): SQL | undefined {
+    if (!where) return undefined;
+    const conds: SQL[] = [];
+
+    if (Array.isArray(where.OR)) {
+      const orConds: SQL[] = [];
+      for (const clause of where.OR) {
+        if (clause?.name?.contains !== undefined) {
+          orConds.push(ilike(admins.name, `%${clause.name.contains}%`));
+        }
+        if (clause?.email?.contains !== undefined) {
+          orConds.push(ilike(admins.email, `%${clause.email.contains}%`));
+        }
+      }
+      if (orConds.length) conds.push(or(...orConds));
+    }
+
+    if (where.isActive !== undefined) {
+      conds.push(eq(admins.isActive, where.isActive));
+    }
+
+    if (where.companies?.some) {
+      const some = where.companies.some;
+      const acConds: SQL[] = [];
+      if (some.companyId !== undefined) acConds.push(eq(adminCompanies.companyId, some.companyId));
+      if (some.companyRoleCode !== undefined) acConds.push(eq(adminCompanies.companyRoleCode, some.companyRoleCode));
+      if (some.isActive !== undefined) acConds.push(eq(adminCompanies.isActive, some.isActive));
+      const subquery = this.db
+        .select({ adminId: adminCompanies.adminId })
+        .from(adminCompanies)
+        .where(acConds.length ? and(...acConds) : undefined);
+      conds.push(inArray(admins.id, subquery));
+    }
+
+    return conds.length ? and(...conds) : undefined;
+  }
 
   async create(createAdminDto: CreateAdminDto): Promise<any> {
     const { password, companyId, roleCode, ...data } = createAdminDto;
 
     // Check if admin with same email exists
-    const existing = await this.prisma.admin.findFirst({
-      where: { email: data.email }
+    const existing = await this.db.query.admins.findFirst({
+      where: eq(admins.email, data.email),
     });
 
     if (existing) {
@@ -24,9 +90,7 @@ export class AdminService {
     }
 
     // Verify company exists
-    const company = await this.prisma.company.findUnique({
-      where: { id: companyId }
-    });
+    const [company] = await this.db.select().from(companies).where(eq(companies.id, companyId)).limit(1);
     if (!company) {
       throw new NotFoundException(`Company with ID ${companyId} not found`);
     }
@@ -35,25 +99,32 @@ export class AdminService {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create admin with AdminCompany relation
-    const admin = await this.prisma.admin.create({
-      data: {
-        ...data,
-        password: hashedPassword,
-        companies: {
-          create: {
-            companyId,
-            companyRoleCode: roleCode || 'COMPANY_VIEWER',
-            isPrimary: true,
+    const admin = await this.db.transaction(async (tx) => {
+      const [createdAdmin] = await tx
+        .insert(admins)
+        .values({
+          ...data,
+          password: hashedPassword,
+        })
+        .returning();
+
+      await tx.insert(adminCompanies).values({
+        adminId: createdAdmin.id,
+        companyId,
+        companyRoleCode: roleCode || 'COMPANY_VIEWER',
+        isPrimary: true,
+      });
+
+      return tx.query.admins.findFirst({
+        where: eq(admins.id, createdAdmin.id),
+        with: {
+          companies: {
+            with: {
+              company: true,
+            },
           },
         },
-      },
-      include: {
-        companies: {
-          include: {
-            company: true,
-          },
-        },
-      },
+      });
     });
 
     // Return with computed roleCode
@@ -69,8 +140,8 @@ export class AdminService {
     take?: number;
     page?: number;
     limit?: number;
-    where?: Prisma.AdminWhereInput;
-    orderBy?: Prisma.AdminOrderByWithRelationInput;
+    where?: any;
+    orderBy?: any;
   }): Promise<{ admins: any[]; total: number; page: number; limit: number; totalPages: number }> {
     const { where, orderBy } = params || {};
 
@@ -79,14 +150,20 @@ export class AdminService {
     const limit = params?.limit || params?.take || 20;
     const skip = params?.skip || (page - 1) * limit;
 
+    const condition = this.buildAdminWhere(where);
+
+    // 정렬 (기본: createdAt desc)
+    const orderByClause =
+      orderBy?.createdAt === 'asc' ? asc(admins.createdAt) : desc(admins.createdAt);
+
     // 병렬로 데이터와 카운트 조회 (목록에서는 권한 정보 제외)
-    const [admins, total] = await Promise.all([
-      this.prisma.admin.findMany({
-        skip,
-        take: limit,
-        where,
-        orderBy: orderBy || { createdAt: 'desc' },
-        select: {
+    const [adminRows, totalResult] = await Promise.all([
+      this.db.query.admins.findMany({
+        offset: skip,
+        limit,
+        where: condition,
+        orderBy: orderByClause,
+        columns: {
           id: true,
           email: true,
           name: true,
@@ -96,16 +173,20 @@ export class AdminService {
           lastLoginAt: true,
           createdAt: true,
           updatedAt: true,
-          // AdminCompany를 통한 회사-역할 관계
+        },
+        // AdminCompany를 통한 회사-역할 관계
+        with: {
           companies: {
-            where: { isActive: true },
-            select: {
+            where: eq(adminCompanies.isActive, true),
+            columns: {
               id: true,
               companyId: true,
               companyRoleCode: true,
               isPrimary: true,
+            },
+            with: {
               company: {
-                select: {
+                columns: {
                   id: true,
                   name: true,
                   code: true,
@@ -116,11 +197,13 @@ export class AdminService {
           },
         },
       }),
-      this.prisma.admin.count({ where }),
+      this.db.select({ value: count() }).from(admins).where(condition),
     ]);
 
+    const total = totalResult[0].value;
+
     // 목록용 변환 (주 소속 역할코드 추가)
-    const transformedAdmins = admins.map((admin) => {
+    const transformedAdmins = adminRows.map((admin) => {
       const primaryCompany = admin.companies?.find((c) => c.isPrimary) || admin.companies?.[0];
       return {
         ...admin,
@@ -139,18 +222,18 @@ export class AdminService {
   }
 
   async findOne(id: number): Promise<any> {
-    const admin = await this.prisma.admin.findUnique({
-      where: { id },
-      include: {
+    const admin = await this.db.query.admins.findFirst({
+      where: eq(admins.id, id),
+      with: {
         // AdminCompany를 통한 회사-역할 관계
         companies: {
-          where: { isActive: true },
-          include: {
+          where: eq(adminCompanies.isActive, true),
+          with: {
             company: true,
             companyRole: {
-              include: {
+              with: {
                 rolePermissions: {
-                  include: {
+                  with: {
                     permission: true,
                   },
                 },
@@ -186,18 +269,18 @@ export class AdminService {
     const startTime = Date.now();
     this.logger.log(`[PERF] AdminService.findByEmail START - ${email}`);
 
-    const admin = await this.prisma.admin.findUnique({
-      where: { email },
-      include: {
+    const admin = await this.db.query.admins.findFirst({
+      where: eq(admins.email, email),
+      with: {
         // AdminCompany를 통한 회사-역할 관계
         companies: {
-          where: { isActive: true },
-          include: {
+          where: eq(adminCompanies.isActive, true),
+          with: {
             company: true,
             companyRole: {
-              include: {
+              with: {
                 rolePermissions: {
-                  include: {
+                  with: {
                     permission: true,
                   },
                 },
@@ -236,18 +319,13 @@ export class AdminService {
 
   async update(id: number, updateAdminDto: UpdateAdminDto): Promise<Admin> {
     const admin = await this.findOne(id);
-    
+
     const { password, email, ...data } = updateAdminDto;
-    
+
     // Check if new email already exists (if changed)
     if (email) {
-      const existing = await this.prisma.admin.findFirst({
-        where: {
-          AND: [
-            { id: { not: id } },
-            { email },
-          ],
-        },
+      const existing = await this.db.query.admins.findFirst({
+        where: and(ne(admins.id, id), eq(admins.email, email)),
       });
 
       if (existing) {
@@ -256,7 +334,7 @@ export class AdminService {
     }
 
     // Prepare update data
-    const updateData: Prisma.AdminUpdateInput = {
+    const updateData: any = {
       ...data,
       email,
     };
@@ -266,10 +344,7 @@ export class AdminService {
       updateData.password = await bcrypt.hash(password, 10);
     }
 
-    await this.prisma.admin.update({
-      where: { id },
-      data: updateData,
-    });
+    await this.db.update(admins).set(updateData).where(eq(admins.id, id));
 
     // 업데이트된 admin을 역할 기반 권한과 함께 반환
     return this.findOne(id);
@@ -280,21 +355,19 @@ export class AdminService {
 
     // Prevent deleting the last PLATFORM_ADMIN
     if (admin.roleCode === 'PLATFORM_ADMIN') {
-      const platformAdminCount = await this.prisma.adminCompany.count({
-        where: {
-          companyRoleCode: 'PLATFORM_ADMIN',
-          isActive: true,
-        },
-      });
+      const [platformAdminCountResult] = await this.db
+        .select({ value: count() })
+        .from(adminCompanies)
+        .where(and(eq(adminCompanies.companyRoleCode, 'PLATFORM_ADMIN'), eq(adminCompanies.isActive, true)));
+      const platformAdminCount = platformAdminCountResult.value;
 
       if (platformAdminCount <= 1) {
         throw new ConflictException('Cannot delete the last PLATFORM_ADMIN');
       }
     }
 
-    return this.prisma.admin.delete({
-      where: { id },
-    });
+    const [deleted] = await this.db.delete(admins).where(eq(admins.id, id)).returning();
+    return deleted;
   }
 
   async validateAdmin(email: string, password: string): Promise<Admin | null> {
@@ -329,36 +402,37 @@ export class AdminService {
 
     // Update last login
     const updateStartTime = Date.now();
-    await this.prisma.admin.update({
-      where: { id: admin.id },
-      data: { lastLoginAt: new Date() },
-    });
+    await this.db.update(admins).set({ lastLoginAt: new Date() }).where(eq(admins.id, admin.id));
     this.logger.log(`[PERF] AdminService.validateAdmin (DB updateLastLogin): ${Date.now() - updateStartTime}ms`);
 
     this.logger.log(`[PERF] AdminService.validateAdmin SUCCESS - total: ${Date.now() - startTime}ms`);
     return admin;
   }
 
-  async count(where?: Prisma.AdminWhereInput): Promise<number> {
-    return this.prisma.admin.count({ where });
+  async count(where?: any): Promise<number> {
+    const [r] = await this.db.select({ value: count() }).from(admins).where(this.buildAdminWhere(where));
+    return r.value;
   }
 
   async getStats(): Promise<any> {
     // AdminCompany 테이블에서 역할별 통계 조회
-    const [total, active, roleGrouped] = await Promise.all([
-      this.prisma.admin.count(),
-      this.prisma.admin.count({ where: { isActive: true } }),
-      this.prisma.adminCompany.groupBy({
-        by: ['companyRoleCode'],
-        where: { isActive: true },
-        _count: { id: true },
-      }),
+    const [totalResult, activeResult, roleGrouped] = await Promise.all([
+      this.db.select({ value: count() }).from(admins),
+      this.db.select({ value: count() }).from(admins).where(eq(admins.isActive, true)),
+      this.db
+        .select({ companyRoleCode: adminCompanies.companyRoleCode, count: count(adminCompanies.id) })
+        .from(adminCompanies)
+        .where(eq(adminCompanies.isActive, true))
+        .groupBy(adminCompanies.companyRoleCode),
     ]);
+
+    const total = totalResult[0].value;
+    const active = activeResult[0].value;
 
     // Build byRole object from grouped results
     const byRoleStats: Record<string, number> = {};
     roleGrouped.forEach((group) => {
-      byRoleStats[group.companyRoleCode] = group._count.id;
+      byRoleStats[group.companyRoleCode] = group.count;
     });
 
     return {
@@ -370,86 +444,62 @@ export class AdminService {
   }
 
   async getAllPermissions(): Promise<any[]> {
-    return this.prisma.permissionMaster.findMany({
-      where: { isActive: true },
-      orderBy: [
-        { category: 'asc' },
-        { code: 'asc' },
-      ],
+    return this.db.query.permissionMasters.findMany({
+      where: eq(permissionMasters.isActive, true),
+      orderBy: [asc(permissionMasters.category), asc(permissionMasters.code)],
     });
   }
 
   async getAllRoles(): Promise<any[]> {
-    return this.prisma.roleMaster.findMany({
-      where: { isActive: true },
-      orderBy: [
-        { userType: 'asc' },
-        { level: 'desc' },
-      ],
+    return this.db.query.roleMasters.findMany({
+      where: eq(roleMasters.isActive, true),
+      orderBy: [asc(roleMasters.userType), desc(roleMasters.level)],
     });
   }
 
   async getRolePermissions(roleCode: string): Promise<string[]> {
-    const rolePermissions = await this.prisma.rolePermission.findMany({
-      where: { 
-        roleCode,
-        permission: {
-          isActive: true
-        }
+    const rolePerms = await this.db.query.rolePermissions.findMany({
+      where: eq(rolePermissions.roleCode, roleCode),
+      with: {
+        permission: true,
       },
-      include: {
-        permission: true
-      }
     });
-    
-    return rolePermissions.map(rp => rp.permissionCode);
+
+    return rolePerms.filter((rp) => rp.permission?.isActive).map((rp) => rp.permissionCode);
   }
 
   async getPermissionsByCategory(category?: string): Promise<any[]> {
-    const where: any = { isActive: true };
+    const conds: SQL[] = [eq(permissionMasters.isActive, true)];
     if (category) {
-      where.category = category;
+      conds.push(eq(permissionMasters.category, category));
     }
 
-    return this.prisma.permissionMaster.findMany({
-      where,
-      orderBy: [
-        { category: 'asc' },
-        { level: 'desc' },
-        { code: 'asc' },
-      ],
+    return this.db.query.permissionMasters.findMany({
+      where: and(...conds),
+      orderBy: [asc(permissionMasters.category), desc(permissionMasters.level), asc(permissionMasters.code)],
     });
   }
 
   async getAdminRoles(): Promise<any[]> {
-    return this.prisma.roleMaster.findMany({
-      where: {
-        userType: 'ADMIN',
-        isActive: true
-      },
-      orderBy: [
-        { level: 'desc' },
-        { code: 'asc' },
-      ],
+    return this.db.query.roleMasters.findMany({
+      where: and(eq(roleMasters.userType, 'ADMIN'), eq(roleMasters.isActive, true)),
+      orderBy: [desc(roleMasters.level), asc(roleMasters.code)],
     });
   }
 
   async getRolesWithPermissions(userType?: string): Promise<any[]> {
-    const where: any = { isActive: true };
+    const conds: SQL[] = [eq(roleMasters.isActive, true)];
     if (userType) {
-      where.userType = userType;
+      conds.push(eq(roleMasters.userType, userType));
     }
 
     // 단일 쿼리로 역할과 권한을 함께 조회
-    const roles = await this.prisma.roleMaster.findMany({
-      where,
-      orderBy: [
-        { userType: 'asc' },
-        { level: 'desc' },
-      ],
-      include: {
+    const roles = await this.db.query.roleMasters.findMany({
+      where: and(...conds),
+      orderBy: [asc(roleMasters.userType), desc(roleMasters.level)],
+      with: {
         rolePermissions: {
-          select: {
+          columns: {
             permissionCode: true,
           },
         },
@@ -457,7 +507,7 @@ export class AdminService {
     });
 
     // 권한 코드 배열로 변환
-    return roles.map(role => ({
+    return roles.map((role) => ({
       code: role.code,
       name: role.name,
       description: role.description,
@@ -466,7 +516,7 @@ export class AdminService {
       isActive: role.isActive,
       createdAt: role.createdAt,
       updatedAt: role.updatedAt,
-      permissions: role.rolePermissions.map(rp => rp.permissionCode),
+      permissions: role.rolePermissions.map((rp) => rp.permissionCode),
     }));
   }
 
@@ -487,15 +537,13 @@ export class AdminService {
     ipAddress?: string,
     userAgent?: string,
   ): Promise<void> {
-    await this.prisma.adminActivityLog.create({
-      data: {
-        adminId,
-        action,
-        resource,
-        details,
-        ipAddress,
-        userAgent,
-      },
+    await this.db.insert(adminActivityLogs).values({
+      adminId,
+      action,
+      resource,
+      details,
+      ipAddress,
+      userAgent,
     });
   }
 }

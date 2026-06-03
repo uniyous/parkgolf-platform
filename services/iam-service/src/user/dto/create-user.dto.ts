@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, IsString, MinLength, MaxLength, Matches, IsOptional, IsIn } from 'class-validator';
-import { User } from '@prisma/client';
+import type { User } from '../../db/schema';
 import { PASSWORD_REGEX, PASSWORD_MESSAGE, PASSWORD_MAX_LENGTH } from '../../common/constants/password.constants';
 
 /** User 엔티티 타입 (관계 포함 가능) */

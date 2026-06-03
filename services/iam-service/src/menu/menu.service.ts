@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { CompanyType } from '@prisma/client';
+import { eq, asc } from 'drizzle-orm';
+import { DrizzleService } from '../db/drizzle.service';
+import { menuMasters } from '../db/schema';
+import { CompanyType } from '../contracts/enums';
 
 export interface MenuTreeItem {
   id: number;
@@ -25,7 +27,11 @@ export interface MenuChildItem {
 export class MenuService {
   private readonly logger = new Logger(MenuService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
+
+  private get db() {
+    return this.drizzle.db;
+  }
 
   /**
    * 관리자의 권한과 회사유형에 따라 접근 가능한 메뉴 트리를 반환
@@ -48,21 +54,21 @@ export class MenuService {
     const adminScope = scope || (companyType === 'FRANCHISE' ? 'COMPANY' : 'PLATFORM');
 
     // Level 1 그룹 메뉴 (parentId가 null인 것들)와 Level 2 자식 메뉴를 한 번에 조회
-    const allMenus = await this.prisma.menuMaster.findMany({
-      where: { isActive: true },
-      include: {
+    const allMenus = await this.db.query.menuMasters.findMany({
+      where: eq(menuMasters.isActive, true),
+      with: {
         menuPermissions: true,
         menuCompanyTypes: true,
         children: {
-          where: { isActive: true },
-          include: {
+          where: eq(menuMasters.isActive, true),
+          with: {
             menuPermissions: true,
             menuCompanyTypes: true,
           },
-          orderBy: { sortOrder: 'asc' },
+          orderBy: asc(menuMasters.sortOrder),
         },
       },
-      orderBy: { sortOrder: 'asc' },
+      orderBy: asc(menuMasters.sortOrder),
     });
 
     // Level 1 그룹만 필터링 (parentId가 null)
