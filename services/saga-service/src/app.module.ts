@@ -3,7 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { CommonModule } from './common/common.module';
 import { NatsModule } from './common/nats/nats.module';
 import { PgBossModule } from './common/pgboss/pgboss.module';
-import { PrismaModule } from '../prisma/prisma.module';
+import { DrizzleModule } from './db/drizzle.module';
 import { SagaModule } from './saga/saga.module';
 
 @Module({
@@ -17,7 +17,7 @@ import { SagaModule } from './saga/saga.module';
     CommonModule,
     NatsModule,
     PgBossModule,
-    PrismaModule,
+    DrizzleModule,
     SagaModule,
   ],
   controllers: [],
