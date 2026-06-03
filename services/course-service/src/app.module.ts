@@ -5,6 +5,7 @@ import { ClubModule } from './club/club.module';
 import { CourseModule } from './course/course.module';
 import { GameModule } from './game/game.module';
 import { CommonModule } from './common/common.module';
+import { PolicyModule } from './policy/policy.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { CommonModule } from './common/common.module';
     ClubModule,
     CourseModule,
     GameModule,
+    PolicyModule,
   ],
 })
 export class AppModule {}
