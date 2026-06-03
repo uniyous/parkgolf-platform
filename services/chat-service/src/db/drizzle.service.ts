@@ -5,7 +5,7 @@ import postgres from 'postgres';
 import * as schema from './schema';
 
 /**
- * Drizzle + postgres-js DB 제공자 (UNI-83). PrismaService 대체.
+ * Drizzle + postgres-js DB 제공자 (UNI-83).
  * chat_db는 마이그레이션 보유 → ensureSchema 없이 연결만 (DB 무변경).
  * `this.db`로 쿼리, 관계 조회는 `this.db.query.*` (with).
  */

@@ -9,7 +9,6 @@ COPY package*.json ./
 # Install all dependencies (including devDependencies for build)
 RUN npm ci
 
-# Generate Prisma client
 
 # Copy source code
 COPY . .

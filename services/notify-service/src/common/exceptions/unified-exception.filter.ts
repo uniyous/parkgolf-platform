@@ -158,9 +158,9 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
       }
     }
 
-    // Prisma 에러 처리
-    if (this.isPrismaError(exception)) {
-      return this.handlePrismaError(exception, timestamp);
+    // DB 에러 처리 (postgres-js / drizzle)
+    if (this.isDbError(exception)) {
+      return this.handleDbError(exception, timestamp);
     }
 
     // 기타 에러
@@ -230,17 +230,16 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
         }
       }
     }
-    if (this.isPrismaError(exception)) {
-      return this.getPrismaHttpStatus(exception);
+    if (this.isDbError(exception)) {
+      return this.getDbHttpStatus(exception);
     }
     return HttpStatus.INTERNAL_SERVER_ERROR;
   }
 
   /**
-   * Prisma 에러 여부 확인
+   * DB 에러 여부 확인 (postgres-js PostgresError — SQLSTATE 보유)
    */
-  // postgres-js 드라이버 에러(SQLSTATE) 탐지 (Prisma 덕타이핑 대체)
-  private isPrismaError(exception: unknown): boolean {
+  private isDbError(exception: unknown): boolean {
     return (
       exception instanceof Error &&
       exception.constructor.name === 'PostgresError' &&
@@ -249,13 +248,13 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
   }
 
   /**
-   * Prisma 에러 처리
+   * DB 에러 처리 (PostgreSQL SQLSTATE)
    */
-  private handlePrismaError(exception: unknown, timestamp: string): StandardErrorResponse {
-    const prismaError = exception as { code: string; message: string };
+  private handleDbError(exception: unknown, timestamp: string): StandardErrorResponse {
+    const dbError = exception as { code: string; message: string };
 
-    switch (prismaError.code) {
-      case '23505': // unique_violation (was P2002)
+    switch (dbError.code) {
+      case '23505': // unique_violation
         return {
           success: false,
           error: {
@@ -264,16 +263,7 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
           },
           timestamp,
         };
-      case 'P2025': // Record not found
-        return {
-          success: false,
-          error: {
-            code: Errors.Database.NOT_FOUND.code,
-            message: Errors.Database.NOT_FOUND.message,
-          },
-          timestamp,
-        };
-      case '23503': // foreign_key_violation (was P2003)
+      case '23503': // foreign_key_violation
         return {
           success: false,
           error: {
@@ -282,12 +272,21 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
           },
           timestamp,
         };
+      case '23502': // not_null_violation
+        return {
+          success: false,
+          error: {
+            code: Errors.Validation.INVALID_INPUT.code,
+            message: Errors.Validation.INVALID_INPUT.message,
+          },
+          timestamp,
+        };
       default:
         return {
           success: false,
           error: {
             code: Errors.Database.CONNECTION_ERROR.code,
-            message: prismaError.message || Errors.System.INTERNAL.message,
+            message: dbError.message || Errors.System.INTERNAL.message,
           },
           timestamp,
         };
@@ -295,12 +294,12 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
   }
 
   /**
-   * Prisma 에러 HTTP 상태 코드
+   * DB 에러 HTTP 상태 코드
    */
-  private getPrismaHttpStatus(exception: unknown): number {
-    const prismaError = exception as { code: string };
+  private getDbHttpStatus(exception: unknown): number {
+    const dbError = exception as { code: string };
 
-    switch (prismaError.code) {
+    switch (dbError.code) {
       case '23505':
         return HttpStatus.CONFLICT;
       case '23503':

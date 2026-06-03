@@ -1,6 +1,6 @@
 // ==============================================
 // notify-service 도메인 enum 단일 소스 (UNI-85)
-// const → pgEnum·DTO·NATS 파생. + JSON 타입(Prisma.InputJsonValue 대체).
+// const → pgEnum·DTO·NATS 파생. + JSON 타입.
 // ==============================================
 
 export const NotificationType = {
@@ -36,5 +36,5 @@ export const NOTIFICATION_TYPE_VALUES = Object.values(NotificationType) as [Noti
 export const NOTIFICATION_STATUS_VALUES = Object.values(NotificationStatus) as [NotificationStatus, ...NotificationStatus[]];
 export const DELIVERY_CHANNEL_VALUES = Object.values(DeliveryChannelType) as [DeliveryChannelType, ...DeliveryChannelType[]];
 
-/** jsonb 값 (Prisma.InputJsonValue 대체) */
+/** jsonb 값 */
 export type JsonValue = string | number | boolean | null | { [k: string]: JsonValue } | JsonValue[];

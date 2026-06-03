@@ -9,7 +9,7 @@ export type DrizzleDb = PostgresJsDatabase<typeof schema>;
 export type DrizzleTx = Parameters<Parameters<DrizzleDb['transaction']>[0]>[0];
 
 /**
- * Drizzle + postgres-js DB 제공자 (UNI-86). PrismaService 대체.
+ * Drizzle + postgres-js DB 제공자 (UNI-86).
  * payment_db는 마이그레이션 보유 → 연결만.
  */
 @Injectable()

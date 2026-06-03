@@ -25,7 +25,9 @@ import { SyncService } from '../../src/partner/service/sync.service';
 import { GameMappingService } from '../../src/partner/service/game-mapping.service';
 import { PartnerClientService } from '../../src/client/partner-client.service';
 import { PartnerResilienceService } from '../../src/client/partner-resilience.service';
-import { PrismaService } from '../../prisma/prisma.service';
+import { DrizzleService } from '../../src/db/drizzle.service';
+import { partnerConfigs, gameMappings, slotMappings, bookingMappings, syncLogs } from '../../src/db/schema';
+import { eq, and, desc } from 'drizzle-orm';
 import * as crypto from 'crypto';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -70,18 +72,18 @@ function createMockNatsClient() {
 }
 
 // Test DB 데이터 정리용 헬퍼
-async function cleanupTestData(prisma: PrismaService) {
+async function cleanupTestData(db: DrizzleService['db']) {
   // 순서 중요: FK 의존 순서대로 삭제
-  await prisma.syncLog.deleteMany({});
-  await prisma.bookingMapping.deleteMany({});
-  await prisma.slotMapping.deleteMany({});
-  await prisma.gameMapping.deleteMany({});
-  await prisma.partnerConfig.deleteMany({});
+  await db.delete(syncLogs);
+  await db.delete(bookingMappings);
+  await db.delete(slotMappings);
+  await db.delete(gameMappings);
+  await db.delete(partnerConfigs);
 }
 
 describe('Partner Service - 외부 부킹 데이터 연동 통합 테스트', () => {
   let module: TestingModule;
-  let prisma: PrismaService;
+  let db: DrizzleService['db'];
   let configService: PartnerConfigService;
   let cryptoService: CryptoService;
   let webhookService: WebhookService;
@@ -105,7 +107,7 @@ describe('Partner Service - 외부 부킹 데이터 연동 통합 테스트', ()
         }),
       ],
       providers: [
-        PrismaService,
+        DrizzleService,
         CryptoService,
         PartnerConfigService,
         GameMappingService,
@@ -139,18 +141,19 @@ describe('Partner Service - 외부 부킹 데이터 연동 통합 테스트', ()
       ],
     }).compile();
 
-    prisma = module.get<PrismaService>(PrismaService);
+    const drizzle = module.get(DrizzleService);
+    db = drizzle.db;
     configService = module.get<PartnerConfigService>(PartnerConfigService);
     cryptoService = module.get<CryptoService>(CryptoService);
     webhookService = module.get<WebhookService>(WebhookService);
     syncService = module.get<SyncService>(SyncService);
 
     // 테스트 데이터 정리
-    await cleanupTestData(prisma);
+    await cleanupTestData(db);
   });
 
   afterAll(async () => {
-    await cleanupTestData(prisma);
+    await cleanupTestData(db);
     await module.close();
   });
 
@@ -309,9 +312,11 @@ describe('Partner Service - 외부 부킹 데이터 연동 통합 테스트', ()
   describe('Group 3: 웹훅 서명 검증', () => {
     it('TC-012: 유효한 HMAC-SHA256 서명으로 웹훅 처리', async () => {
       // 파트너 설정의 webhookSecret 복호화 키로 서명 생성
-      const config = await prisma.partnerConfig.findUnique({
-        where: { clubId: TEST_CLUB_ID },
-      });
+      const [config] = await db
+        .select()
+        .from(partnerConfigs)
+        .where(eq(partnerConfigs.clubId, TEST_CLUB_ID))
+        .limit(1);
       expect(config).toBeDefined();
 
       const secret = cryptoService.decrypt(config!.webhookSecret!);
@@ -327,9 +332,11 @@ describe('Partner Service - 외부 부킹 데이터 연동 통합 테스트', ()
     });
 
     it('TC-013: 잘못된 서명 → UnauthorizedException', async () => {
-      const config = await prisma.partnerConfig.findUnique({
-        where: { clubId: TEST_CLUB_ID },
-      });
+      const [config] = await db
+        .select()
+        .from(partnerConfigs)
+        .where(eq(partnerConfigs.clubId, TEST_CLUB_ID))
+        .limit(1);
 
       const body = { event: 'booking.created', data: {} };
       const invalidSignature = 'invalid-signature-value';
@@ -343,13 +350,15 @@ describe('Partner Service - 외부 부킹 데이터 연동 통합 테스트', ()
 
     it('TC-014: 비활성 파트너 → 처리 거부', async () => {
       // 일시적으로 비활성화
-      const config = await prisma.partnerConfig.findUnique({
-        where: { clubId: TEST_CLUB_ID },
-      });
-      await prisma.partnerConfig.update({
-        where: { id: config!.id },
-        data: { isActive: false },
-      });
+      const [config] = await db
+        .select()
+        .from(partnerConfigs)
+        .where(eq(partnerConfigs.clubId, TEST_CLUB_ID))
+        .limit(1);
+      await db
+        .update(partnerConfigs)
+        .set({ isActive: false })
+        .where(eq(partnerConfigs.id, config!.id));
 
       const result = await webhookService.processWebhook(config!.id, 'any', {});
 
@@ -357,10 +366,10 @@ describe('Partner Service - 외부 부킹 데이터 연동 통합 테스트', ()
       expect(result.message).toContain('not found or inactive');
 
       // 복원
-      await prisma.partnerConfig.update({
-        where: { id: config!.id },
-        data: { isActive: true },
-      });
+      await db
+        .update(partnerConfigs)
+        .set({ isActive: true })
+        .where(eq(partnerConfigs.id, config!.id));
 
       console.log(`  ✅ TC-014: 비활성 파트너 웹훅 거부 확인`);
     });
@@ -385,36 +394,37 @@ describe('Partner Service - 외부 부킹 데이터 연동 통합 테스트', ()
     let webhookSecret: string;
 
     beforeAll(async () => {
-      const config = await prisma.partnerConfig.findUnique({
-        where: { clubId: TEST_CLUB_ID },
-      });
+      const [config] = await db
+        .select()
+        .from(partnerConfigs)
+        .where(eq(partnerConfigs.clubId, TEST_CLUB_ID))
+        .limit(1);
       partnerId = config!.id;
       webhookSecret = cryptoService.decrypt(config!.webhookSecret!);
 
       // GameMapping 생성
-      const gameMapping = await prisma.gameMapping.create({
-        data: {
+      const [gameMapping] = await db
+        .insert(gameMappings)
+        .values({
           partnerId,
           externalCourseName: 'A+B코스',
           externalCourseId: 'CRS-001',
           internalGameId: TEST_GAME_ID,
-        },
-      });
+        })
+        .returning();
       gameMappingId = gameMapping.id;
 
       // SlotMapping 생성
-      await prisma.slotMapping.create({
-        data: {
-          gameMappingId,
-          externalSlotId: 'SLOT-00001',
-          date: new Date('2026-03-20'),
-          startTime: '07:00',
-          endTime: '10:00',
-          internalSlotId: TEST_SLOT_ID,
-          externalMaxPlayers: 4,
-          externalBooked: 1,
-          externalStatus: 'AVAILABLE',
-        },
+      await db.insert(slotMappings).values({
+        gameMappingId,
+        externalSlotId: 'SLOT-00001',
+        date: new Date('2026-03-20'),
+        startTime: '07:00',
+        endTime: '10:00',
+        internalSlotId: TEST_SLOT_ID,
+        externalMaxPlayers: 4,
+        externalBooked: 1,
+        externalStatus: 'AVAILABLE',
       });
     });
 
@@ -456,9 +466,16 @@ describe('Partner Service - 외부 부킹 데이터 연동 통합 테스트', ()
       expect((createCall!.data as Record<string, unknown>).playerCount).toBe(3);
 
       // BookingMapping 생성 확인
-      const mapping = await prisma.bookingMapping.findUnique({
-        where: { partnerId_externalBookingId: { partnerId, externalBookingId: 'EXT-BK-100' } },
-      });
+      const [mapping] = await db
+        .select()
+        .from(bookingMappings)
+        .where(
+          and(
+            eq(bookingMappings.partnerId, partnerId),
+            eq(bookingMappings.externalBookingId, 'EXT-BK-100'),
+          ),
+        )
+        .limit(1);
       expect(mapping).toBeDefined();
       expect(mapping!.syncDirection).toBe('INBOUND');
       expect(mapping!.syncStatus).toBe('SYNCED');
@@ -512,9 +529,16 @@ describe('Partner Service - 외부 부킹 데이터 연동 통합 테스트', ()
       expect(result.success).toBe(true);
       expect(result.message).toContain('no slot mapping');
 
-      const mapping = await prisma.bookingMapping.findUnique({
-        where: { partnerId_externalBookingId: { partnerId, externalBookingId: 'EXT-BK-UNMAPPED' } },
-      });
+      const [mapping] = await db
+        .select()
+        .from(bookingMappings)
+        .where(
+          and(
+            eq(bookingMappings.partnerId, partnerId),
+            eq(bookingMappings.externalBookingId, 'EXT-BK-UNMAPPED'),
+          ),
+        )
+        .limit(1);
       expect(mapping).toBeDefined();
       expect(mapping!.syncStatus).toBe('PENDING');
       // booking-service 호출 없어야 함
@@ -547,9 +571,16 @@ describe('Partner Service - 외부 부킹 데이터 연동 통합 테스트', ()
       expect(cancelCall).toBeDefined();
 
       // BookingMapping 상태 확인
-      const mapping = await prisma.bookingMapping.findUnique({
-        where: { partnerId_externalBookingId: { partnerId, externalBookingId: 'EXT-BK-100' } },
-      });
+      const [mapping] = await db
+        .select()
+        .from(bookingMappings)
+        .where(
+          and(
+            eq(bookingMappings.partnerId, partnerId),
+            eq(bookingMappings.externalBookingId, 'EXT-BK-100'),
+          ),
+        )
+        .limit(1);
       expect(mapping!.status).toBe('CANCELLED');
       expect(mapping!.syncStatus).toBe('SYNCED');
 
@@ -590,21 +621,19 @@ describe('Partner Service - 외부 부킹 데이터 연동 통합 테스트', ()
 
     it('TC-022: booking.updated — 충돌 감지', async () => {
       // 먼저 새 BookingMapping 생성 (SYNCED 상태)
-      await prisma.bookingMapping.create({
-        data: {
-          partnerId,
-          externalBookingId: 'EXT-BK-200',
-          internalBookingId: 2001,
-          gameMappingId,
-          syncDirection: 'OUTBOUND',
-          syncStatus: 'SYNCED',
-          lastSyncAt: new Date(),
-          date: new Date('2026-03-21'),
-          startTime: '08:00',
-          playerCount: 2,
-          playerName: '홍충돌',
-          status: 'CONFIRMED',
-        },
+      await db.insert(bookingMappings).values({
+        partnerId,
+        externalBookingId: 'EXT-BK-200',
+        internalBookingId: 2001,
+        gameMappingId,
+        syncDirection: 'OUTBOUND',
+        syncStatus: 'SYNCED',
+        lastSyncAt: new Date(),
+        date: new Date('2026-03-21'),
+        startTime: '08:00',
+        playerCount: 2,
+        playerName: '홍충돌',
+        status: 'CONFIRMED',
       });
 
       const body = {
@@ -622,9 +651,16 @@ describe('Partner Service - 외부 부킹 데이터 연동 통합 테스트', ()
       expect(result.success).toBe(true);
       expect(result.message).toContain('conflict');
 
-      const mapping = await prisma.bookingMapping.findUnique({
-        where: { partnerId_externalBookingId: { partnerId, externalBookingId: 'EXT-BK-200' } },
-      });
+      const [mapping] = await db
+        .select()
+        .from(bookingMappings)
+        .where(
+          and(
+            eq(bookingMappings.partnerId, partnerId),
+            eq(bookingMappings.externalBookingId, 'EXT-BK-200'),
+          ),
+        )
+        .limit(1);
       expect(mapping!.syncStatus).toBe('CONFLICT');
       expect(mapping!.conflictData).toBeDefined();
 
@@ -662,9 +698,11 @@ describe('Partner Service - 외부 부킹 데이터 연동 통합 테스트', ()
       expect((updateCall!.data as Record<string, unknown>).externalBooked).toBe(3);
 
       // SlotMapping 업데이트 확인
-      const slotMapping = await prisma.slotMapping.findFirst({
-        where: { externalSlotId: 'SLOT-00001' },
-      });
+      const [slotMapping] = await db
+        .select()
+        .from(slotMappings)
+        .where(eq(slotMappings.externalSlotId, 'SLOT-00001'))
+        .limit(1);
       expect(slotMapping!.externalBooked).toBe(3);
       expect(slotMapping!.syncStatus).toBe('SYNCED');
 
@@ -709,18 +747,18 @@ describe('Partner Service - 외부 부킹 데이터 연동 통합 테스트', ()
 
   describe('Group 5: 데이터 매핑 무결성', () => {
     it('TC-026: GameMapping 유니크 제약 (partnerId + externalCourseName)', async () => {
-      const config = await prisma.partnerConfig.findUnique({
-        where: { clubId: TEST_CLUB_ID },
-      });
+      const [config] = await db
+        .select()
+        .from(partnerConfigs)
+        .where(eq(partnerConfigs.clubId, TEST_CLUB_ID))
+        .limit(1);
 
       // 같은 partnerId + externalCourseName 중복 생성 시도
       await expect(
-        prisma.gameMapping.create({
-          data: {
-            partnerId: config!.id,
-            externalCourseName: 'A+B코스', // 이미 존재
-            internalGameId: TEST_GAME_ID + 1,
-          },
+        db.insert(gameMappings).values({
+          partnerId: config!.id,
+          externalCourseName: 'A+B코스', // 이미 존재
+          internalGameId: TEST_GAME_ID + 1,
         }),
       ).rejects.toThrow();
 
@@ -728,21 +766,21 @@ describe('Partner Service - 외부 부킹 데이터 연동 통합 테스트', ()
     });
 
     it('TC-027: BookingMapping 유니크 제약 (partnerId + externalBookingId)', async () => {
-      const config = await prisma.partnerConfig.findUnique({
-        where: { clubId: TEST_CLUB_ID },
-      });
+      const [config] = await db
+        .select()
+        .from(partnerConfigs)
+        .where(eq(partnerConfigs.clubId, TEST_CLUB_ID))
+        .limit(1);
 
       await expect(
-        prisma.bookingMapping.create({
-          data: {
-            partnerId: config!.id,
-            externalBookingId: 'EXT-BK-UNMAPPED', // 이미 존재
-            syncDirection: 'INBOUND',
-            date: new Date('2026-03-20'),
-            startTime: '08:00',
-            playerCount: 2,
-            status: 'CONFIRMED',
-          },
+        db.insert(bookingMappings).values({
+          partnerId: config!.id,
+          externalBookingId: 'EXT-BK-UNMAPPED', // 이미 존재
+          syncDirection: 'INBOUND',
+          date: new Date('2026-03-20'),
+          startTime: '08:00',
+          playerCount: 2,
+          status: 'CONFIRMED',
         }),
       ).rejects.toThrow();
 
@@ -750,21 +788,21 @@ describe('Partner Service - 외부 부킹 데이터 연동 통합 테스트', ()
     });
 
     it('TC-028: SlotMapping 유니크 제약 (gameMappingId + externalSlotId)', async () => {
-      const gameMapping = await prisma.gameMapping.findFirst({
-        where: { externalCourseName: 'A+B코스' },
-      });
+      const [gameMapping] = await db
+        .select()
+        .from(gameMappings)
+        .where(eq(gameMappings.externalCourseName, 'A+B코스'))
+        .limit(1);
 
       await expect(
-        prisma.slotMapping.create({
-          data: {
-            gameMappingId: gameMapping!.id,
-            externalSlotId: 'SLOT-00001', // 이미 존재
-            date: new Date('2026-03-20'),
-            startTime: '07:00',
-            endTime: '10:00',
-            externalMaxPlayers: 4,
-            externalStatus: 'AVAILABLE',
-          },
+        db.insert(slotMappings).values({
+          gameMappingId: gameMapping!.id,
+          externalSlotId: 'SLOT-00001', // 이미 존재
+          date: new Date('2026-03-20'),
+          startTime: '07:00',
+          endTime: '10:00',
+          externalMaxPlayers: 4,
+          externalStatus: 'AVAILABLE',
         }),
       ).rejects.toThrow();
 
@@ -773,8 +811,9 @@ describe('Partner Service - 외부 부킹 데이터 연동 통합 테스트', ()
 
     it('TC-029: PartnerConfig 삭제 시 GameMapping 캐스케이드 삭제', async () => {
       // 별도 테스트용 파트너 생성 → 삭제
-      const tempConfig = await prisma.partnerConfig.create({
-        data: {
+      const [tempConfig] = await db
+        .insert(partnerConfigs)
+        .values({
           clubId: 99999,
           companyId: 99999,
           systemName: '임시 파트너',
@@ -782,24 +821,23 @@ describe('Partner Service - 외부 부킹 데이터 연동 통합 테스트', ()
           specUrl: 'http://example.com/spec',
           apiKey: cryptoService.encrypt('temp-key'),
           responseMapping: {},
-        },
-      });
+        })
+        .returning();
 
-      await prisma.gameMapping.create({
-        data: {
-          partnerId: tempConfig.id,
-          externalCourseName: '임시코스',
-          internalGameId: 99999,
-        },
+      await db.insert(gameMappings).values({
+        partnerId: tempConfig.id,
+        externalCourseName: '임시코스',
+        internalGameId: 99999,
       });
 
       // 파트너 삭제
-      await prisma.partnerConfig.delete({ where: { id: tempConfig.id } });
+      await db.delete(partnerConfigs).where(eq(partnerConfigs.id, tempConfig.id));
 
       // 연관 GameMapping도 삭제 확인
-      const orphanMappings = await prisma.gameMapping.findMany({
-        where: { partnerId: tempConfig.id },
-      });
+      const orphanMappings = await db
+        .select()
+        .from(gameMappings)
+        .where(eq(gameMappings.partnerId, tempConfig.id));
       expect(orphanMappings).toHaveLength(0);
 
       console.log(`  ✅ TC-029: 캐스케이드 삭제 확인 (PartnerConfig → GameMapping)`);
@@ -812,12 +850,15 @@ describe('Partner Service - 외부 부킹 데이터 연동 통합 테스트', ()
 
   describe('Group 6: SyncLog 기록', () => {
     it('TC-030: SyncLog 생성 및 조회', async () => {
-      const config = await prisma.partnerConfig.findUnique({
-        where: { clubId: TEST_CLUB_ID },
-      });
+      const [config] = await db
+        .select()
+        .from(partnerConfigs)
+        .where(eq(partnerConfigs.clubId, TEST_CLUB_ID))
+        .limit(1);
 
-      const log = await prisma.syncLog.create({
-        data: {
+      const [log] = await db
+        .insert(syncLogs)
+        .values({
           partnerId: config!.id,
           action: 'SLOT_SYNC',
           direction: 'INBOUND',
@@ -827,18 +868,19 @@ describe('Partner Service - 외부 부킹 데이터 연동 통합 테스트', ()
           updatedCount: 15,
           errorCount: 0,
           durationMs: 1500,
-        },
-      });
+        })
+        .returning();
 
       expect(log.id).toBeGreaterThan(0);
       expect(log.action).toBe('SLOT_SYNC');
       expect(log.recordCount).toBe(20);
 
       // 조회
-      const logs = await prisma.syncLog.findMany({
-        where: { partnerId: config!.id },
-        orderBy: { createdAt: 'desc' },
-      });
+      const logs = await db
+        .select()
+        .from(syncLogs)
+        .where(eq(syncLogs.partnerId, config!.id))
+        .orderBy(desc(syncLogs.createdAt));
       expect(logs.length).toBeGreaterThanOrEqual(1);
 
       console.log(`  ✅ TC-030: SyncLog 생성/조회 확인 (${logs.length}건)`);
@@ -851,22 +893,24 @@ describe('Partner Service - 외부 부킹 데이터 연동 통합 테스트', ()
 
   describe('Group 7: isPartnerClub 비활성화 시나리오', () => {
     it('TC-031: isActive=false인 파트너 → isPartnerClub = false', async () => {
-      const config = await prisma.partnerConfig.findUnique({
-        where: { clubId: TEST_CLUB_ID },
-      });
-      await prisma.partnerConfig.update({
-        where: { id: config!.id },
-        data: { isActive: false },
-      });
+      const [config] = await db
+        .select()
+        .from(partnerConfigs)
+        .where(eq(partnerConfigs.clubId, TEST_CLUB_ID))
+        .limit(1);
+      await db
+        .update(partnerConfigs)
+        .set({ isActive: false })
+        .where(eq(partnerConfigs.id, config!.id));
 
       const result = await configService.isPartnerClub(TEST_CLUB_ID);
       expect(result).toBe(false);
 
       // 복원
-      await prisma.partnerConfig.update({
-        where: { id: config!.id },
-        data: { isActive: true },
-      });
+      await db
+        .update(partnerConfigs)
+        .set({ isActive: true })
+        .where(eq(partnerConfigs.id, config!.id));
 
       console.log(`  ✅ TC-031: 비활성 파트너 → isPartnerClub=false 확인`);
     });

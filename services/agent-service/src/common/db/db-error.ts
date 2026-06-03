@@ -2,7 +2,7 @@ import { ConflictException, BadRequestException, HttpException } from '@nestjs/c
 
 /**
  * Drizzle/postgres-js 드라이버 에러 → HTTP 매핑 (UNI-81 공통 패턴).
- * Prisma 에러코드(P2002/P2003/P2025)를 쓰지 않으므로 PG SQLSTATE로 대체.
+ * PG SQLSTATE 기반 에러 분류.
  * - P2025(not found) 등가는 없음 → 서비스에서 `.returning()` 길이 체크 후 명시적 NotFoundException.
  */
 
@@ -13,12 +13,12 @@ function pgCode(e: unknown): string | undefined {
     : undefined;
 }
 
-/** 23505 unique_violation (Prisma P2002 대응) */
+/** 23505 unique_violation */
 export function isUniqueViolation(e: unknown): boolean {
   return pgCode(e) === '23505';
 }
 
-/** 23503 foreign_key_violation (Prisma P2003 대응) */
+/** 23503 foreign_key_violation */
 export function isForeignKeyViolation(e: unknown): boolean {
   return pgCode(e) === '23503';
 }

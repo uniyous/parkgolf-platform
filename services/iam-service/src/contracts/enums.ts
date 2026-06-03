@@ -24,5 +24,5 @@ export const FRIEND_REQUEST_STATUS_VALUES = vals(FriendRequestStatus);
 export const DEVICE_PLATFORM_VALUES = vals(DevicePlatform);
 export const COMPANY_MEMBER_SOURCE_VALUES = vals(CompanyMemberSource);
 
-// Prisma Json 대체 타입
+// jsonb 값 타입
 export type JsonValue = string | number | boolean | null | { [key: string]: JsonValue } | JsonValue[];

@@ -1,6 +1,6 @@
 // ==============================================
 // chat-service / chat_db — Drizzle schema (UNI-83)
-// 컬럼명은 기존 Prisma(@map 없음 → camelCase) 그대로 유지 → DB 무변경.
+// 컬럼명은 기존 DB(@map 없음 → camelCase) 그대로 유지 → DB 무변경.
 // String → text, DateTime → timestamp(3). id는 app-side uuid 생성($defaultFn).
 // ==============================================
 import { pgTable, pgEnum, text, integer, boolean, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
@@ -8,7 +8,7 @@ import { relations } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { ROOM_TYPE_VALUES, MESSAGE_TYPE_VALUES } from '../contracts/enums';
 
-// PG enum 타입명은 기존 DB(Prisma 생성)와 동일하게 'RoomType'/'MessageType'
+// PG enum 타입명은 기존 DB와 동일하게 'RoomType'/'MessageType'
 export const roomTypeEnum = pgEnum('RoomType', ROOM_TYPE_VALUES);
 export const messageTypeEnum = pgEnum('MessageType', MESSAGE_TYPE_VALUES);
 
@@ -20,7 +20,7 @@ export const chatRooms = pgTable(
     type: roomTypeEnum('type').notNull().default('CHANNEL'),
     bookingId: integer('bookingId'),
     createdAt: timestamp('createdAt', { precision: 3 }).notNull().defaultNow(),
-    // Prisma @updatedAt 컬럼은 DB 디폴트가 없음(app 관리) → defaultNow(DEFAULT emit) 금지, $defaultFn으로 값 주입
+    // @updatedAt 컬럼은 DB 디폴트가 없음(app 관리) → defaultNow(DEFAULT emit) 금지, $defaultFn으로 값 주입
     updatedAt: timestamp('updatedAt', { precision: 3 })
       .notNull()
       .$defaultFn(() => new Date())

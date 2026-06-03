@@ -241,7 +241,7 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
   }
 
   // Publish message to room (JetStream persistence)
-  // type is uppercased to match Prisma MessageType enum for DB storage
+  // type is uppercased to match MessageType enum for DB storage
   async publishMessage(roomId: string, message: ChatMessage): Promise<void> {
     if (!this.js) {
       this.logger.warn('JetStream not available, message will not be persisted');

@@ -44,5 +44,5 @@ export const BOOKING_MODE_VALUES = vals(BookingMode);
 export const POLICY_SCOPE_VALUES = vals(PolicyScope);
 export const NOSHOW_PENALTY_TYPE_VALUES = vals(NoShowPenaltyType);
 
-// Prisma Json 대체 타입
+// jsonb 값 타입
 export type JsonValue = string | number | boolean | null | { [key: string]: JsonValue } | JsonValue[];

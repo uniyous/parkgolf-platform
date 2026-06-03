@@ -7,7 +7,7 @@ export function pgCode(e: unknown): string | undefined {
     : undefined;
 }
 
-/** 23505 unique_violation (Prisma P2002 대응) */
+/** 23505 unique_violation */
 export function isUniqueViolation(e: unknown): boolean {
   return pgCode(e) === '23505';
 }
