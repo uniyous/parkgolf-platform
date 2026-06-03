@@ -16,7 +16,7 @@ serviceImageTags:
   agent-service: c7eeffdb97764b34c8b772bf18b08f552e8d37c9
   iam-service: f0234b6bdaedc1f084d5e1d4711667630ba9d85d
   club-service: f0234b6bdaedc1f084d5e1d4711667630ba9d85d
-  booking-service: f0234b6bdaedc1f084d5e1d4711667630ba9d85d
+  booking-service: e6dc1ba2bac0af9c369d02562c9229a2820c7b36
   payment-service: 3cf36bc784258d0dae7f4a93a5fe2441c0e18871
   chat-service: d2db22334cc3901bad5444b4e9c89d6e2a5c4103
   notify-service: 3cf36bc784258d0dae7f4a93a5fe2441c0e18871
