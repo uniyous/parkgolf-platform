@@ -17,9 +17,9 @@ serviceImageTags:
   iam-service: f0234b6bdaedc1f084d5e1d4711667630ba9d85d
   club-service: f0234b6bdaedc1f084d5e1d4711667630ba9d85d
   booking-service: f0234b6bdaedc1f084d5e1d4711667630ba9d85d
-  payment-service: b8c48893471b3dec381423729b471ff782d4d73f
+  payment-service: 3cf36bc784258d0dae7f4a93a5fe2441c0e18871
   chat-service: d2db22334cc3901bad5444b4e9c89d6e2a5c4103
-  notify-service: 2960b8d0f5a65a91c84d76ff20cfcd707b3dcbc2
+  notify-service: 3cf36bc784258d0dae7f4a93a5fe2441c0e18871
   saga-service: c40520331b6abfdaa25fe34d43a4a45060c83123
   partner-service: f0234b6bdaedc1f084d5e1d4711667630ba9d85d
   admin-api: f0234b6bdaedc1f084d5e1d4711667630ba9d85d
