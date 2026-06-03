@@ -100,9 +100,9 @@ user        <현재 사용자 메시지>
 | `clubId`, `clubName` | `search_clubs_with_slots`(단일 결과) · `get_club_info`(인자) · `CLUB_SELECT` | 후속 슬롯/예약 대상 |
 | `recentClubs` | `search_clubs` · `get_nearby_clubs` · `search_clubs_with_slots` 결과 | (a) 주입 데이터 |
 | `chatRoomId`, `bookerId` | 요청 페이로드 | 채팅방 그룹 흐름 |
-| `groupMode`, `currentTeamMembers`, `currentTeamNumber`, `completedTeams` | `SELECT_MEMBERS` / `NEXT_TEAM` 직접 액션 | 인원 확정 · 다음 팀 |
-| `slotId`, `time`, `slotPrice`, `gameName` | `SLOT_SELECT` 직접 액션 | 예약 확인 카드 |
-| `confirmed` | `create_booking` 성공 | 완료 상태 전환 |
+| `groupMode`, `currentTeamMembers` | `SELECT_MEMBERS` 직접 액션 | 인원 확정 (1예약=최대4명, UNI-36) |
+| `slotId`, `time`, `slotPrice`, `gameName`, `paymentMethod` | `SLOT_SELECT` 직접 액션(+결제수단, UNI-41) | 바로 예약 진행 |
+| `bookingId`, `confirmed` | `create_booking` 성공 | 재개 거친 커서 · 완료 상태 전환 |
 | `episodicPrefilled` | 1회 실행 표시 (Phase 2) | prefill 중복 방지 |
 | `semanticPrefilled` | (c) 주입 시 표시 (Phase 3) | prefill 중복 방지 |
 
@@ -153,7 +153,9 @@ if  context.slots.chatRoomId
 
 ## 7. 직접 액션은 본 루프를 우회
 
-`direct-action-handler` 가 처리하는 액션 (`CLUB_SELECT`, `SLOT_SELECT`, `CONFIRM_BOOKING`, `SELECT_MEMBERS`, `NEXT_TEAM`, 결제 결과 콜백 등)은 **LLM 호출 없이** `context.slots`를 직접 갱신하고 카드 응답을 만든다. 본 문서의 컨텍스트 조립은 **자유 텍스트 발화에만** 적용된다.
+`direct-action-handler` 가 처리하는 액션 (`CLUB_SELECT`, `SLOT_SELECT`(+`paymentMethod`), `SELECT_MEMBERS`, 결제 결과 콜백 등)은 **LLM 호출 없이** `context.slots`를 직접 갱신하고 카드 응답을 만든다. 본 문서의 컨텍스트 조립은 **자유 텍스트 발화에만** 적용된다.
+
+> 직접 액션 경로의 부수효과(예약·결제·정산·확정)는 **재개(resume) 계층**(`effect-executor` + Turn Journal)을 거쳐 멱등하게 처리된다. `context.slots`(L1 Working Memory)는 재개의 **거친 커서**(FSM state·bookingId)이고, Turn Journal이 **세밀 커서**다 → [`AGENT.md §14`](./AGENT.md). `CONFIRM_BOOKING`(확인 카드, UNI-41)·`NEXT_TEAM`(팀별순차, UNI-36) 액션은 제거됨.
 
 ```mermaid
 flowchart LR

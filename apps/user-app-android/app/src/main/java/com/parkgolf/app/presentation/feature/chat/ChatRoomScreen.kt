@@ -347,22 +347,22 @@ fun ChatRoomScreen(
                                                 selectedClubName = clubName
                                             ))
                                         },
-                                        onSlotSelect = { slotId, time, price, clubId, clubName, gameName ->
+                                        onSlotSelect = { slotId, time, price, clubId, clubName, gameName, paymentMethod ->
                                             viewModel.selectSlot(slotId)
+                                            // UNI-41: 슬롯 클릭에 결제수단 동반 → 확인카드 없이 바로 예약
+                                            val methodLabel = when (paymentMethod) {
+                                                "card" -> "카드결제로 예약"
+                                                "dutchpay" -> "더치페이로 예약"
+                                                else -> "현장결제로 예약"
+                                            }
                                             viewModel.sendAiFollowUp(AiChatRequest(
-                                                message = "$time 선택",
+                                                message = "$time $methodLabel",
                                                 selectedSlotId = slotId,
                                                 selectedSlotTime = time,
                                                 selectedSlotPrice = price,
                                                 selectedClubId = clubId,
                                                 selectedClubName = clubName,
-                                                selectedGameName = gameName
-                                            ))
-                                        },
-                                        onConfirmBooking = { paymentMethod ->
-                                            viewModel.sendAiFollowUp(AiChatRequest(
-                                                message = if (paymentMethod == "card") "카드결제로 예약 확인" else "예약 확인",
-                                                confirmBooking = true,
+                                                selectedGameName = gameName,
                                                 paymentMethod = paymentMethod
                                             ))
                                         },
@@ -665,7 +665,7 @@ private fun ChatMessageBubble(
     message: ChatMessage,
     isOwnMessage: Boolean
 ) {
-    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+    val timeFormatter = DateTimeFormatter.ofPattern("a hh:mm", java.util.Locale.KOREAN)
 
     Row(
         modifier = Modifier

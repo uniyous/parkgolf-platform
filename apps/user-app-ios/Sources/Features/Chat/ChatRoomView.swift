@@ -278,10 +278,12 @@ struct ChatRoomView: View {
                                         selectedClubName: clubName
                                     ))
                                 },
-                                onSlotSelect: { slotId, time, price, clubId, clubName, gameName in
+                                onSlotSelect: { slotId, time, price, clubId, clubName, gameName, paymentMethod in
                                     aiViewModel.selectedSlotId = slotId
+                                    // UNI-41: 슬롯 클릭에 결제수단 동반 → 확인카드 없이 바로 예약
+                                    let methodLabel = ["card": "카드결제로 예약", "dutchpay": "더치페이로 예약", "onsite": "현장결제로 예약"][paymentMethod] ?? "예약"
                                     var request = AiChatRequest(
-                                        message: "\(time) 선택",
+                                        message: "\(time) \(methodLabel)",
                                         selectedSlotId: slotId,
                                         selectedSlotTime: time,
                                         selectedSlotPrice: price
@@ -291,10 +293,8 @@ struct ChatRoomView: View {
                                         request.selectedClubName = clubName
                                     }
                                     request.selectedGameName = gameName
-                                    sendAiFollowUp("\(time) 선택", request: request)
-                                },
-                                onConfirmBooking: { paymentMethod in
-                                    sendAiFollowUp("예약 확인", request: AiChatRequest(message: "예약 확인", confirmBooking: true, paymentMethod: paymentMethod))
+                                    request.paymentMethod = paymentMethod
+                                    sendAiFollowUp("\(time) \(methodLabel)", request: request)
                                 },
                                 onCancelBooking: {
                                     sendAiFollowUp("예약 취소", request: AiChatRequest(message: "예약 취소", cancelBooking: true))
@@ -519,6 +519,7 @@ struct ChatRoomView: View {
                 readBy: nil
             )
             viewModel.messages.append(userMsg)
+            viewModel.messages.sort { $0.createdAt < $1.createdAt }
 
             // AI에 메시지 전송 (구조화된 요청 또는 텍스트)
             if let request = request {
@@ -543,7 +544,8 @@ struct ChatRoomView: View {
                     senderName: "AI 예약 도우미",
                     content: response.message,
                     messageType: .aiAssistant,
-                    createdAt: Date(),
+                    // 서버 시각으로 정렬 시계 통일 (UNI-38) — 없으면 로컬 시각 폴백
+                    createdAt: response.timestamp.flatMap { DateHelper.iso8601Formatter.date(from: $0) } ?? Date(),
                     readBy: nil
                 )
 
@@ -553,6 +555,7 @@ struct ChatRoomView: View {
                 }
 
                 viewModel.messages.append(aiMsg)
+                viewModel.messages.sort { $0.createdAt < $1.createdAt }
             }
         }
     }

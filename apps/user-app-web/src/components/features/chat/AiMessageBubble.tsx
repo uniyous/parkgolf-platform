@@ -1,12 +1,11 @@
 import React from 'react';
 import { Sparkles } from 'lucide-react';
-import type { ChatAction, ClubCardData, SlotCardData, WeatherCardData, ConfirmBookingData, PaymentCardData, SelectMembersData, TeamCompleteData, SettlementStatusData } from '@/lib/api/chatApi';
+import type { ChatAction, ClubCardData, SlotCardData, WeatherCardData, PaymentCardData, SelectMembersData, TeamCompleteData, SettlementStatusData } from '@/lib/api/chatApi';
 import { ClubCard } from './cards/ClubCard';
 import { SlotCard } from './cards/SlotCard';
 import { WeatherCard } from './cards/WeatherCard';
 import { BookingFailedCard } from './cards/BookingFailedCard';
 import { BookingExpiredCard } from './cards/BookingExpiredCard';
-import { ConfirmBookingCard } from './cards/ConfirmBookingCard';
 import { PaymentCard } from './cards/PaymentCard';
 import { SelectMembersCard } from './cards/SelectMembersCard';
 import { TeamCompleteCard } from './cards/TeamCompleteCard';
@@ -21,8 +20,7 @@ interface AiMessageBubbleProps {
   roomId?: string;
   conversationId?: string;
   onClubSelect?: (clubId: string, clubName: string) => void;
-  onSlotSelect?: (slotId: string, time: string, price: number, clubId?: string, clubName?: string, gameName?: string) => void;
-  onConfirmBooking?: (paymentMethod: 'onsite' | 'card' | 'dutchpay') => void;
+  onSlotSelect?: (slotId: string, time: string, price: number, clubId?: string, clubName?: string, gameName?: string, paymentMethod?: 'onsite' | 'card' | 'dutchpay') => void;
   onCancelBooking?: () => void;
   onPaymentComplete?: (success: boolean) => void;
   onTeamMemberSelect?: (members: Array<{ userId: number; userName: string; userEmail: string }>) => void;
@@ -45,7 +43,6 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
   conversationId,
   onClubSelect,
   onSlotSelect,
-  onConfirmBooking,
   onCancelBooking,
   onPaymentComplete,
   onTeamMemberSelect,
@@ -89,23 +86,15 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
                 {action.type === 'SHOW_SLOTS' && (
                   <SlotCard
                     data={action.data as SlotCardData}
-                    onSelect={(slotId, time, price, gameName) => {
+                    onSelect={(slotId, time, price, gameName, paymentMethod) => {
                       const slotData = action.data as SlotCardData;
-                      onSlotSelect?.(slotId, time, price, slotData.clubId, slotData.clubName, gameName);
+                      onSlotSelect?.(slotId, time, price, slotData.clubId, slotData.clubName, gameName, paymentMethod);
                     }}
                     selectedSlotId={selectedSlotId}
                   />
                 )}
                 {action.type === 'SHOW_WEATHER' && (
                   <WeatherCard data={action.data as WeatherCardData} />
-                )}
-                {action.type === 'CONFIRM_BOOKING' && (
-                  <ConfirmBookingCard
-                    data={action.data as ConfirmBookingData}
-                    onConfirm={onConfirmBooking}
-                    onCancel={onCancelBooking}
-                    completed={!isLatestAiMessage}
-                  />
                 )}
                 {action.type === 'SHOW_PAYMENT' && (
                   <PaymentCard

@@ -2,11 +2,73 @@ import SwiftUI
 
 struct SlotCardView: View {
     let data: Any
-    var onSelect: ((String, String, Int, String?, String?, String?) -> Void)?
+    // UNI-41: 마지막 파라미터 = 결제수단(onsite/card/dutchpay). 슬롯 단계에서 선택 → 확인카드 없이 바로 예약.
+    var onSelect: ((String, String, Int, String?, String?, String?, String) -> Void)?
     var selectedSlotId: String?
+
+    @State private var paymentMethod: String = ""
 
     private var dataDict: [String: Any]? {
         data as? [String: Any]
+    }
+
+    private var groupMode: Bool {
+        (dataDict?["groupMode"] as? Bool) ?? false
+    }
+
+    /// 그룹이면 기본 더치페이, 아니면 현장결제. 미선택(빈값)일 때 폴백.
+    private var effectiveMethod: String {
+        paymentMethod.isEmpty ? (groupMode ? "dutchpay" : "onsite") : paymentMethod
+    }
+
+    private struct PayMethod: Identifiable { let id: String; let label: String }
+
+    private var methods: [PayMethod] {
+        var list: [PayMethod] = [PayMethod(id: "onsite", label: "현장결제"), PayMethod(id: "card", label: "카드결제")]
+        if groupMode { list.append(PayMethod(id: "dutchpay", label: "더치페이")) }
+        return list
+    }
+
+    /// 자식 카드에 넘기는 6-param 클로저 — 현재 선택된 결제수단을 주입해 7-param onSelect 호출.
+    private var slotTapped: ((String, String, Int, String?, String?, String?) -> Void)? {
+        guard let onSelect = onSelect else { return nil }
+        let pm = effectiveMethod
+        return { id, time, price, clubId, clubName, gameName in
+            onSelect(id, time, price, clubId, clubName, gameName, pm)
+        }
+    }
+
+    @ViewBuilder
+    private var methodSelector: some View {
+        if onSelect != nil && !hasSelection {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("결제방법 (시간 선택 시 적용)")
+                    .font(.body)
+                    .foregroundColor(.white.opacity(0.5))
+                HStack(spacing: 6) {
+                    ForEach(methods) { item in
+                        let isOn = effectiveMethod == item.id
+                        Button {
+                            paymentMethod = item.id
+                        } label: {
+                            Text(item.label)
+                                .font(.body)
+                                .foregroundColor(isOn ? .white : .white.opacity(0.6))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 7)
+                                .background(isOn ? Color.parkPrimary.opacity(0.3) : Color.white.opacity(0.05))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(isOn ? Color.parkPrimary.opacity(0.6) : Color.white.opacity(0.1), lineWidth: 1)
+                                )
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+        }
     }
 
     private var slots: [[String: Any]] {
@@ -100,13 +162,15 @@ struct SlotCardView: View {
                 Divider().background(Color.white.opacity(0.1))
             }
 
+            methodSelector
+
             // 라운드 목록
             ForEach(Array(rounds.enumerated()), id: \.offset) { index, round in
                 RoundSectionView(
                     round: round,
                     hasSelection: hasSelection,
                     selectedSlotId: selectedSlotId,
-                    onSelect: onSelect
+                    onSelect: slotTapped
                 )
 
                 if index < rounds.count - 1 {
@@ -128,16 +192,19 @@ struct SlotCardView: View {
 
     private var flatLayout: some View {
         let columns = [GridItem(.flexible()), GridItem(.flexible())]
-        return LazyVGrid(columns: columns, spacing: 8) {
-            ForEach(Array(slots.enumerated()), id: \.offset) { _, slot in
-                SlotItemView(
-                    slot: slot,
-                    selectedSlotId: selectedSlotId,
-                    hasSelection: hasSelection,
-                    clubId: clubId,
-                    clubName: clubName,
-                    onSelect: onSelect
-                )
+        return VStack(spacing: 8) {
+            methodSelector
+            LazyVGrid(columns: columns, spacing: 8) {
+                ForEach(Array(slots.enumerated()), id: \.offset) { _, slot in
+                    SlotItemView(
+                        slot: slot,
+                        selectedSlotId: selectedSlotId,
+                        hasSelection: hasSelection,
+                        clubId: clubId,
+                        clubName: clubName,
+                        onSelect: slotTapped
+                    )
+                }
             }
         }
     }

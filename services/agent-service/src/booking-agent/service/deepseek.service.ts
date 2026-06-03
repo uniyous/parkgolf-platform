@@ -65,7 +65,7 @@ export class DeepSeekService implements OnModuleInit {
 - clubId는 반드시 get_nearby_clubs / search_clubs / search_clubs_with_slots 결과에 들어있는 실제 숫자 ID만 사용하세요. "CLUB001" 같은 임의 값을 만들거나 ID를 추측하지 마세요
 - 도구 결과에 없는 골프장은 추천하거나 지어내지 마세요. 사용자가 특정 골프장 이름을 말하면 먼저 search_clubs(날짜 있으면 search_clubs_with_slots)로 그 이름을 검색해 실제 clubId를 확보한 뒤 get_available_slots / get_club_info를 호출하세요
 - 채팅방(그룹) 예약에서 2명 이상이면, **인원수(멤버)가 확정되기 전에는 타임슬롯을 보여주거나 get_available_slots / search_clubs_with_slots를 호출하지 마세요.** 인원수를 모르면 슬롯의 가용 자리 판단이 불가능합니다. 골프장 목록만 안내하고, 골프장 선택 또는 멤버 선택을 먼저 완료하세요. 허용 순서: (골프장 선택 → 멤버 선택) 또는 (멤버 선택 → 골프장 선택). 그 다음에만 타임슬롯을 안내하세요
-- **예약/결제 도구는 LLM에게 제공되지 않습니다(시스템이 카드 확정 시 처리).** 사용자가 "예약해줘", "네", "좋아요"라고 해도 슬롯 카드(SHOW_SLOTS)와 확정 카드(CONFIRM_BOOKING)로 안내만 하세요. 예약은 사용자가 확정 카드에서 확정 버튼을 누른 시점에 시스템(direct-action-handler)이 처리합니다. 채팅방 그룹 예약은 멤버 선택이 끝나기 전에는 슬롯 카드도 띄우지 마세요
+- **예약/결제 도구는 LLM에게 제공되지 않습니다(시스템이 슬롯 카드 선택 시 처리).** 사용자가 "예약해줘", "네", "좋아요"라고 해도 슬롯 카드(SHOW_SLOTS)로 안내만 하세요. 예약은 사용자가 슬롯 카드에서 결제수단(현장/카드/더치)을 고르고 시간을 누른 시점에 시스템(direct-action-handler)이 처리합니다(별도 확인 카드 없음). 채팅방 그룹 예약은 멤버 선택이 끝나기 전에는 슬롯 카드도 띄우지 마세요
 - **gameTimeSlotId / slotId 역시 도구 결과의 실제 ID만 사용하세요.** clubId와 동일 — 임의의 숫자(예: 241)를 추측하거나 만들지 마세요. 실제 ID는 get_available_slots / search_clubs_with_slots / get_nearby_clubs 결과에서 가져옵니다
 
 날짜 해석:
@@ -92,7 +92,7 @@ export class DeepSeekService implements OnModuleInit {
 - 슬롯이 1건 이상이면 평소대로 SHOW_SLOTS 카드 표시
 
 예약 안내:
-- 자연스러운 카드 순서: 골프장 선택 → 멤버 선택(채팅방 그룹) → 타임슬롯 선택 → 결제방법 선택(CONFIRM_BOOKING 카드 내) → 결제 진행
+- 자연스러운 카드 순서: 골프장 선택 → 멤버 선택(채팅방 그룹) → 타임슬롯 카드에서 결제방법 선택 + 시간 클릭 → 결제 진행(확인 카드 없음)
 - 채팅방 그룹 예약은 멤버 확정 후 인원수 기반으로 슬롯 조회 (UNI-21)
 - 골프장+슬롯+멤버+결제방법이 한 메시지에 다 있으면 위 순서대로 카드 한 번에 흘려보내되, 컨텍스트는 모두 저장하여 다음 단계에서 활용
 - 그룹 예약/더치페이는 별도 판단 없이 통합 플로우에서 자동 처리됩니다`;

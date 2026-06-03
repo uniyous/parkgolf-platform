@@ -63,7 +63,7 @@ export interface MessagesResponse {
 // ============================================
 
 export type ConversationState = 'IDLE' | 'ANALYZING' | 'COLLECTING' | 'SELECTING_MEMBERS' | 'CONFIRMING' | 'BOOKING' | 'SETTLING' | 'TEAM_COMPLETE' | 'COMPLETED' | 'CANCELLED';
-export type ActionType = 'SHOW_CLUBS' | 'SHOW_SLOTS' | 'SHOW_WEATHER' | 'CONFIRM_BOOKING' | 'SELECT_MEMBERS' | 'SHOW_PAYMENT' | 'SPLIT_PAYMENT' | 'SETTLEMENT_STATUS' | 'TEAM_COMPLETE' | 'BOOKING_FAILED' | 'BOOKING_EXPIRED';
+export type ActionType = 'SHOW_CLUBS' | 'SHOW_SLOTS' | 'SHOW_WEATHER' | 'SELECT_MEMBERS' | 'SHOW_PAYMENT' | 'SPLIT_PAYMENT' | 'SETTLEMENT_STATUS' | 'TEAM_COMPLETE' | 'BOOKING_FAILED' | 'BOOKING_EXPIRED';
 
 export interface ChatAction {
   type: ActionType;
@@ -75,6 +75,8 @@ export interface AiChatResponse {
   message: string;
   state: ConversationState;
   actions?: ChatAction[];
+  /** 서버 생성 시각(ISO UTC). 로컬 메시지 createdAt에 사용해 정렬 시계 통일 (UNI-38). */
+  timestamp?: string;
 }
 
 export interface ClubCardData {
@@ -113,6 +115,8 @@ export interface SlotCardData {
     price: number;
     gameName: string;
   }>;
+  /** group(멤버 선택 경유) 여부 — 슬롯 카드의 더치페이 옵션 노출 판단 (UNI-41) */
+  groupMode?: boolean;
 }
 
 export interface WeatherCardData {
@@ -139,20 +143,6 @@ export interface BookingCompleteData {
   };
 }
 
-export interface ConfirmBookingData {
-  clubName: string;
-  date: string;
-  time: string;
-  playerCount: number;
-  price: number;
-  gameName?: string;
-  // 그룹 예약 시
-  teamNumber?: number;
-  members?: Array<{ userId: number; userName: string }>;
-  pricePerPerson?: number;
-  groupMode?: boolean;
-}
-
 export interface PaymentCardData {
   bookingId: number;
   orderId?: string | null;
@@ -162,6 +152,8 @@ export interface PaymentCardData {
   date: string;
   time: string;
   playerCount: number;
+  /** 참여자 — 결제진행 카드에 이름 표시 (UNI-41) */
+  participants?: Array<{ userId: number; userName: string }>;
 }
 
 export interface TeamMember {

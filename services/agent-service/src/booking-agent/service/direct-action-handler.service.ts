@@ -14,7 +14,7 @@ import {
 /**
  * UI 액션 클릭에 대한 직접 처리 (LLM 우회).
  * - handleDirectClubSelect:  골프장 선택 → SELECT_MEMBERS
- * - handleDirectSlotSelect:  슬롯 선택 → CONFIRM_BOOKING
+ * - handleDirectSlotSelect:  슬롯 선택(+결제수단) → 확인카드 없이 바로 예약
  * - handleDirectBooking:     예약 확정 → 결제방법 분기 (현장/카드/더치페이)
  * - handleCancelBooking:     취소 클릭 → 슬롯 초기화
  */
@@ -66,7 +66,9 @@ export class DirectActionHandlerService {
     let message: string;
 
     if (toolResult.success && (toolResult.result as any)?.availableCount > 0) {
-      actions.push({ type: 'SHOW_SLOTS', data: toolResult.result });
+      // UNI-41: 슬롯 카드에서 결제수단 선택 → group 여부 전달(더치 노출 판단용)
+      const isGroupSlots = !!context.slots.groupMode || (context.slots.currentTeamMembers || []).length > 0;
+      actions.push({ type: 'SHOW_SLOTS', data: { ...(toolResult.result as Record<string, unknown>), groupMode: isGroupSlots } });
       message = `${selectedClubName}의 예약 가능 시간이에요!`;
       this.conversationService.setState(context, 'CONFIRMING');
     } else {
@@ -84,8 +86,9 @@ export class DirectActionHandlerService {
   }
 
   /**
-   * 슬롯 카드 클릭 → 바로 CONFIRM_BOOKING.
-   * 멤버는 클럽 선택 시점에 이미 확정 (UNI-21 흐름 변경).
+   * 슬롯 카드 클릭 → 확인 카드 없이 바로 예약 (UNI-41).
+   * 슬롯 카드에서 결제수단 선택(현장/카드/더치) → onsite 즉시완료 / card 결제진행 / dutch 정산.
+   * 채팅방 그룹: 멤버 미선택이면 SELECT_MEMBERS 먼저(슬롯+결제수단 보존 후 재진입).
    * 채팅방 외 1인 진입은 groupMode=false / playerCount=1 default.
    */
   async handleDirectSlotSelect(
@@ -106,6 +109,14 @@ export class DirectActionHandlerService {
     const isChatRoom = !!context.slots.chatRoomId;
     const hasMembers = (context.slots.currentTeamMembers || []).length > 0;
     if (isChatRoom && !hasMembers) {
+      // UNI-41: 슬롯+결제수단을 컨텍스트에 보존 → 멤버 선택 후 redirect에서 바로 예약 (확인카드 생략).
+      this.conversationService.updateSlots(context, {
+        slotId: selectedSlotId,
+        time: selectedSlotTime,
+        slotPrice: selectedSlotPrice,
+        ...(request.selectedGameName && { gameName: request.selectedGameName }),
+        ...(request.paymentMethod && { paymentMethod: request.paymentMethod }),
+      });
       const selectMembers = await this.uiCardHelper.showSelectMembers(
         context,
         '먼저 함께할 멤버를 선택해 주세요! (인원수 확정 후 시간 선택)',
@@ -121,38 +132,14 @@ export class DirectActionHandlerService {
       ...(request.selectedGameName && { gameName: request.selectedGameName }),
     });
 
-    const teamMembers = context.slots.currentTeamMembers || [];
-    const isGroup = context.slots.groupMode || teamMembers.length > 0;
-    const playerCount = isGroup
-      ? teamMembers.length || context.slots.playerCount || 1
-      : context.slots.playerCount || 1;
-    const slotPrice = selectedSlotPrice || context.slots.slotPrice || 0;
-    const price = slotPrice * playerCount;
-
-    const confirmData: Record<string, unknown> = {
-      clubName: context.slots.clubName || '',
-      date: context.slots.date || this.uiCardHelper.getTomorrowDate(),
-      time: selectedSlotTime || context.slots.time || '',
-      playerCount,
-      price,
-      groupMode: isGroup,
-      members: teamMembers.map((m) => ({
-        userId: m.userId,
-        userName: m.userName,
-      })),
-      pricePerPerson: slotPrice,
-    };
-
-    const message = '예약 정보를 확인해 주세요!';
-    this.conversationService.addAssistantMessage(context, message);
-    this.conversationService.setState(context, 'CONFIRMING');
-
-    return {
-      conversationId: context.conversationId,
-      message,
-      state: context.state,
-      actions: [{ type: 'CONFIRM_BOOKING', data: confirmData }],
-    };
+    // UNI-41: 슬롯 클릭 → 예약정보확인 카드 없이 바로 예약 진행.
+    // 결제수단은 슬롯 카드에서 선택(현장/카드/더치). 미동반 시 현장결제 기본값.
+    // (onsite → 즉시 완료 / card → 결제진행 / dutch → 정산)
+    return this.handleDirectBooking(context, {
+      ...request,
+      confirmBooking: true,
+      paymentMethod: request.paymentMethod || context.slots.paymentMethod || 'onsite',
+    });
   }
 
   /**
@@ -230,9 +217,24 @@ export class DirectActionHandlerService {
         this.conversationService.setState(context, 'COMPLETED');
       }
     } else {
-      const errorMsg = result?.message || toolResult.error || '예약에 실패했습니다';
+      // saga failReason 에 BFF 에러 봉투({success,error:{code,message}})가 통째로 담겨오는
+      // 경우가 있어 원본 JSON 노출을 방지 — 사람이 읽을 message만 추출.
+      const errorMsg =
+        this.extractErrorMessage(result?.message) ||
+        this.extractErrorMessage(toolResult.error) ||
+        '예약에 실패했습니다';
       message = `예약에 실패했어요: ${errorMsg}`;
       actions.push({ type: 'BOOKING_FAILED', data: { reason: errorMsg } });
+      // 실패 시 슬롯/예약 선택 초기화 → 다른 시간 재선택이 매끄럽게 (UNI-38).
+      // clubId·멤버·인원은 유지해 같은 클럽에서 다른 시간만 다시 고르면 되도록.
+      this.conversationService.updateSlots(context, {
+        slotId: undefined,
+        time: undefined,
+        slotPrice: undefined,
+        bookingId: undefined,
+        bookingNumber: undefined,
+        confirmed: false,
+      });
       this.conversationService.setState(context, 'COLLECTING');
     }
 
@@ -244,6 +246,30 @@ export class DirectActionHandlerService {
       state: context.state,
       actions: actions.length > 0 ? actions : undefined,
     };
+  }
+
+  /**
+   * 에러 사유에서 사람이 읽을 메시지만 추출.
+   * BFF/마이크로서비스 에러 봉투({success,error:{code,message}})가 문자열/객체로 와도
+   * `error.message`(없으면 `message`)만 반환하고, 평문이면 그대로 반환.
+   */
+  private extractErrorMessage(raw: unknown): string | undefined {
+    if (raw == null) return undefined;
+    let val: unknown = raw;
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      if (!trimmed.startsWith('{')) return trimmed || undefined;
+      try {
+        val = JSON.parse(trimmed);
+      } catch {
+        return trimmed;
+      }
+    }
+    if (val && typeof val === 'object') {
+      const obj = val as { error?: { message?: string }; message?: string };
+      return obj.error?.message || obj.message || undefined;
+    }
+    return undefined;
   }
 
   /**
@@ -385,6 +411,11 @@ export class DirectActionHandlerService {
           date: result.details?.date || context.slots.date || '',
           time: result.details?.time || context.slots.time || '',
           playerCount: result.details?.playerCount || playerCount || 4,
+          // UNI-41: 결제진행 카드에 참여자 이름 표시 (확인 카드 제거 대체)
+          participants: (context.slots.currentTeamMembers || []).map((m) => ({
+            userId: m.userId,
+            userName: m.userName,
+          })),
         },
       }],
     };

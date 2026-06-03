@@ -145,7 +145,9 @@ fun ChatMessageDto.toDomain(): ChatMessage {
         content = content,
         messageType = MessageType.fromValue(getMessageTypeValue()),
         metadata = metadata,
-        createdAt = parseDateTime(createdAt),
+        // 서버 UTC → KST 변환 후 저장 (표시단은 변환 없이 포맷만, UNI-38)
+        createdAt = com.parkgolf.app.util.ChatDateTime.parseServerToKst(createdAt)
+            ?: com.parkgolf.app.util.ChatDateTime.nowKst(),
         readBy = readBy
     )
 }

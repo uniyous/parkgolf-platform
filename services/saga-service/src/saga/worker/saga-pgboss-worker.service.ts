@@ -33,7 +33,7 @@ interface BookingDetail {
  *
  * 처리하는 큐:
  *   - saga-timeout-recovery: saga가 15분 이상 active 상태일 때 보상 자동 실행
- *   - payment-timeout: booking이 5분 이상 SLOT_RESERVED 상태일 때 PAYMENT_TIMEOUT Saga 트리거
+ *   - payment-timeout: booking 생성 +3분 후 PENDING/SLOT_RESERVED면 PAYMENT_TIMEOUT Saga 트리거
  */
 @Injectable()
 export class SagaPgBossWorkerService implements OnModuleInit {
@@ -74,8 +74,8 @@ export class SagaPgBossWorkerService implements OnModuleInit {
   }
 
   /**
-   * payment timeout — booking 생성 시 등록된 task 처리
-   * SLOT_RESERVED인 booking에 대해 PAYMENT_TIMEOUT Saga 트리거.
+   * payment timeout — createBooking step 직후 등록된 task 처리 (UNI-38 #6).
+   * PENDING(생성 후 멈춤)/SLOT_RESERVED(미결제) booking에 PAYMENT_TIMEOUT Saga 트리거.
    * 이미 CONFIRMED/CANCELLED/FAILED인 booking은 멱등 skip.
    */
   private async handlePaymentTimeout(job: PgBoss.Job<PaymentTimeoutPayload>) {
@@ -108,8 +108,9 @@ export class SagaPgBossWorkerService implements OnModuleInit {
       return { skipped: true, reason: 'not_found' };
     }
 
-    // SLOT_RESERVED가 아니면 이미 처리됨 (CONFIRMED 또는 정리됨)
-    if (booking.status !== 'SLOT_RESERVED') {
+    // PENDING(생성 후 멈춤) / SLOT_RESERVED(미결제) 만 정리 대상.
+    // CONFIRMED·CANCELLED·FAILED 등 종결 상태면 이미 처리됨 → 멱등 skip. (UNI-38 #6: PENDING 포함)
+    if (booking.status !== 'PENDING' && booking.status !== 'SLOT_RESERVED') {
       this.logger.log(
         `[pgboss] booking ${bookingId} status=${booking.status}, skipping PAYMENT_TIMEOUT`,
       );

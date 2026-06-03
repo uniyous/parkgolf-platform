@@ -67,10 +67,7 @@ data class ChatMessage(
     val readBy: List<String>? = null
 ) {
     val timeText: String
-        get() {
-            val formatter = DateTimeFormatter.ofPattern("a h:mm")
-            return createdAt.format(formatter)
-        }
+        get() = com.parkgolf.app.util.ChatDateTime.formatTime(createdAt)
 
     val relativeTime: String
         get() {
@@ -143,7 +140,6 @@ enum class ActionType(val value: String) {
     SHOW_CLUBS("SHOW_CLUBS"),
     SHOW_SLOTS("SHOW_SLOTS"),
     SHOW_WEATHER("SHOW_WEATHER"),
-    CONFIRM_BOOKING("CONFIRM_BOOKING"),
     SHOW_PAYMENT("SHOW_PAYMENT"),
     CONFIRM_GROUP("CONFIRM_GROUP"),
     SELECT_MEMBERS("SELECT_MEMBERS"),
@@ -168,5 +164,7 @@ data class AiChatResponse(
     val conversationId: String,
     val message: String,
     val state: ConversationState,
-    val actions: List<ChatAction>
+    val actions: List<ChatAction>,
+    /** 서버 생성 시각(ISO UTC). 로컬 메시지 createdAt 통일용 (UNI-38). */
+    val timestamp: String? = null
 )

@@ -64,13 +64,23 @@ export class NotificationTools {
   }
 
   /**
-   * 팀 완료 카드 브로드캐스트 (senderId=0 → 채팅방 전체 조회 가능)
+   * 팀 완료 카드 브로드캐스트 (senderId=0).
+   * targetUserIds(예약 참여자) 지정 시 settlement 카드와 동일하게 멤버별 명시 전송,
+   * 미지정(1인 등) 시 채팅방 전체 브로드캐스트.
    */
-  broadcastTeamCompleteCard(roomId: string, teamCompleteData: Record<string, unknown>): void {
+  broadcastTeamCompleteCard(
+    roomId: string,
+    teamCompleteData: Record<string, unknown>,
+    targetUserIds?: number[],
+    bookerUserId?: number,
+  ): void {
     const metadata = JSON.stringify({
       conversationId: null,
       state: 'TEAM_COMPLETE',
       actions: [{ type: 'TEAM_COMPLETE', data: teamCompleteData }],
+      ...(targetUserIds && targetUserIds.length > 0
+        ? { targetUserIds, bookerUserId: bookerUserId || null }
+        : {}),
     });
 
     const message = {
@@ -87,7 +97,7 @@ export class NotificationTools {
     try {
       this.notifyClient.emit('chat.message.room', { roomId, message });
       this.logger.log(
-        `broadcastTeamCompleteCard emitted - roomId=${roomId}, msgId=${message.id}`,
+        `broadcastTeamCompleteCard emitted - roomId=${roomId}, msgId=${message.id}, targetUserIds=${JSON.stringify(targetUserIds ?? [])}`,
       );
     } catch (error) {
       this.logger.error('broadcastTeamCompleteCard NATS emit failed', error);

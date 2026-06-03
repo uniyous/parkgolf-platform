@@ -125,7 +125,6 @@ data class AiChatRequest(
     val selectedSlotTime: String? = null,
     val selectedSlotPrice: Int? = null,
     val selectedGameName: String? = null,
-    val confirmBooking: Boolean? = null,
     val cancelBooking: Boolean? = null,
     val paymentMethod: String? = null,
     val paymentComplete: Boolean? = null,
@@ -176,5 +175,7 @@ data class AiChatResponseDto(
     val conversationId: String,
     val message: String,
     val state: String,
-    val actions: List<AiChatActionDto> = emptyList()
+    val actions: List<AiChatActionDto> = emptyList(),
+    /** 서버 생성 시각(ISO UTC). 로컬 메시지 createdAt 통일용 (UNI-38). */
+    val timestamp: String? = null
 )

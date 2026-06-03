@@ -379,6 +379,19 @@ jobs:
           gcloud container clusters get-credentials ${{ needs.setup.outputs.cluster_name }} \
             ${{ needs.setup.outputs.location_flag }}=${{ needs.setup.outputs.location_value }}
 
+      - name: Node Service Account IAM (logging/monitoring/HPA)
+        # 클러스터가 --service-account 없이 생성돼 노드는 기본 Compute SA를 사용한다.
+        # 이 SA에 roles/container.defaultNodeServiceAccount(로깅/모니터링/오토스케일 메트릭 번들)가
+        # 없으면 GKE가 로그·메트릭·HPA 성능 저하 경고를 띄운다. 멱등하게 부여.
+        run: |
+          PROJECT_ID=$(gcloud config get-value project)
+          PROJECT_NUM=$(gcloud projects describe "$PROJECT_ID" --format="value(projectNumber)")
+          NODE_SA="${PROJECT_NUM}-compute@developer.gserviceaccount.com"
+          gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+            --member="serviceAccount:${NODE_SA}" \
+            --role="roles/container.defaultNodeServiceAccount" \
+            --condition=None
+
       - name: Create Namespace
         run: |
           kubectl create namespace ${{ needs.setup.outputs.namespace }} \

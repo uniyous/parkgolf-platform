@@ -41,7 +41,8 @@ export class BookingAgentService {
         const context = await this.conversationService.loadOrCreate(userId, convId);
         const response = await this.handleRequest(context, request);
         await this.conversationService.save(context);
-        return response;
+        // 서버 시각 stamp — 클라이언트가 로컬 메시지 createdAt에 사용해 정렬 시계 통일 (UNI-38)
+        return { ...response, timestamp: new Date().toISOString() };
       });
     } catch (err: unknown) {
       if (err instanceof ConversationBusyError) {
@@ -78,41 +79,48 @@ export class BookingAgentService {
     }
 
     // ── Direct Handling (LLM 우회) ──
+    // 시스템/미처리 예외를 graceful 카드로 흡수 (UNI-38). 비즈니스 오류는 각 핸들러가
+    // 이미 BOOKING_FAILED 로 처리하고, 여기선 예기치 못한 예외(타임아웃·다운스트림 등)를 backstop.
+    try {
+      // 더치페이 미결제 리마인더
+      if (request.sendReminder) return this.groupBooking.handleSendReminder(context, request);
 
-    // 더치페이 미결제 리마인더
-    if (request.sendReminder) return this.groupBooking.handleSendReminder(context, request);
-
-    // 멤버 선택: 슬롯 이미 선택돼 있으면 슬롯 select로 redirect (단방향 의존성 유지)
-    if (request.teamMembers) {
-      if (
-        request.teamMembers.length > 0 &&
-        context.slots.slotId &&
-        context.slots.time
-      ) {
-        this.conversationService.updateSlots(context, {
-          groupMode: true,
-          currentTeamMembers: request.teamMembers,
-          playerCount: request.teamMembers.length,
-        });
-        return this.directAction.handleDirectSlotSelect(context, {
-          ...request,
-          selectedSlotId: context.slots.slotId,
-          selectedSlotTime: context.slots.time,
-          selectedSlotPrice: context.slots.slotPrice,
-        });
+      // 멤버 선택: 슬롯 이미 선택돼 있으면 슬롯 select로 redirect (단방향 의존성 유지)
+      if (request.teamMembers) {
+        if (
+          request.teamMembers.length > 0 &&
+          context.slots.slotId &&
+          context.slots.time
+        ) {
+          this.conversationService.updateSlots(context, {
+            groupMode: true,
+            currentTeamMembers: request.teamMembers,
+            playerCount: request.teamMembers.length,
+          });
+          return this.directAction.handleDirectSlotSelect(context, {
+            ...request,
+            selectedSlotId: context.slots.slotId,
+            selectedSlotTime: context.slots.time,
+            selectedSlotPrice: context.slots.slotPrice,
+            // UNI-41: 멤버 선택 전에 고른 결제수단을 이어받아 확인카드 없이 바로 예약
+            paymentMethod: request.paymentMethod ?? context.slots.paymentMethod,
+          });
+        }
+        return this.groupBooking.handleTeamMemberSelect(context, request);
       }
-      return this.groupBooking.handleTeamMemberSelect(context, request);
+
+      // 결제 결과 핸들러
+      if (request.splitPaymentComplete) return this.paymentResult.handleSplitPaymentComplete(context, request);
+      if (request.paymentComplete) return this.paymentResult.handlePaymentComplete(context, request);
+
+      // UI 액션 핸들러
+      if (request.confirmBooking) return this.directAction.handleDirectBooking(context, request);
+      if (request.cancelBooking) return this.directAction.handleCancelBooking(context);
+      if (request.selectedSlotId) return this.directAction.handleDirectSlotSelect(context, request);
+      if (request.selectedClubId) return this.directAction.handleDirectClubSelect(context, request);
+    } catch (error) {
+      return this.gracefulError(context, error, 'direct-action');
     }
-
-    // 결제 결과 핸들러
-    if (request.splitPaymentComplete) return this.paymentResult.handleSplitPaymentComplete(context, request);
-    if (request.paymentComplete) return this.paymentResult.handlePaymentComplete(context, request);
-
-    // UI 액션 핸들러
-    if (request.confirmBooking) return this.directAction.handleDirectBooking(context, request);
-    if (request.cancelBooking) return this.directAction.handleCancelBooking(context);
-    if (request.selectedSlotId) return this.directAction.handleDirectSlotSelect(context, request);
-    if (request.selectedClubId) return this.directAction.handleDirectClubSelect(context, request);
 
     // ── LLM Processing ──
     this.conversationService.addUserMessage(context, message);
@@ -132,18 +140,30 @@ export class BookingAgentService {
         actions: actions.length > 0 ? actions : undefined,
       };
     } catch (error) {
-      this.logger.error('Chat processing failed', error);
-
-      const errorMessage = '죄송해요, 잠시 문제가 발생했어요. 다시 시도해 주세요.';
-      this.conversationService.addAssistantMessage(context, errorMessage);
-
-      return {
-        conversationId: context.conversationId,
-        message: errorMessage,
-        state: context.state,
-        actions: [{ type: 'BOOKING_FAILED', data: { reason: errorMessage } }],
-      };
+      return this.gracefulError(context, error, 'llm');
     }
+  }
+
+  /**
+   * 채팅 AI 모드 미처리 예외 backstop (UNI-38).
+   * 시스템 오류(타임아웃·다운스트림·예외)를 원본/스택 노출 없이 친절 메시지 + BOOKING_FAILED
+   * 카드로 변환하고, 상태를 COLLECTING 으로 복구해 사용자가 다시 시도할 수 있게 한다.
+   */
+  private gracefulError(
+    context: import('../dto/chat.dto').ConversationContext,
+    error: unknown,
+    where: string,
+  ): ChatResponseDto {
+    this.logger.error(`handleRequest ${where} failed`, error as Error);
+    const message = '요청을 처리하는 중 일시적인 문제가 발생했어요. 잠시 후 다시 시도해 주세요.';
+    this.conversationService.addAssistantMessage(context, message);
+    this.conversationService.setState(context, 'COLLECTING');
+    return {
+      conversationId: context.conversationId,
+      message,
+      state: context.state,
+      actions: [{ type: 'BOOKING_FAILED', data: { reason: message } }],
+    };
   }
 
   /**

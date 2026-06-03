@@ -104,7 +104,7 @@ export const ChatRoomPage: React.FC = () => {
             senderName: 'AI 예약 도우미',
             content: response.message,
             messageType: 'AI_ASSISTANT',
-            createdAt: new Date().toISOString(),
+            createdAt: response.timestamp ?? new Date().toISOString(),
             readBy: null,
           };
           setAiMessageActions((prev) => new Map(prev).set(aiMsg.id, response.actions!));
@@ -127,7 +127,7 @@ export const ChatRoomPage: React.FC = () => {
             senderName: 'AI 예약 도우미',
             content: response.message,
             messageType: 'AI_ASSISTANT',
-            createdAt: new Date().toISOString(),
+            createdAt: response.timestamp ?? new Date().toISOString(),
             readBy: null,
           };
           setAiMessageActions((prev) => new Map(prev).set(aiMsg.id, response.actions!));
@@ -185,18 +185,18 @@ export const ChatRoomPage: React.FC = () => {
         dbMessages.push(...page.messages);
       }
     }
-    // Sort by createdAt ascending (oldest first = newest at bottom)
-    const sorted = [...dbMessages].sort(
-      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    );
-    // Add realtime messages that are not in DB yet
-    const allMessages = [...sorted];
+    // Merge DB + realtime, then sort the FULL list by createdAt ascending.
+    // (실시간 메시지를 정렬 없이 맨 뒤에 붙이면 결제/완료 카드 순서가 역전됨 — UNI-37)
+    const merged = [...dbMessages];
     realtimeMessages.forEach((rtMsg) => {
-      if (!allMessages.some((m) => m.id === rtMsg.id)) {
-        allMessages.push(rtMsg);
+      if (!merged.some((m) => m.id === rtMsg.id)) {
+        merged.push(rtMsg);
       }
     });
-    return allMessages;
+    merged.sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+    return merged;
   }, [messagesData, realtimeMessages]);
 
   // joinRoom 재시도 래퍼 — 실패 시 최대 3회 백오프 재시도
@@ -359,7 +359,7 @@ export const ChatRoomPage: React.FC = () => {
         senderName: 'AI 예약 도우미',
         content: response.message,
         messageType: 'AI_ASSISTANT',
-        createdAt: new Date().toISOString(),
+        createdAt: response.timestamp ?? new Date().toISOString(),
         readBy: null,
       };
 
@@ -387,7 +387,7 @@ export const ChatRoomPage: React.FC = () => {
         senderName: 'AI 예약 도우미',
         content: response.message,
         messageType: 'AI_ASSISTANT',
-        createdAt: new Date().toISOString(),
+        createdAt: response.timestamp ?? new Date().toISOString(),
         readBy: null,
       };
 
@@ -436,7 +436,7 @@ export const ChatRoomPage: React.FC = () => {
           senderName: 'AI 예약 도우미',
           content: response.message,
           messageType: 'AI_ASSISTANT',
-          createdAt: new Date().toISOString(),
+          createdAt: response.timestamp ?? new Date().toISOString(),
           readBy: null,
         };
 
@@ -729,27 +729,20 @@ export const ChatRoomPage: React.FC = () => {
                         selectedClubName: clubName,
                       });
                     }}
-                    onSlotSelect={(slotId, time, price, clubId, clubName, gameName) => {
+                    onSlotSelect={(slotId, time, price, clubId, clubName, gameName, paymentMethod) => {
                       setSelectedSlotId(slotId);
+                      // UNI-41: 슬롯 클릭에 결제수단 동반 → 확인 카드 없이 바로 예약 진행
+                      const methodLabel: Record<string, string> = {
+                        card: '카드결제로 예약', dutchpay: '더치페이로 예약', onsite: '현장결제로 예약',
+                      };
                       handleAiFollowUp({
-                        message: `${time} 선택`,
+                        message: paymentMethod ? `${time} ${methodLabel[paymentMethod] || '예약'}` : `${time} 선택`,
                         selectedSlotId: slotId,
                         selectedSlotTime: time,
                         selectedSlotPrice: price,
                         ...(clubId ? { selectedClubId: clubId, selectedClubName: clubName } : {}),
                         ...(gameName ? { selectedGameName: gameName } : {}),
-                      });
-                    }}
-                    onConfirmBooking={(paymentMethod: 'onsite' | 'card' | 'dutchpay') => {
-                      const labels: Record<string, string> = {
-                        card: '카드결제로 예약 확인',
-                        dutchpay: '더치페이로 예약 확인',
-                        onsite: '예약 확인',
-                      };
-                      handleAiFollowUp({
-                        message: labels[paymentMethod] || '예약 확인',
-                        confirmBooking: true,
-                        paymentMethod,
+                        ...(paymentMethod ? { paymentMethod } : {}),
                       });
                     }}
                     onCancelBooking={() => {

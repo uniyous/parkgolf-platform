@@ -1,6 +1,6 @@
 # AI 응답 UI 표준 (카드·흐름·컴포넌트)
 
-> 최종 수정: 2026-05-28
+> 최종 수정: 2026-05-31
 > **연계 문서**: 에이전트 전체 플로우 [`AGENT.md`](./AGENT.md) · 컨텍스트 조립 [`AGENT_CONTEXT.md`](./AGENT_CONTEXT.md) · 결제(현장·카드·더치페이) [`AGENT_PAY.md`](./AGENT_PAY.md) · 부킹 상태/멱등성 [`BOOKING.md`](./BOOKING.md)
 
 AI 응답 UI(카드·시각 흐름·컴포넌트)의 단일 출처(SSOT) — 원칙·흐름·분류·데이터 형태·인터랙션·시각 레이아웃·컴포넌트 props·구현 위치.
@@ -31,37 +31,37 @@ AI 응답 UI(카드·시각 흐름·컴포넌트)의 단일 출처(SSOT) — 원
 flowchart TD
     Start([자연어 요청]) --> ShowClubs[SHOW_CLUBS<br/>근처/검색 결과]
     ShowClubs -->|클럽 선택| SelectMembers[SELECT_MEMBERS<br/>채팅방 그룹]
-    ShowClubs -->|채팅방 외 1인| ShowSlots[SHOW_SLOTS]
+    ShowClubs -->|채팅방 외 1인| ShowSlots[SHOW_SLOTS<br/>+결제수단 선택]
     SelectMembers -->|멤버 확정| ShowSlots
-    ShowSlots -->|슬롯 선택| Confirm[CONFIRM_BOOKING<br/>골프장+슬롯+멤버+결제방법]
-    Confirm -->|현장결제| TeamComplete[TEAM_COMPLETE<br/>예약 확정]
-    Confirm -->|카드결제| ShowPayment[SHOW_PAYMENT]
-    Confirm -->|더치페이| SettleStatus[SETTLEMENT_STATUS<br/>broadcast 정산]
+    ShowSlots -->|"슬롯+현장결제 클릭"| TeamComplete[TEAM_COMPLETE<br/>예약 확정]
+    ShowSlots -->|"슬롯+카드결제 클릭"| ShowPayment[SHOW_PAYMENT<br/>참여자명 포함]
+    ShowSlots -->|"슬롯+더치페이 클릭"| SettleStatus[SETTLEMENT_STATUS<br/>broadcast 정산]
     ShowPayment --> TeamComplete
     SettleStatus --> TeamComplete
-    Confirm -.실패.-> BookingFailed[BOOKING_FAILED]
-    Confirm -.만료.-> BookingExpired[BOOKING_EXPIRED]
+    ShowSlots -.실패.-> BookingFailed[BOOKING_FAILED]
+    ShowSlots -.만료.-> BookingExpired[BOOKING_EXPIRED]
 
     Weather([날씨 질문]) --> ShowWeather[SHOW_WEATHER<br/>사이드 정보, 부킹 흐름과 분리]
 ```
 
-부킹 카드 순서는 **골프장 → 멤버(채팅방 그룹) → 슬롯 → 결제**다. 채팅방 그룹 예약은 멤버 확정 후 인원수 기반으로 슬롯을 조회한다 (UNI-21). `SHOW_WEATHER`는 부킹 흐름과 분리된 사이드 정보다.
+부킹 카드 순서는 **골프장 → 멤버(채팅방 그룹) → 슬롯(결제수단 선택 포함)**다. 채팅방 그룹 예약은 멤버 확정 후 인원수 기반으로 슬롯을 조회한다 (UNI-21). 슬롯 카드에서 결제수단(현장/카드/더치)을 고르고 시간을 누르면 **별도 확인 카드 없이** 바로 예약 진행(UNI-41). `SHOW_WEATHER`는 부킹 흐름과 분리된 사이드 정보다.
 
 ## 4. 카드 목록 (ActionType)
 
 | ActionType | 분류 | 용도 | 트리거 |
 | -- | -- | -- | -- |
 | `SHOW_CLUBS` | 정보 결과 | 골프장 목록 | 클릭 → handleDirectClubSelect |
-| `SHOW_SLOTS` | 정보 결과 | 타임슬롯 목록 | 클릭 → handleDirectSlotSelect |
+| `SHOW_SLOTS` | 액션 유도 | 타임슬롯 목록 + **결제수단 선택**(현장/카드/더치) | 슬롯+결제수단 클릭 → handleDirectSlotSelect |
 | `SHOW_WEATHER` | 정보 결과 | 날씨 (부킹 흐름과 분리) | 정보 표시만 |
 | `SELECT_MEMBERS` | 액션 유도 | 팀 멤버 선택 | 클릭 → handleTeamMemberSelect |
-| `CONFIRM_BOOKING` | 액션 유도 | 예약 확인 + 결제방법 선택 | 확인 → handleDirectBooking |
-| `SHOW_PAYMENT` | 액션 유도 | 카드결제 (Toss SDK) | 3분 타이머 |
+| `SHOW_PAYMENT` | 액션 유도 | 카드결제 (Toss SDK, 참여자명 포함) | 3분 타이머 |
 | `SETTLEMENT_STATUS` | 결과/상태 | 더치페이 정산 현황 (broadcast) | 리마인더/새로고침 버튼 |
-| `TEAM_COMPLETE` | 결과/상태 | 팀 예약 완료 / 그룹 요약(`groupSummary`) | 다음 팀/종료 버튼 |
+| `TEAM_COMPLETE` | 결과/상태 | 예약 완료 | 종료 (다음 단계 없음) |
 | `BOOKING_FAILED` | 결과/상태 | 예약 실패 (사유·대안 안내) | 재시도 |
 | `BOOKING_EXPIRED` | 결과/상태 | 결제 타임아웃 안내 | 재시도 |
 | `SPLIT_PAYMENT` | (deprecated) | 더치페이 결제 상태 — 현재 `SETTLEMENT_STATUS`로 통합 | — |
+
+> `CONFIRM_BOOKING`(예약정보확인) 카드는 UNI-41로 제거됨 — 결제수단 선택을 `SHOW_SLOTS`로 이동. `TEAM_COMPLETE`의 다음팀/종료 버튼은 UNI-36(팀별순차 제거)으로 제거됨.
 
 > `TASK_PREVIEW`(진행 안내 카드)는 제거됨(UNI-26). 백엔드가 push를 멈추면 전 플랫폼 자동 반영되며, 클라이언트는 알 수 없는 ActionType을 graceful skip한다.
 
@@ -72,48 +72,35 @@ flowchart TD
 **SELECT_MEMBERS**:
 ```json
 {
-  "teamNumber": 1, "clubName": "한밭파크골프장", "date": "2026-02-28",
+  "clubName": "한밭파크골프장", "date": "2026-02-28",
   "maxPlayers": 4,
-  "assignedTeams": [],
   "availableMembers": [
     { "userId": 1, "userName": "김민수", "userEmail": "kim@email.com" },
     { "userId": 2, "userName": "박지영", "userEmail": "park@email.com" }
   ]
 }
 ```
-- 1팀: `assignedTeams` 비어있음 / 2팀 이후: 이전 팀 배정 정보 포함
+- 진행자(부커)는 자동 선택(🔒). 최대 4명(1예약 단위, UNI-36).
 
 **SHOW_SLOTS**:
 ```json
 {
   "clubName": "한밭파크골프장", "clubAddress": "...", "date": "2026-02-28",
+  "groupMode": true,
   "rounds": [{ "gameId": 1, "name": "A코스 오전", "price": 15000,
     "slots": [{ "id": 1, "time": "09:00", "availableSpots": 4, "price": 15000 }]
   }]
 }
 ```
+- `groupMode=true`면 슬롯 카드에 더치페이 옵션 노출. 슬롯 클릭 시 선택된 결제수단(현장/카드/더치)을 함께 전송(UNI-41).
 
-**CONFIRM_BOOKING**:
-```json
-{
-  "clubName": "한밭파크골프장", "date": "2026-02-28", "time": "09:00",
-  "playerCount": 4, "price": 60000, "gameName": "A코스 오전",
-  "groupMode": true, "teamNumber": 1,
-  "members": [
-    { "userId": 1, "userName": "김민수" },
-    { "userId": 2, "userName": "박지영" }
-  ],
-  "pricePerPerson": 15000
-}
-```
-- 결제방법: 현장결제 / 카드결제 / 더치페이 (2명 이상일 때만 더치페이 표시)
+**SHOW_PAYMENT**: `{ bookingId, orderId, amount, orderName, clubName, date, time, playerCount, participants: [{ userId, userName }] }`
+- `participants`로 결제 카드에 참여자 이름 표시 ("2명 · 김철수, 박영희", UNI-41).
 
-**SHOW_PAYMENT**: `{ bookingId, orderId, amount, orderName, clubName, date, time, playerCount }`
+**SETTLEMENT_STATUS**: `{ bookingId, bookerId, clubName, gameName, date, slotTime, totalParticipants, pricePerPerson, totalPrice, paidCount, expiredAt, participants: [{ userId, userName, orderId, amount, status, expiredAt }] }`
 
-**SETTLEMENT_STATUS**: `{ bookingId, bookerId, teamNumber, clubName, gameName, date, slotTime, totalParticipants, pricePerPerson, totalPrice, paidCount, expiredAt, participants: [{ userId, userName, orderId, amount, status, expiredAt }] }`
-
-**TEAM_COMPLETE**: `{ teamNumber, bookingId, bookingNumber, clubName, date, slotTime, gameName, participants, totalPrice, paymentMethod, hasMoreTeams }`
-- "종료"(handleFinishGroup) 시에도 TEAM_COMPLETE로 그룹 전체 요약 반환: `{ groupSummary: true, teamCount, totalMembers, totalPrice, teams: [{ teamNumber, bookingNumber, slotTime, gameName, members, totalPrice, paymentMethod }] }`
+**TEAM_COMPLETE**: `{ bookingId, bookingNumber, clubName, date, slotTime, gameName, participants, totalPrice, paymentMethod }`
+- 단일 예약 완료(1예약=최대4명, UNI-36). 다음팀/종료·groupSummary는 제거됨.
 
 **BOOKING_FAILED**: `{ reason }` — 예약 실패 사유 안내
 
@@ -127,14 +114,13 @@ flowchart TD
 | -- | -- |
 | 골프장 선택 | `selectedClubId`, `selectedClubName` |
 | 멤버 확정 | `teamMembers: [{ userId, userName, userEmail }]` |
-| 슬롯 선택 | `selectedSlotId`, `selectedSlotTime`, `selectedSlotPrice`, `selectedGameName` |
-| 예약 확인 | `confirmBooking=true`, `paymentMethod` |
+| 슬롯+결제수단 선택 | `selectedSlotId`, `selectedSlotTime`, `selectedSlotPrice`, `selectedGameName`, `paymentMethod`(onsite\|card\|dutchpay) |
 | 예약 취소 | `cancelBooking=true` |
 | 결제 완료 | `paymentComplete=true`, `paymentSuccess` |
 | 더치페이 결제 완료 | `splitPaymentComplete=true`, `splitOrderId` |
-| 다음 팀 | `nextTeam=true` |
-| 종료 | `finishGroup=true` |
 | 리마인더 | `sendReminder=true` |
+
+> 슬롯 클릭이 `paymentMethod`를 동반하면 확인 카드 없이 바로 예약 진행(UNI-41). `confirmBooking`·`nextTeam`·`finishGroup` 요청 필드는 제거됨.
 
 ## 7. 카드 시각 흐름 (진행자 화면)
 
@@ -161,7 +147,7 @@ flowchart TD
 
 ② SELECT_MEMBERS 카드
 ┌──────────────────────────────────────┐
-│ 👥 1팀 멤버 선택 (최대 4명)           │
+│ 👥 멤버 선택 (최대 4명)               │
 │                                      │
 │ ☑ 김민수 (나) 🔒                     │
 │ ☑ 박지영                            │
@@ -175,11 +161,13 @@ flowchart TD
 └──────────────────────────────────────┘
          ↓ 멤버 확정 클릭
 
-③ SHOW_SLOTS 카드
+③ SHOW_SLOTS 카드 (결제수단 선택 포함, UNI-41)
 ┌──────────────────────────────────────┐
 │ ⛳ 한밭파크골프장                     │
 │ 📍 천안시 ... | 📅 2026-02-28       │
-│ 🏌️ 1팀 시간대를 선택해 주세요        │
+│──────────────────────────────────────│
+│ 결제방법 (시간 선택 시 적용)          │
+│ [🏪 현장결제] [💳 카드결제] [💰 더치페이] │  ← 더치는 groupMode일 때만
 │──────────────────────────────────────│
 │ A코스 오전               ₩15,000    │
 │ [09:00 4명] [09:30 4명] [10:00 4명] │
@@ -187,26 +175,12 @@ flowchart TD
 │ B코스 오후               ₩15,000    │
 │ [14:00 4명] [14:30 4명]             │
 └──────────────────────────────────────┘
-         ↓ 슬롯 선택
-
-④ CONFIRM_BOOKING 카드
-┌──────────────────────────────────────┐
-│ 1팀 예약 확인                        │
-│ 📍 한밭파크골프장                     │
-│ 📅 2026-02-28 (금) 09:00            │
-│ 👥 4명: 김민수, 박지영, 이준호, 최서연 │
-│ 💳 ₩60,000 (1인당 ₩15,000)         │
-│                                      │
-│ 결제방법                              │
-│ [🏪 현장결제] [💳 카드결제] [💰 더치페이] │
-│                                      │
-│ [취소] [예약 확인]                    │
-└──────────────────────────────────────┘
-         ↓ 더치페이 + 예약 확인
+         ↓ 결제수단 선택 후 시간 클릭
+           (확인 카드 없이 바로 예약 → 결제수단별 분기)
 
 ⑤ SETTLEMENT_STATUS 카드 (진행자에게 표시)
 ┌──────────────────────────────────────┐
-│ 💰 1팀 더치페이 현황                  │
+│ 💰 더치페이 현황                      │
 │ 📍 한밭파크골프장 | 📅 02-28 09:00   │
 │ 💳 ₩60,000 (1인당 ₩15,000)         │
 │                                      │
@@ -224,7 +198,7 @@ flowchart TD
 │ 💳 결제 요청                          │
 │ 📍 한밭파크골프장                     │
 │ 📅 2026-02-28 (금) 09:00            │
-│ 👥 4명 (1팀)                         │
+│ 👥 4명                               │
 │ 💰 ₩15,000                          │
 │ ⏱ 결제 기한: 25분 남음               │
 │                                      │
@@ -235,81 +209,39 @@ flowchart TD
   타겟팅: chat-gateway가 metadata.targetUserIds로 서버사이드 전달
          ↓ 전원 결제 완료
 
-⑥ TEAM_COMPLETE 카드
+⑥ TEAM_COMPLETE 카드 (예약 완료 → 종료)
 ┌──────────────────────────────────────┐
-│ ✅ 1팀 예약 완료!                     │
+│ ✅ 예약 완료!                         │
 │ 📍 한밭파크골프장                     │
 │ 📅 2026-02-28 (금) 09:00            │
 │ 👥 김민수, 박지영, 이준호, 최서연      │
 │ 💳 ₩60,000 (더치페이 완료)           │
 │ 🏷️ 예약번호 PG-20260228-001        │
-│                                      │
-│ [🏌️ 다음 팀 예약] [종료]             │
-└──────────────────────────────────────┘
-         ↓ "다음 팀" 클릭
-
-② SELECT_MEMBERS 카드 (2팀 — 이전 팀 배정 표시)
-┌──────────────────────────────────────┐
-│ 👥 2팀 멤버 선택 (최대 4명)           │
-│                                      │
-│ ── 1팀 배정완료 ──────────────────── │
-│ ✅ 김민수 (09:00 A코스)       1팀   │
-│ ✅ 박지영 (09:00 A코스)       1팀   │
-│ ✅ 이준호 (09:00 A코스)       1팀   │
-│ ✅ 최서연 (09:00 A코스)       1팀   │
-│ ── 미배정 ──────────────────────── │
-│ ☑ 정우진                            │
-│ ☑ 한소희                            │
-│ ☑ 강태우                            │
-│ ☑ 윤지민                            │
-│ ☐ 오서준                            │
-│ ☐ 류현아                            │
-│                                      │
-│ 선택: 4/4명                          │
-│ [취소] [멤버 확정]                    │
-└──────────────────────────────────────┘
-         ↓ (③ ~ ⑥ 반복)
-
-⑦ 종료 → 채팅방 전체 SYSTEM 메시지
-┌──────────────────────────────────────┐
-│ 🎉 그룹 예약이 완료되었습니다!         │
-│ 📍 한밭파크골프장 | 📅 2026-02-28    │
-│                                      │
-│ 🏌️ 1팀 09:00 A코스 (4명)            │
-│    김민수, 박지영, 이준호, 최서연      │
-│ 🏌️ 2팀 09:30 A코스 (4명)            │
-│    정우진, 한소희, 강태우, 윤지민      │
-│                                      │
-│ 💳 총 ₩120,000 | 🏷️ 2팀 8명        │
 └──────────────────────────────────────┘
 ```
+
+> 1예약=최대4명(UNI-36). 다음팀/2팀/종료 단계는 제거됨 — TEAM_COMPLETE가 종료 상태다.
 
 ## 8. 카드 컴포넌트 (Props)
 
 | 카드 | 컴포넌트 | 비고 |
 |------|---------|------|
-| SELECT_MEMBERS | `SelectMembersCard` | 이전 팀 배정 현황 + 미배정 체크박스 |
-| SHOW_SLOTS | `SlotCard` | 기존 재사용, 이전 팀 슬롯 비활성 |
-| CONFIRM_BOOKING | `ConfirmBookingCard` | 결제방법 3가지 (1인이면 2가지) |
-| SHOW_PAYMENT | `PaymentCard` | Toss SDK, 3분 타이머 |
+| SELECT_MEMBERS | `SelectMembersCard` | 멤버 체크박스 (진행자 고정) |
+| SHOW_SLOTS | `SlotCard` | 결제수단 선택 UI(현장/카드/더치) + 시간 클릭 시 method 동반 (UNI-41) |
+| SHOW_PAYMENT | `PaymentCard` | Toss SDK, 3분 타이머, 참여자명 표시 |
 | SETTLEMENT_STATUS | `SettlementStatusCard` | 진행자: 대시보드 + 본인 결제 / 참여자: 결제 |
-| TEAM_COMPLETE | `TeamCompleteCard` | 다음 팀/종료 버튼 |
+| TEAM_COMPLETE | `TeamCompleteCard` | 예약 완료 표시 (버튼 없음) |
+
+> `ConfirmBookingCard`는 UNI-41로 제거됨(web/iOS/android 전부).
 
 ### SelectMembersCard
 
 ```typescript
 interface SelectMembersCardProps {
   data: {
-    teamNumber: number;
     clubName: string;
     date: string;
     maxPlayers: number;
-    assignedTeams: Array<{
-      teamNumber: number;
-      slotTime: string;
-      courseName: string;
-      members: Array<{ userId: number; userName: string }>;
-    }>;
     availableMembers: Array<{
       userId: number;
       userName: string;
@@ -339,7 +271,6 @@ if (currentUserId === data.bookerId) {
 ```typescript
 interface SettlementStatusCardProps {
   data: {
-    teamNumber: number;
     bookerId: number;
     clubName: string;
     date: string;
@@ -369,7 +300,6 @@ interface SettlementStatusCardProps {
 ```typescript
 interface TeamCompleteCardProps {
   data: {
-    teamNumber: number;
     bookingId: number;
     bookingNumber: string;
     clubName: string;
@@ -379,10 +309,8 @@ interface TeamCompleteCardProps {
     participants: Array<{ userId: number; userName: string }>;
     totalPrice: number;
     paymentMethod: string;
-    hasMoreTeams: boolean;
   };
-  onNextTeam: () => void;
-  onFinish: () => void;
+  // 예약 완료 표시만 — 액션 버튼 없음 (UNI-36)
 }
 ```
 
