@@ -56,7 +56,7 @@ async function bootstrap() {
 
     // NATS 마이크로서비스 연결 (백그라운드 재시도)
     if (process.env.NATS_URL) {
-      connectNatsWithRetry(app, process.env.NATS_URL, 'course-service', logger).catch(() => {});
+      connectNatsWithRetry(app, process.env.NATS_URL, 'club-service', logger).catch(() => {});
     } else {
       logger.warn('NATS_URL not provided, running in HTTP-only mode');
     }

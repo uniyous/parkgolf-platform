@@ -3,7 +3,7 @@ import { NatsClientService, NATS_TIMEOUTS } from '../common/nats';
 import { ApiResponse } from '../common/types';
 import { SearchGamesDto } from './dto/search-games.dto';
 
-/** Game 응답 DTO - course-service의 GameResponseDto와 일치 */
+/** Game 응답 DTO - club-service의 GameResponseDto와 일치 */
 export interface GameResponseDto {
   id: number;
   name: string;

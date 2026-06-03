@@ -13,9 +13,9 @@ datasource db {
 model Booking {
   id                    Int           @id @default(autoincrement())
 
-  // Game 기반 예약 (course-service의 GameTimeSlot 참조)
-  gameTimeSlotId        Int           @map("game_time_slot_id") // course-service의 GameTimeSlot ID
-  gameId                Int           @map("game_id") // course-service의 Game ID
+  // Game 기반 예약 (club-service의 GameTimeSlot 참조)
+  gameTimeSlotId        Int           @map("game_time_slot_id") // club-service의 GameTimeSlot ID
+  gameId                Int           @map("game_id") // club-service의 Game ID
 
   // 캐시된 Game 정보 (성능 최적화용)
   gameName              String?       @map("game_name") // 게임 조합명 (예: "A+B 코스")
@@ -215,10 +215,10 @@ model BookingHistory {
   @@map("booking_history")
 }
 
-// Game 정보 캐시 (course-service에서 동기화)
+// Game 정보 캐시 (club-service에서 동기화)
 model GameCache {
   id                   Int      @id @default(autoincrement())
-  gameId               Int      @unique @map("game_id") // course-service의 Game ID
+  gameId               Int      @unique @map("game_id") // club-service의 Game ID
   name                 String   // 게임명 (예: "A+B 코스")
   code                 String   // 게임 코드
   description          String?
@@ -254,11 +254,11 @@ model GameCache {
   @@map("game_cache")
 }
 
-// GameTimeSlot 가용성 캐시 (course-service와 동기화)
+// GameTimeSlot 가용성 캐시 (club-service와 동기화)
 model GameTimeSlotCache {
   id                   Int      @id @default(autoincrement())
 
-  // course-service의 GameTimeSlot 참조
+  // club-service의 GameTimeSlot 참조
   gameTimeSlotId       Int      @unique @map("game_time_slot_id")
   gameId               Int      @map("game_id")
 
@@ -304,7 +304,7 @@ model GameTimeSlotCache {
 
 enum BookingStatus {
   PENDING           // Saga 시작: 예약 생성됨, 슬롯 예약 대기 중
-  SLOT_RESERVED     // course-service에서 슬롯 예약 완료
+  SLOT_RESERVED     // club-service에서 슬롯 예약 완료
   CONFIRMED         // 최종 확정 (결제 완료 등)
   CANCELLED         // 취소됨
   COMPLETED         // 완료됨

@@ -13,7 +13,7 @@ import { Errors } from '../../common/exceptions/catalog/error-catalog';
  * 각 메서드는 booking DB만 변경하고, 다른 서비스 호출이나 이벤트 발행을 하지 않는다.
  * (알림/슬롯/결제 등의 연쇄 호출은 saga-service가 오케스트레이션)
  *
- * 예외: 캐시 미스 시 course-service에서 슬롯/게임 정보를 조회하여 캐시를 자동 채움
+ * 예외: 캐시 미스 시 club-service에서 슬롯/게임 정보를 조회하여 캐시를 자동 채움
  */
 @Injectable()
 export class BookingSagaStepService {
@@ -21,7 +21,7 @@ export class BookingSagaStepService {
 
   constructor(
     private readonly prisma: PrismaService,
-    @Optional() @Inject('COURSE_SERVICE') private readonly courseClient?: ClientProxy,
+    @Optional() @Inject('CLUB_SERVICE') private readonly courseClient?: ClientProxy,
   ) {}
 
   /**
@@ -64,7 +64,7 @@ export class BookingSagaStepService {
       }
     }
 
-    // 슬롯 캐시에서 게임 정보 조회 (미스 시 course-service에서 동기화)
+    // 슬롯 캐시에서 게임 정보 조회 (미스 시 club-service에서 동기화)
     let slotCache = await this.prisma.gameTimeSlotCache.findUnique({
       where: { gameTimeSlotId: dto.gameTimeSlotId },
     });
@@ -1023,16 +1023,16 @@ export class BookingSagaStepService {
   }
 
   /**
-   * 캐시 미스 시 course-service에서 슬롯 정보 조회 → 캐시 upsert
+   * 캐시 미스 시 club-service에서 슬롯 정보 조회 → 캐시 upsert
    */
   private async fetchAndCacheSlot(gameTimeSlotId: number) {
     if (!this.courseClient) {
-      this.logger.warn('[CacheMiss] COURSE_SERVICE client not available');
+      this.logger.warn('[CacheMiss] CLUB_SERVICE client not available');
       return null;
     }
 
     try {
-      this.logger.log(`[CacheMiss] Fetching slot ${gameTimeSlotId} from course-service`);
+      this.logger.log(`[CacheMiss] Fetching slot ${gameTimeSlotId} from club-service`);
       const response = await firstValueFrom(
         this.courseClient.send('gameTimeSlots.get', { timeSlotId: gameTimeSlotId }).pipe(
           timeout(5000),
@@ -1041,7 +1041,7 @@ export class BookingSagaStepService {
       );
 
       if (!response?.success || !response?.data) {
-        this.logger.warn(`[CacheMiss] Slot ${gameTimeSlotId} not found in course-service`);
+        this.logger.warn(`[CacheMiss] Slot ${gameTimeSlotId} not found in club-service`);
         return null;
       }
 
@@ -1109,16 +1109,16 @@ export class BookingSagaStepService {
   }
 
   /**
-   * 캐시 미스 시 course-service에서 게임 정보 조회 → 캐시 upsert
+   * 캐시 미스 시 club-service에서 게임 정보 조회 → 캐시 upsert
    */
   private async fetchAndCacheGame(gameId: number) {
     if (!this.courseClient) {
-      this.logger.warn('[CacheMiss] COURSE_SERVICE client not available');
+      this.logger.warn('[CacheMiss] CLUB_SERVICE client not available');
       return null;
     }
 
     try {
-      this.logger.log(`[CacheMiss] Fetching game ${gameId} from course-service`);
+      this.logger.log(`[CacheMiss] Fetching game ${gameId} from club-service`);
       const response = await firstValueFrom(
         this.courseClient.send('games.get', { gameId }).pipe(
           timeout(5000),
@@ -1127,7 +1127,7 @@ export class BookingSagaStepService {
       );
 
       if (!response?.success || !response?.data) {
-        this.logger.warn(`[CacheMiss] Game ${gameId} not found in course-service`);
+        this.logger.warn(`[CacheMiss] Game ${gameId} not found in club-service`);
         return null;
       }
 

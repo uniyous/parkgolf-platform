@@ -133,7 +133,7 @@ describe('Partner Service - 외부 부킹 데이터 연동 통합 테스트', ()
           useValue: mockBookingClient,
         },
         {
-          provide: 'COURSE_SERVICE',
+          provide: 'CLUB_SERVICE',
           useValue: mockCourseClient,
         },
       ],
@@ -635,7 +635,7 @@ describe('Partner Service - 외부 부킹 데이터 연동 통합 테스트', ()
       console.log(`  ✅ TC-022: booking.updated 충돌 감지 (playerCount 2→4)`);
     });
 
-    it('TC-023: slot.updated — 외부 슬롯 변경 → course-service 업데이트', async () => {
+    it('TC-023: slot.updated — 외부 슬롯 변경 → club-service 업데이트', async () => {
       mockCourseClient.setResponse({ success: true, data: {} });
 
       const body = {
@@ -668,7 +668,7 @@ describe('Partner Service - 외부 부킹 데이터 연동 통합 테스트', ()
       expect(slotMapping!.externalBooked).toBe(3);
       expect(slotMapping!.syncStatus).toBe('SYNCED');
 
-      console.log(`  ✅ TC-023: slot.updated → course-service externalBooked 업데이트`);
+      console.log(`  ✅ TC-023: slot.updated → club-service externalBooked 업데이트`);
     });
 
     it('TC-024: 알 수 없는 이벤트 → 무시 (acknowledged)', async () => {

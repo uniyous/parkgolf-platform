@@ -8,7 +8,7 @@ import { test, expect, APIRequestContext } from '@playwright/test';
  * agent-service의 도구 + Direct Handler + 그룹 예약 핸들러 검증.
  *
  * 사전 조건:
- * - dev 환경(user-api, agent-service, course-service 등)이 배포되어 있어야 함
+ * - dev 환경(user-api, agent-service, club-service 등)이 배포되어 있어야 함
  * - test@parkgolf.com / test1234 테스트 계정이 존재해야 함
  *
  * 실행:

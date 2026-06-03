@@ -18,7 +18,7 @@ export const NATS_CLIENT_OPTIONS: ClientsProviderAsyncOptions[] = [
     inject: [ConfigService],
   },
   {
-    name: 'COURSE_SERVICE',
+    name: 'CLUB_SERVICE',
     imports: [ConfigModule],
     useFactory: (configService: ConfigService) => ({
       transport: Transport.NATS,

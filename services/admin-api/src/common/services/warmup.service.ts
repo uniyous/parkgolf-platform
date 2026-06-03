@@ -44,8 +44,8 @@ export class WarmupService {
       isNatsService: true,
     },
     {
-      name: 'course-service',
-      httpUrl: process.env.COURSE_SERVICE_URL || 'http://course-service:8080',
+      name: 'club-service',
+      httpUrl: process.env.CLUB_SERVICE_URL || 'http://club-service:8080',
       natsPattern: 'course.ping',
       isNatsService: true,
     },

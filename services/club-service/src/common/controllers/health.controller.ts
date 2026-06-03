@@ -16,7 +16,7 @@ export class HealthController {
     return {
       status: 'ok',
       timestamp: new Date().toISOString(),
-      service: 'parkgolf-course-service',
+      service: 'parkgolf-club-service',
       version: '0.0.1',
       environment: this.configService.get('NODE_ENV'),
     };

@@ -51,7 +51,7 @@ export interface CreateBookingRequest {
  */
 export type BookingStatus =
   | 'PENDING'         // Saga 시작: 예약 생성됨, 슬롯 예약 대기 중
-  | 'SLOT_RESERVED'   // course-service에서 슬롯 예약 완료
+  | 'SLOT_RESERVED'   // club-service에서 슬롯 예약 완료
   | 'CONFIRMED'       // 최종 확정 (결제 완료 등)
   | 'CANCELLED'       // 취소됨
   | 'COMPLETED'       // 완료됨

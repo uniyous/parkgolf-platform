@@ -34,7 +34,7 @@ Park Golf Platform의 사용자 계정 삭제 정책을 정의합니다. 이 정
 | **chat-service** | ChatMessage | senderId, senderName | senderId 유지, senderName 플레이스홀더 처리 |
 | **notify-service** | Notification | userId | 완전 삭제 |
 | **notify-service** | NotificationSettings | userId | 완전 삭제 |
-| **course-service** | - | 사용자 데이터 없음 | 처리 불필요 |
+| **club-service** | - | 사용자 데이터 없음 | 처리 불필요 |
 
 ### 2.2 CASCADE 자동 삭제 관계 (iam-service)
 

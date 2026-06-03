@@ -73,7 +73,7 @@ graph TB
     end
 
     subgraph Services["마이크로서비스"]
-        CS["course-service"]
+        CS["club-service"]
         BS["booking-service"]
         WS["weather-service"]
         LS["location-service"]
@@ -472,10 +472,10 @@ AI_ASSISTANT 메시지의 `metadata` 필드에 JSON 문자열로 저장:
 
 | 패턴 | NATS Client | 대상 서비스 | 용도 |
 |------|-------------|-----------|------|
-| `club.search` | COURSE_SERVICE | course-service | 골프장 검색 |
-| `games.search` | COURSE_SERVICE | course-service | 슬롯 검색 |
-| `clubs.get` | COURSE_SERVICE | course-service | 골프장 상세 |
-| `club.findNearby` | COURSE_SERVICE | course-service | 근처 골프장 |
+| `club.search` | CLUB_SERVICE | club-service | 골프장 검색 |
+| `games.search` | CLUB_SERVICE | club-service | 슬롯 검색 |
+| `clubs.get` | CLUB_SERVICE | club-service | 골프장 상세 |
+| `club.findNearby` | CLUB_SERVICE | club-service | 근처 골프장 |
 | `booking.create` | BOOKING_SERVICE | booking-service | 예약 생성 → [saga-service](./SAGA.md) 트리거 |
 | `booking.findById` | BOOKING_SERVICE | booking-service | Saga 폴링 |
 | `booking.settlementStatus` | BOOKING_SERVICE | booking-service | 정산 상태 조회 (allPaid SSOT) |
@@ -503,7 +503,7 @@ agent-service는 7개의 Named NATS Client를 사용:
 
 | Client 이름 | 대상 |
 |-------------|------|
-| `COURSE_SERVICE` | course-service |
+| `CLUB_SERVICE` | club-service |
 | `BOOKING_SERVICE` | booking-service |
 | `WEATHER_SERVICE` | weather-service |
 | `LOCATION_SERVICE` | location-service |

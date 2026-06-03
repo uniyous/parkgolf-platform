@@ -4,7 +4,7 @@ import { NATS_CLIENT_OPTIONS } from './nats.config';
 
 /**
  * Global NATS Module for Partner Service
- * course-service, booking-service 호출을 위한 NATS 클라이언트 모듈
+ * club-service, booking-service 호출을 위한 NATS 클라이언트 모듈
  */
 @Global()
 @Module({

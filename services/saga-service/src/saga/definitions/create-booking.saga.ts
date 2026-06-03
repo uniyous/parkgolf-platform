@@ -85,7 +85,7 @@ export const CreateBookingSaga: SagaDefinition = {
       action: 'slot.reserve',
       compensate: 'slot.release',
       timeout: NATS_TIMEOUTS.DEFAULT,
-      targetService: 'COURSE_SERVICE',
+      targetService: 'CLUB_SERVICE',
       buildRequest: (payload) => ({
         bookingId: payload.bookingId,
         gameTimeSlotId: payload.gameTimeSlotId,

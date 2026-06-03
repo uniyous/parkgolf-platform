@@ -158,7 +158,7 @@ sequenceDiagram
     participant C as Client
     participant UA as user-api
     participant BS as booking-service
-    participant CS as course-service
+    participant CS as club-service
     participant NS as notify-service
     participant FCM as FCM/APNs
 

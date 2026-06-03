@@ -16,7 +16,7 @@ export class StepExecutorService {
 
   constructor(
     @Inject('BOOKING_SERVICE') private readonly bookingClient: ClientProxy,
-    @Inject('COURSE_SERVICE') private readonly courseClient: ClientProxy,
+    @Inject('CLUB_SERVICE') private readonly courseClient: ClientProxy,
     @Inject('PAYMENT_SERVICE') private readonly paymentClient: ClientProxy,
     @Inject('NOTIFICATION_SERVICE') private readonly notificationClient: ClientProxy,
     @Inject('IAM_SERVICE') private readonly iamClient: ClientProxy,
@@ -113,7 +113,7 @@ export class StepExecutorService {
   private getClient(targetService: string): ClientProxy {
     switch (targetService) {
       case 'BOOKING_SERVICE': return this.bookingClient;
-      case 'COURSE_SERVICE': return this.courseClient;
+      case 'CLUB_SERVICE': return this.courseClient;
       case 'PAYMENT_SERVICE': return this.paymentClient;
       case 'NOTIFICATION_SERVICE': return this.notificationClient;
       case 'IAM_SERVICE': return this.iamClient;

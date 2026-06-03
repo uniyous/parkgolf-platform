@@ -110,7 +110,7 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
 
     try {
       // For now, keep the direct API call since we don't have course creation in Redux yet
-      // This will be implemented in the course-service side
+      // This will be implemented in the club-service side
       toast.info('코스 생성 기능은 향후 구현 예정입니다.');
       setShowAddCourse(false);
     } catch (error) {

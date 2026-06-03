@@ -3,7 +3,7 @@ import { extractList, extractSingle, type BffResponse } from './bffParser';
 import { computeTimeRange } from '@/lib/constants';
 
 /**
- * Game 응답 DTO - course-service의 GameResponseDto와 일치
+ * Game 응답 DTO - club-service의 GameResponseDto와 일치
  */
 export interface Game {
   id: number;
@@ -65,7 +65,7 @@ export interface GameCourse {
 }
 
 /**
- * GameTimeSlot 응답 DTO - course-service의 GameTimeSlotResponseDto와 일치
+ * GameTimeSlot 응답 DTO - club-service의 GameTimeSlotResponseDto와 일치
  */
 export interface GameTimeSlot {
   id: number;

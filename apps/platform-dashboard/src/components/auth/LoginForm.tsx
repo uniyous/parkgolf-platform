@@ -78,8 +78,8 @@ const BFF_ENDPOINTS = [
 const WARMUP_HTTP_URL = `${BASE_URL}/api/admin/system/warmup/http`;
 const WARMUP_NATS_URL = `${BASE_URL}/api/admin/system/warmup/nats`;
 const NATS_ROUNDS = 3;
-const NATS_SERVICES = ['iam-service', 'course-service', 'booking-service', 'chat-service', 'notify-service'];
-const ALL_SERVICES = ['admin-api', 'user-api', 'iam-service', 'course-service', 'booking-service', 'chat-gateway', 'chat-service', 'notify-service'];
+const NATS_SERVICES = ['iam-service', 'club-service', 'booking-service', 'chat-service', 'notify-service'];
+const ALL_SERVICES = ['admin-api', 'user-api', 'iam-service', 'club-service', 'booking-service', 'chat-gateway', 'chat-service', 'notify-service'];
 
 interface NatsRoundResult {
   round: number;
@@ -159,7 +159,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     ]);
 
     // warmup/http 결과를 ServiceStatus[]로 변환
-    const internalServices = ['iam-service', 'course-service', 'booking-service', 'chat-gateway', 'chat-service', 'notify-service'];
+    const internalServices = ['iam-service', 'club-service', 'booking-service', 'chat-gateway', 'chat-service', 'notify-service'];
     const internalResults: ServiceStatus[] = internalServices.map((name) => {
       const svc = warmupResult?.services?.find((s: { name: string }) => s.name === name);
       if (!svc) return { service: name, status: 'error' as StatusType, message: 'No response' };

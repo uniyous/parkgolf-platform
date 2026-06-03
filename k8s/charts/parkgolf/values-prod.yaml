@@ -43,8 +43,8 @@ services:
   - name: iam-service
     db: iam_db
     replicas: 2
-  - name: course-service
-    db: course_db
+  - name: club-service
+    db: club_db
     replicas: 2
   - name: booking-service
     db: booking_db

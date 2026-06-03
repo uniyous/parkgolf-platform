@@ -53,14 +53,14 @@ GKE Autopilot + Firebase Hosting + GitHub Actions 기반 배포 가이드
 
 ```
 # CD Services 워크플로우에서 선택
-services: "iam-service,course-service"  # 쉼표 구분
+services: "iam-service,club-service"  # 쉼표 구분
 services: "all"                         # 전체 배포
 ```
 
 ### 서비스 전체 목록
 
 ```
-iam-service, course-service, booking-service, payment-service,
+iam-service, club-service, booking-service, payment-service,
 chat-service, notify-service, admin-api, user-api, chat-gateway,
 weather-service, location-service, job-service, agent-service
 ```
@@ -80,7 +80,7 @@ Setup → Build & Push (Docker → Artifact Registry) → Deploy (K8s) → Setup
 | 서비스 | CPU (req/lim) | Memory (req/lim) | DB |
 |--------|--------------|-------------------|-----|
 | iam-service | 50m/250m | 128Mi/384Mi | iam_db |
-| course-service | 50m/250m | 128Mi/384Mi | course_db |
+| club-service | 50m/250m | 128Mi/384Mi | club_db |
 | booking-service | 50m/250m | 128Mi/384Mi | booking_db |
 | payment-service | 50m/250m | 128Mi/384Mi | payment_db |
 | chat-service | 50m/250m | 128Mi/384Mi | chat_db |
