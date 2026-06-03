@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { NotificationType } from '@prisma/client';
+import { NotificationType } from '../../contracts/enums';
 import { DeliveryService } from './delivery.service';
 import { NotificationService } from './notification.service';
 import { DeadLetterService } from './dead-letter.service';

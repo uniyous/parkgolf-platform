@@ -2,7 +2,7 @@
  * NATS 응답 타입
  */
 
-import { NotificationType, NotificationStatus } from '@prisma/client';
+import { NotificationType, NotificationStatus } from '../../contracts/enums';
 
 // ===== 타입 =====
 

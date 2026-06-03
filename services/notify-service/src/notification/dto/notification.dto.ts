@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsEnum, IsOptional, IsDateString, IsNumber, IsBoolean } from 'class-validator';
-import { NotificationType, NotificationStatus, DeliveryChannelType, Prisma } from '@prisma/client';
+import { NotificationType, NotificationStatus, DeliveryChannelType, JsonValue } from '../../contracts/enums';
 
 export class CreateNotificationDto {
   @ApiProperty({ description: '사용자 ID' })
@@ -21,7 +21,7 @@ export class CreateNotificationDto {
 
   @ApiProperty({ description: '추가 데이터', required: false })
   @IsOptional()
-  data?: Prisma.InputJsonValue;
+  data?: JsonValue;
 
   @ApiProperty({ description: '발송 채널', enum: DeliveryChannelType, required: false })
   @IsOptional()
@@ -110,7 +110,7 @@ export class SendNotificationDto {
 
   @ApiProperty({ description: '추가 데이터', required: false })
   @IsOptional()
-  data?: Prisma.InputJsonValue;
+  data?: JsonValue;
 
   @ApiProperty({ description: '발송 채널', enum: DeliveryChannelType, required: false })
   @IsOptional()
