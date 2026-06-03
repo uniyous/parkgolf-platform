@@ -340,7 +340,12 @@ export class ClubService {
     `)) as unknown as (Club & { distance: number })[];
 
     return clubRows.map((club) => {
-      const resDto = ClubResponseDto.fromEntity(club);
+      // raw db.execute는 timestamp를 문자열로 반환할 수 있어 Date로 보정 (fromEntity가 toISOString 호출)
+      const resDto = ClubResponseDto.fromEntity({
+        ...club,
+        createdAt: club.createdAt ? new Date(club.createdAt) : club.createdAt,
+        updatedAt: club.updatedAt ? new Date(club.updatedAt) : club.updatedAt,
+      });
       return {
         ...resDto,
         distance: Math.round(club.distance * 100) / 100,
