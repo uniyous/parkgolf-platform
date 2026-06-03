@@ -113,12 +113,53 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
       }
     }
 
+    // DB 에러 처리 (postgres-js / drizzle)
+    if (this.isDbError(exception)) {
+      return this.handleDbError(exception, timestamp);
+    }
+
     const message = exception instanceof Error ? exception.message : Errors.System.INTERNAL.message;
     return {
       success: false,
       error: { code: Errors.System.INTERNAL.code, message },
       timestamp,
     };
+  }
+
+  // postgres-js 드라이버 에러(SQLSTATE) 탐지
+  private isDbError(exception: unknown): boolean {
+    return (
+      exception instanceof Error &&
+      exception.constructor.name === 'PostgresError' &&
+      'code' in exception
+    );
+  }
+
+  private handleDbError(exception: unknown, timestamp: string): StandardErrorResponse {
+    const dbError = exception as { code: string; message: string };
+    switch (dbError.code) {
+      case '23505': // unique_violation
+        return { success: false, error: { code: Errors.Database.UNIQUE_VIOLATION.code, message: Errors.Database.UNIQUE_VIOLATION.message }, timestamp };
+      case '23503': // foreign_key_violation
+        return { success: false, error: { code: Errors.Database.FK_VIOLATION.code, message: Errors.Database.FK_VIOLATION.message }, timestamp };
+      case '23502': // not_null_violation
+        return { success: false, error: { code: Errors.Validation.INVALID_INPUT.code, message: Errors.Validation.INVALID_INPUT.message }, timestamp };
+      default:
+        return { success: false, error: { code: Errors.Database.CONNECTION_ERROR.code, message: dbError.message || Errors.System.INTERNAL.message }, timestamp };
+    }
+  }
+
+  private getDbHttpStatus(exception: unknown): number {
+    const dbError = exception as { code: string };
+    switch (dbError.code) {
+      case '23505':
+        return HttpStatus.CONFLICT;
+      case '23503':
+      case '23502':
+        return HttpStatus.BAD_REQUEST;
+      default:
+        return HttpStatus.INTERNAL_SERVER_ERROR;
+    }
   }
 
   private isStandardErrorResponse(obj: unknown): boolean {
@@ -166,6 +207,9 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
           return errorObj.statusCode;
         }
       }
+    }
+    if (this.isDbError(exception)) {
+      return this.getDbHttpStatus(exception);
     }
     return HttpStatus.INTERNAL_SERVER_ERROR;
   }
