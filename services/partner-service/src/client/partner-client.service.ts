@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { eq } from 'drizzle-orm';
+import { DrizzleService } from '../db/drizzle.service';
+import { partnerConfigs } from '../db/schema';
 import { CryptoService } from '../partner/service/crypto.service';
 import { AppException, Errors } from '../common/exceptions';
 import * as SwaggerClient from 'swagger-client';
@@ -47,9 +49,19 @@ export class PartnerClientService {
   private readonly CACHE_TTL_MS = 60 * 60 * 1000; // 1시간
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly drizzle: DrizzleService,
     private readonly cryptoService: CryptoService,
   ) {}
+
+  private get db() {
+    return this.drizzle.db;
+  }
+
+  private async getConfigOrThrow(partnerId: number) {
+    const [config] = await this.db.select().from(partnerConfigs).where(eq(partnerConfigs.id, partnerId)).limit(1);
+    if (!config) throw new AppException(Errors.Partner.CONFIG_NOT_FOUND);
+    return config;
+  }
 
   /**
    * 파트너 클라이언트 가져오기 (캐싱)
@@ -60,9 +72,7 @@ export class PartnerClientService {
       return cached.client;
     }
 
-    const config = await this.prisma.partnerConfig.findUniqueOrThrow({
-      where: { id: partnerId },
-    });
+    const config = await this.getConfigOrThrow(partnerId);
 
     try {
       const client = await SwaggerClient({
@@ -116,9 +126,7 @@ export class PartnerClientService {
     startDate: string,
     endDate: string,
   ): Promise<ExternalSlotData[]> {
-    const config = await this.prisma.partnerConfig.findUniqueOrThrow({
-      where: { id: partnerId },
-    });
+    const config = await this.getConfigOrThrow(partnerId);
 
     const rawResponse = await this.execute(partnerId, 'getSlots', {
       club_id: config.externalClubId,
@@ -136,9 +144,7 @@ export class PartnerClientService {
     partnerId: number,
     since: Date,
   ): Promise<ExternalBookingData[]> {
-    const config = await this.prisma.partnerConfig.findUniqueOrThrow({
-      where: { id: partnerId },
-    });
+    const config = await this.getConfigOrThrow(partnerId);
 
     const rawResponse = await this.execute(partnerId, 'getBookings', {
       club_id: config.externalClubId,

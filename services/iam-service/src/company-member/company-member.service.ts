@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { and, count, desc, eq, ilike, inArray, or, type SQL } from 'drizzle-orm';
+import { DrizzleService } from '../db/drizzle.service';
+import { companyMembers, users } from '../db/schema';
 import { AppException } from '../common/exceptions/app.exception';
 import { Errors } from '../common/exceptions/catalog/error-catalog';
 import {
@@ -8,29 +10,42 @@ import {
   UpdateCompanyMemberDto,
 } from './dto/company-member.dto';
 
+const USER_COLUMNS = {
+  id: true,
+  email: true,
+  name: true,
+  phone: true,
+  isActive: true,
+} as const;
+
 @Injectable()
 export class CompanyMemberService {
   private readonly logger = new Logger(CompanyMemberService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
+
+  private get db() {
+    return this.drizzle.db;
+  }
 
   async create(dto: CreateCompanyMemberDto) {
     try {
-      return await this.prisma.companyMember.create({
-        data: {
+      const [member] = await this.db
+        .insert(companyMembers)
+        .values({
           companyId: dto.companyId,
           userId: dto.userId,
           source: dto.source || 'MANUAL',
           memo: dto.memo,
-        },
-        include: {
-          user: {
-            select: { id: true, email: true, name: true, phone: true, isActive: true },
-          },
-        },
+        })
+        .returning();
+
+      return this.db.query.companyMembers.findFirst({
+        where: eq(companyMembers.id, member.id),
+        with: { user: { columns: USER_COLUMNS } },
       });
     } catch (error: any) {
-      if (error.code === 'P2002') {
+      if (error.code === '23505') {
         throw new AppException(Errors.CompanyMember.ALREADY_EXISTS);
       }
       throw error;
@@ -41,48 +56,48 @@ export class CompanyMemberService {
     const { companyId, search, isActive, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
-    const where: any = { companyId };
+    const conds: SQL[] = [eq(companyMembers.companyId, companyId)];
 
     if (isActive !== undefined) {
-      where.isActive = isActive;
+      conds.push(eq(companyMembers.isActive, isActive));
     }
 
     if (search) {
-      where.user = {
-        OR: [
-          { name: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } },
-          { phone: { contains: search } },
-        ],
-      };
+      const matchedUsers = await this.db
+        .select({ id: users.id })
+        .from(users)
+        .where(
+          or(
+            ilike(users.name, `%${search}%`),
+            ilike(users.email, `%${search}%`),
+            ilike(users.phone, `%${search}%`),
+          ),
+        );
+      const userIds = matchedUsers.map((u) => u.id);
+      // 매칭 사용자가 없으면 결과 없음
+      conds.push(inArray(companyMembers.userId, userIds.length ? userIds : [-1]));
     }
 
-    const [data, total] = await Promise.all([
-      this.prisma.companyMember.findMany({
+    const where = and(...conds);
+
+    const [data, [total]] = await Promise.all([
+      this.db.query.companyMembers.findMany({
         where,
-        skip,
-        take: limit,
-        orderBy: { joinedAt: 'desc' },
-        include: {
-          user: {
-            select: { id: true, email: true, name: true, phone: true, isActive: true },
-          },
-        },
+        offset: skip,
+        limit,
+        orderBy: [desc(companyMembers.joinedAt)],
+        with: { user: { columns: USER_COLUMNS } },
       }),
-      this.prisma.companyMember.count({ where }),
+      this.db.select({ value: count() }).from(companyMembers).where(where),
     ]);
 
-    return { data, total, page, limit };
+    return { data, total: total.value, page, limit };
   }
 
   async findOne(id: number) {
-    const member = await this.prisma.companyMember.findUnique({
-      where: { id },
-      include: {
-        user: {
-          select: { id: true, email: true, name: true, phone: true, isActive: true },
-        },
-      },
+    const member = await this.db.query.companyMembers.findFirst({
+      where: eq(companyMembers.id, id),
+      with: { user: { columns: USER_COLUMNS } },
     });
 
     if (!member) {
@@ -93,45 +108,52 @@ export class CompanyMemberService {
   }
 
   async update(id: number, dto: UpdateCompanyMemberDto) {
-    const member = await this.prisma.companyMember.findUnique({ where: { id } });
+    const [member] = await this.db
+      .select()
+      .from(companyMembers)
+      .where(eq(companyMembers.id, id))
+      .limit(1);
     if (!member) {
       throw new AppException(Errors.CompanyMember.NOT_FOUND);
     }
 
-    return this.prisma.companyMember.update({
-      where: { id },
-      data: dto,
-      include: {
-        user: {
-          select: { id: true, email: true, name: true, phone: true, isActive: true },
-        },
-      },
+    await this.db.update(companyMembers).set(dto).where(eq(companyMembers.id, id));
+
+    return this.db.query.companyMembers.findFirst({
+      where: eq(companyMembers.id, id),
+      with: { user: { columns: USER_COLUMNS } },
     });
   }
 
   async remove(id: number) {
-    const member = await this.prisma.companyMember.findUnique({ where: { id } });
+    const [member] = await this.db
+      .select()
+      .from(companyMembers)
+      .where(eq(companyMembers.id, id))
+      .limit(1);
     if (!member) {
       throw new AppException(Errors.CompanyMember.NOT_FOUND);
     }
 
-    await this.prisma.companyMember.delete({ where: { id } });
+    await this.db.delete(companyMembers).where(eq(companyMembers.id, id));
   }
 
   async addByBooking(companyId: number, userId: number) {
-    return this.prisma.companyMember.upsert({
-      where: { companyId_userId: { companyId, userId } },
-      create: {
+    await this.db
+      .insert(companyMembers)
+      .values({
         companyId,
         userId,
         source: 'BOOKING',
-      },
-      update: {},
-      include: {
-        user: {
-          select: { id: true, email: true, name: true, phone: true, isActive: true },
-        },
-      },
+      })
+      .onConflictDoNothing();
+
+    return this.db.query.companyMembers.findFirst({
+      where: and(
+        eq(companyMembers.companyId, companyId),
+        eq(companyMembers.userId, userId),
+      ),
+      with: { user: { columns: USER_COLUMNS } },
     });
   }
 }

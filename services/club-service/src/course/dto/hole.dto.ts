@@ -1,4 +1,5 @@
-import { Hole as HoleModel, Course, TeeBox, TeeBoxLevel } from '@prisma/client';
+import { TeeBoxLevel } from '../../contracts/enums';
+import type { Hole as HoleModel, Course, TeeBox } from '../../db/schema';
 import { IsInt, IsNotEmpty, IsOptional, IsString, IsUrl, MaxLength, Min } from 'class-validator';
 
 export class CreateHoleDto {

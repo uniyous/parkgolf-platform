@@ -1,8 +1,10 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { catchError, firstValueFrom, throwError, timeout } from 'rxjs';
-import { BookingStatus, ParticipantStatus, TimeSlotCacheStatus } from '@prisma/client';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { and, eq, notInArray, count, sql } from 'drizzle-orm';
+import { DrizzleService } from '../../db/drizzle.service';
+import { bookings, bookingParticipants, bookingHistory, gameTimeSlotCache } from '../../db/schema';
+import { BookingStatus, ParticipantStatus, TimeSlotCacheStatus } from '../../contracts/enums';
 import { AppException } from '../../common/exceptions/app.exception';
 import { Errors } from '../../common/exceptions/catalog/error-catalog';
 import { NATS_TIMEOUTS } from '../../common/constants';
@@ -41,17 +43,21 @@ export class ParticipantCancelService {
   private readonly logger = new Logger(ParticipantCancelService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly drizzle: DrizzleService,
     @Optional() @Inject('PAYMENT_SERVICE') private readonly paymentClient?: ClientProxy,
     @Optional() @Inject('NOTIFICATION_SERVICE') private readonly notifyClient?: ClientProxy,
   ) {}
 
+  private get db() {
+    return this.drizzle.db;
+  }
+
   async cancelParticipant(input: CancelParticipantInput): Promise<CancelParticipantResult> {
     const { bookingId, userId, reason } = input;
 
-    const participant = await this.prisma.bookingParticipant.findUnique({
-      where: { bookingId_userId: { bookingId, userId } },
-      include: { booking: true },
+    const participant = await this.db.query.bookingParticipants.findFirst({
+      where: and(eq(bookingParticipants.bookingId, bookingId), eq(bookingParticipants.userId, userId)),
+      with: { booking: true },
     });
 
     if (!participant) {
@@ -114,61 +120,47 @@ export class ParticipantCancelService {
       nextStatus = ParticipantStatus.REFUNDED;
     }
 
-    const txResult = await this.prisma.$transaction(async (tx) => {
-      await tx.bookingParticipant.update({
-        where: { id: participant.id },
-        data: { status: nextStatus },
-      });
+    const txResult = await this.db.transaction(async (tx) => {
+      await tx.update(bookingParticipants).set({ status: nextStatus }).where(eq(bookingParticipants.id, participant.id));
 
       if (booking.gameTimeSlotId) {
-        await tx.gameTimeSlotCache.updateMany({
-          where: { gameTimeSlotId: booking.gameTimeSlotId },
-          data: {
-            bookedPlayers: { decrement: 1 },
-            availablePlayers: { increment: 1 },
-            isAvailable: true,
-            status: TimeSlotCacheStatus.AVAILABLE,
-            lastSyncAt: new Date(),
-          },
-        });
+        await tx.update(gameTimeSlotCache).set({
+          bookedPlayers: sql`${gameTimeSlotCache.bookedPlayers} - 1`,
+          availablePlayers: sql`${gameTimeSlotCache.availablePlayers} + 1`,
+          isAvailable: true,
+          status: TimeSlotCacheStatus.AVAILABLE,
+          lastSyncAt: new Date(),
+        }).where(eq(gameTimeSlotCache.gameTimeSlotId, booking.gameTimeSlotId));
       }
 
-      await tx.bookingHistory.create({
-        data: {
-          bookingId,
-          action: 'PARTICIPANT_CANCELLED',
-          userId,
-          details: {
-            reason: reason ?? null,
-            previousStatus: participant.status,
-            newStatus: nextStatus,
-            refundedAmount,
-          },
+      await tx.insert(bookingHistory).values({
+        bookingId,
+        action: 'PARTICIPANT_CANCELLED',
+        userId,
+        details: {
+          reason: reason ?? null,
+          previousStatus: participant.status,
+          newStatus: nextStatus,
+          refundedAmount,
         },
       });
 
-      const remaining = await tx.bookingParticipant.count({
-        where: {
-          bookingId,
-          status: { notIn: [ParticipantStatus.CANCELLED, ParticipantStatus.REFUNDED] },
-        },
-      });
+      const [remainingRow] = await tx.select({ value: count() }).from(bookingParticipants).where(and(
+        eq(bookingParticipants.bookingId, bookingId),
+        notInArray(bookingParticipants.status, [ParticipantStatus.CANCELLED, ParticipantStatus.REFUNDED]),
+      ));
+      const remaining = remainingRow.value;
 
       let bookingCancelled = false;
       if (remaining === 0) {
-        await tx.booking.update({
-          where: { id: bookingId },
-          data: { status: BookingStatus.CANCELLED },
-        });
-        await tx.bookingHistory.create({
-          data: {
-            bookingId,
-            action: 'CANCELLED',
-            userId,
-            details: {
-              reason: 'all participants cancelled',
-              trigger: 'participant-cancel-cascade',
-            },
+        await tx.update(bookings).set({ status: BookingStatus.CANCELLED }).where(eq(bookings.id, bookingId));
+        await tx.insert(bookingHistory).values({
+          bookingId,
+          action: 'CANCELLED',
+          userId,
+          details: {
+            reason: 'all participants cancelled',
+            trigger: 'participant-cancel-cascade',
           },
         });
         bookingCancelled = true;

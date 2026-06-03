@@ -125,8 +125,8 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
       }
     }
 
-    if (this.isPrismaError(exception)) {
-      return this.handlePrismaError(exception, timestamp);
+    if (this.isDbError(exception)) {
+      return this.handleDbError(exception, timestamp);
     }
 
     const message = exception instanceof Error ? exception.message : Errors.System.INTERNAL.message;
@@ -171,38 +171,37 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
         if (typeof errorObj.statusCode === 'number') return errorObj.statusCode;
       }
     }
-    if (this.isPrismaError(exception)) return this.getPrismaHttpStatus(exception);
+    if (this.isDbError(exception)) return this.getDbHttpStatus(exception);
     return HttpStatus.INTERNAL_SERVER_ERROR;
   }
 
-  private isPrismaError(exception: unknown): boolean {
+  // postgres-js 드라이버 에러(SQLSTATE) 탐지
+  private isDbError(exception: unknown): boolean {
     return (
       exception instanceof Error &&
-      exception.constructor.name.startsWith('Prisma') &&
+      exception.constructor.name === 'PostgresError' &&
       'code' in exception
     );
   }
 
-  private handlePrismaError(exception: unknown, timestamp: string): StandardErrorResponse {
-    const prismaError = exception as { code: string; message: string };
-    switch (prismaError.code) {
-      case 'P2002':
+  private handleDbError(exception: unknown, timestamp: string): StandardErrorResponse {
+    const dbError = exception as { code: string; message: string };
+    switch (dbError.code) {
+      case '23505':
         return { success: false, error: { code: Errors.Database.UNIQUE_VIOLATION.code, message: Errors.Database.UNIQUE_VIOLATION.message }, timestamp };
-      case 'P2025':
-        return { success: false, error: { code: Errors.Database.NOT_FOUND.code, message: Errors.Database.NOT_FOUND.message }, timestamp };
-      case 'P2003':
+      case '23503':
         return { success: false, error: { code: Errors.Database.FK_VIOLATION.code, message: Errors.Database.FK_VIOLATION.message }, timestamp };
       default:
-        return { success: false, error: { code: Errors.Database.CONNECTION_ERROR.code, message: prismaError.message || Errors.System.INTERNAL.message }, timestamp };
+        return { success: false, error: { code: Errors.Database.CONNECTION_ERROR.code, message: dbError.message || Errors.System.INTERNAL.message }, timestamp };
     }
   }
 
-  private getPrismaHttpStatus(exception: unknown): number {
-    const prismaError = exception as { code: string };
-    switch (prismaError.code) {
-      case 'P2002': return HttpStatus.CONFLICT;
-      case 'P2025': return HttpStatus.NOT_FOUND;
-      case 'P2003': return HttpStatus.BAD_REQUEST;
+  private getDbHttpStatus(exception: unknown): number {
+    const dbError = exception as { code: string };
+    switch (dbError.code) {
+      case '23505': return HttpStatus.CONFLICT;
+      case '23503':
+      case '23502': return HttpStatus.BAD_REQUEST;
       default: return HttpStatus.INTERNAL_SERVER_ERROR;
     }
   }

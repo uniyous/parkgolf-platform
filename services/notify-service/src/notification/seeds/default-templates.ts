@@ -1,4 +1,4 @@
-import { NotificationType } from '@prisma/client';
+import { NotificationType } from '../../contracts/enums';
 
 export const defaultTemplates = [
   {

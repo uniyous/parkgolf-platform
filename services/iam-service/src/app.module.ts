@@ -9,7 +9,7 @@ import { SettingsModule } from './settings/settings.module';
 import { DeviceModule } from './device/device.module';
 import { MenuModule } from './menu/menu.module';
 import { CompanyMemberModule } from './company-member/company-member.module';
-import { PrismaModule } from '../prisma/prisma.module';
+import { DrizzleModule } from './db/drizzle.module';
 import { CommonModule } from './common/common.module';
 import { NatsModule } from './common/nats/nats.module';
 
@@ -21,7 +21,7 @@ import { NatsModule } from './common/nats/nats.module';
     }),
     CommonModule,
     NatsModule,
-    PrismaModule,
+    DrizzleModule,
     AuthModule,
     UserModule,
     AdminModule,

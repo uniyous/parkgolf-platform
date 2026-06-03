@@ -1,6 +1,8 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { PrismaService } from '../../prisma/prisma.service';
+import { and, eq, gte, lt, lte, isNotNull } from 'drizzle-orm';
+import { DrizzleService } from '../db/drizzle.service';
+import { users, refreshTokens, userHistories } from '../db/schema';
 import { AppException } from '../common/exceptions/app.exception';
 import { Errors } from '../common/exceptions/catalog/error-catalog';
 import * as bcrypt from 'bcrypt';
@@ -14,11 +16,15 @@ export class AccountDeletionService {
   private readonly logger = new Logger(AccountDeletionService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly drizzle: DrizzleService,
     @Inject('NOTIFICATION_SERVICE') private readonly notificationClient: ClientProxy,
     @Inject('BOOKING_SERVICE') private readonly bookingClient: ClientProxy,
     @Inject('PAYMENT_SERVICE') private readonly paymentClient: ClientProxy,
   ) {}
+
+  private get db() {
+    return this.drizzle.db;
+  }
 
   /**
    * 계정 삭제 요청
@@ -29,7 +35,7 @@ export class AccountDeletionService {
    */
   async requestDeletion(userId: number, password: string, reason?: string) {
     // 사용자 조회
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const [user] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
     if (!user) {
       throw new AppException(Errors.User.NOT_FOUND);
     }
@@ -55,17 +61,18 @@ export class AccountDeletionService {
     const now = new Date();
     const scheduledAt = new Date(now.getTime() + GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000);
 
-    const updatedUser = await this.prisma.user.update({
-      where: { id: userId },
-      data: {
+    const [updatedUser] = await this.db
+      .update(users)
+      .set({
         deletionRequestedAt: now,
         deletionScheduledAt: scheduledAt,
         isActive: false,
-      },
-    });
+      })
+      .where(eq(users.id, userId))
+      .returning();
 
     // 리프레시 토큰 삭제
-    await this.prisma.refreshToken.deleteMany({ where: { userId } });
+    await this.db.delete(refreshTokens).where(eq(refreshTokens.userId, userId));
 
     // 삭제 요청 알림 이벤트 발행
     this.notificationClient.emit('user.deletion.requested', {
@@ -91,7 +98,7 @@ export class AccountDeletionService {
    * 계정 삭제 취소
    */
   async cancelDeletion(userId: number) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const [user] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
     if (!user) {
       throw new AppException(Errors.User.NOT_FOUND);
     }
@@ -100,14 +107,14 @@ export class AccountDeletionService {
       throw new AppException(Errors.User.DELETION_NOT_REQUESTED);
     }
 
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: {
+    await this.db
+      .update(users)
+      .set({
         deletionRequestedAt: null,
         deletionScheduledAt: null,
         isActive: true,
-      },
-    });
+      })
+      .where(eq(users.id, userId));
 
     // 삭제 취소 알림 이벤트 발행
     this.notificationClient.emit('user.deletion.cancelled', {
@@ -126,15 +133,16 @@ export class AccountDeletionService {
    * 삭제 상태 조회
    */
   async getDeletionStatus(userId: number) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        deletionRequestedAt: true,
-        deletionScheduledAt: true,
-        isActive: true,
-      },
-    });
+    const [user] = await this.db
+      .select({
+        id: users.id,
+        deletionRequestedAt: users.deletionRequestedAt,
+        deletionScheduledAt: users.deletionScheduledAt,
+        isActive: users.isActive,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
 
     if (!user) {
       throw new AppException(Errors.User.NOT_FOUND);
@@ -182,13 +190,16 @@ export class AccountDeletionService {
     // D-3 사용자 (3일 남은 사용자)
     const d3Start = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
     const d3End = new Date(d3Start.getTime() + 24 * 60 * 60 * 1000);
-    const d3Users = await this.prisma.user.findMany({
-      where: {
-        deletionScheduledAt: { gte: d3Start, lt: d3End },
-        deletionRequestedAt: { not: null },
-      },
-      select: { id: true, email: true, name: true, deletionScheduledAt: true },
-    });
+    const d3Users = await this.db
+      .select({ id: users.id, email: users.email, name: users.name, deletionScheduledAt: users.deletionScheduledAt })
+      .from(users)
+      .where(
+        and(
+          gte(users.deletionScheduledAt, d3Start),
+          lt(users.deletionScheduledAt, d3End),
+          isNotNull(users.deletionRequestedAt),
+        ),
+      );
 
     for (const user of d3Users) {
       this.notificationClient.emit('user.deletion.reminder', {
@@ -203,13 +214,16 @@ export class AccountDeletionService {
     // D-1 사용자 (1일 남은 사용자)
     const d1Start = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000);
     const d1End = new Date(d1Start.getTime() + 24 * 60 * 60 * 1000);
-    const d1Users = await this.prisma.user.findMany({
-      where: {
-        deletionScheduledAt: { gte: d1Start, lt: d1End },
-        deletionRequestedAt: { not: null },
-      },
-      select: { id: true, email: true, name: true, deletionScheduledAt: true },
-    });
+    const d1Users = await this.db
+      .select({ id: users.id, email: users.email, name: users.name, deletionScheduledAt: users.deletionScheduledAt })
+      .from(users)
+      .where(
+        and(
+          gte(users.deletionScheduledAt, d1Start),
+          lt(users.deletionScheduledAt, d1End),
+          isNotNull(users.deletionRequestedAt),
+        ),
+      );
 
     for (const user of d1Users) {
       this.notificationClient.emit('user.deletion.reminder', {
@@ -237,32 +251,28 @@ export class AccountDeletionService {
     const now = new Date();
 
     // 유예 기간 만료된 사용자 조회
-    const expiredUsers = await this.prisma.user.findMany({
-      where: {
-        deletionScheduledAt: { lte: now },
-        deletionRequestedAt: { not: null },
-      },
-    });
+    const expiredUsers = await this.db
+      .select()
+      .from(users)
+      .where(and(lte(users.deletionScheduledAt, now), isNotNull(users.deletionRequestedAt)));
 
     let deletedCount = 0;
 
     for (const user of expiredUsers) {
       try {
-        await this.prisma.$transaction(async (tx) => {
+        await this.db.transaction(async (tx) => {
           // UserHistory 생성
-          await tx.userHistory.create({
-            data: {
-              originalUserId: user.id,
-              email: user.email,
-              name: user.name,
-              phone: user.phone,
-              deletionReason: null,
-              deletedAt: now,
-            },
+          await tx.insert(userHistories).values({
+            originalUserId: user.id,
+            email: user.email,
+            name: user.name,
+            phone: user.phone,
+            deletionReason: null,
+            deletedAt: now,
           });
 
           // User 삭제 (Cascade로 연관 데이터 정리)
-          await tx.user.delete({ where: { id: user.id } });
+          await tx.delete(users).where(eq(users.id, user.id));
         });
 
         // user.deleted 이벤트 발행 (다른 서비스에서 데이터 익명화/삭제)

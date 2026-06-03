@@ -3,7 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { CommonModule } from './common/common.module';
 import { NatsModule } from './common/nats/nats.module';
 import { PgBossModule } from './common/pgboss/pgboss.module';
-import { PrismaModule } from '../prisma/prisma.module';
+import { DrizzleModule } from './db/drizzle.module';
 import { NotificationModule } from './notification/notification.module';
 import { NotificationNatsController } from './notification/notification-nats.controller';
 
@@ -18,7 +18,7 @@ import { NotificationNatsController } from './notification/notification-nats.con
     CommonModule,
     NatsModule,
     PgBossModule,
-    PrismaModule,
+    DrizzleModule,
     NotificationModule,
   ],
   controllers: [NotificationNatsController],

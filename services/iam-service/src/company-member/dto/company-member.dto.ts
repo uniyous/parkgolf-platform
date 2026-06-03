@@ -10,7 +10,7 @@ import {
   Max,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { CompanyMemberSource } from '@prisma/client';
+import { CompanyMemberSource } from '../../contracts/enums';
 
 export class CreateCompanyMemberDto {
   @IsNotEmpty()

@@ -9,7 +9,6 @@ Admin API는 Park Golf Platform의 관리자 대시보드를 위한 Backend-for-
 
 - **Framework**: NestJS 10.x
 - **Language**: TypeScript 5.x
-- **Database**: PostgreSQL 15 with Prisma ORM
 - **Message Queue**: NATS 2.x
 - **Cache**: Redis 7.x
 - **Authentication**: JWT with Passport
@@ -29,9 +28,6 @@ npm install
 
 # 환경 변수 설정
 cp .env.example .env.development
-
-# 데이터베이스 마이그레이션
-npx prisma migrate dev
 
 # 개발 서버 시작
 npm run dev
@@ -76,9 +72,6 @@ src/
 │   ├── auth.service.ts
 │   ├── course-nats.service.ts
 │   └── ...
-├── prisma/               # Prisma 설정
-│   ├── schema.prisma
-│   └── migrations/
 ├── app.module.ts         # 루트 모듈
 └── main.ts              # 애플리케이션 진입점
 ```
@@ -173,11 +166,8 @@ npm run test:debug
 
 1. **데이터베이스 연결 오류**
    ```bash
-   # PostgreSQL 서비스 확인
+   # PostgreSQL 서비스 확인 (실제 DB는 마이크로서비스가 보유 — admin-api는 NATS로 위임)
    sudo systemctl status postgresql
-   
-   # 연결 테스트
-   npx prisma db pull
    ```
 
 2. **NATS 연결 오류**

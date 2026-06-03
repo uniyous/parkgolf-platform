@@ -1,5 +1,6 @@
 import { IsString, IsOptional, IsEmail, IsEnum, IsBoolean } from 'class-validator';
-import { Company, CompanyStatus, CompanyType } from '@prisma/client';
+import { CompanyStatus, CompanyType } from '../../contracts/enums';
+import type { Company } from '../../db/schema';
 
 export class CreateCompanyDto {
   @IsString()

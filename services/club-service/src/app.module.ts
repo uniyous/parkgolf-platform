@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { PrismaModule } from '../prisma/prisma.module';
+import { DrizzleModule } from './db/drizzle.module';
 import { ClubModule } from './club/club.module';
 import { CourseModule } from './course/course.module';
 import { GameModule } from './game/game.module';
@@ -14,7 +14,7 @@ import { PolicyModule } from './policy/policy.module';
       envFilePath: '.env',
     }),
     CommonModule,
-    PrismaModule,
+    DrizzleModule,
     ClubModule,
     CourseModule,
     GameModule,

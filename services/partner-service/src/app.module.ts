@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { PrismaModule } from '../prisma/prisma.module';
+import { DrizzleModule } from './db/drizzle.module';
 import { CommonModule } from './common/common.module';
 import { PartnerModule } from './partner/partner.module';
 import { ClientModule } from './client/client.module';
@@ -12,7 +12,7 @@ import { MockModule } from './mock/mock.module';
       isGlobal: true,
     }),
     CommonModule,
-    PrismaModule,
+    DrizzleModule,
     ClientModule,
     PartnerModule,
     MockModule,

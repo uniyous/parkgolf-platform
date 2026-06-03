@@ -1,11 +1,11 @@
 import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
 import { Response } from 'express';
-import { PrismaService } from '../../prisma/prisma.service';
+import { DrizzleService } from '../db/drizzle.service';
 import { isNatsReady } from './readiness';
 
 @Controller('health')
 export class HealthController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
 
   @Get()
   getHealth() {
@@ -22,7 +22,7 @@ export class HealthController {
     let db = false;
 
     try {
-      await this.prisma.$queryRaw`SELECT 1`;
+      await this.drizzle.ping();
       db = true;
     } catch { /* DB unreachable — reported as not ready */ }
 

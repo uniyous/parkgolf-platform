@@ -1,4 +1,5 @@
-import { CourseStatus, Course as CourseModel, Club, Hole } from '@prisma/client';
+import { CourseStatus } from '../../contracts/enums';
+import type { Course as CourseModel, Club, Hole } from '../../db/schema';
 import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, IsUrl, Max, MaxLength, Min } from 'class-validator';
 import { HoleResponseDto, HoleWithRelations } from './hole.dto';
 

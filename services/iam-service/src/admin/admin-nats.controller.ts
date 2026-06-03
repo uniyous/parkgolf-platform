@@ -23,7 +23,7 @@ export class AdminNatsController {
     this.logger.log('Get admin list request');
     const { filters = {}, page = 1, limit = 20 } = data;
 
-    // Prisma WHERE 절 구성
+    // WHERE 절 구성
     const where: any = {};
     if (filters.search) {
       where.OR = [

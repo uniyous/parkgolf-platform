@@ -8,13 +8,9 @@ RUN apk add --no-cache python3 make g++
 
 # Copy package files first for better caching
 COPY package*.json ./
-COPY prisma ./prisma/
 
 # Install all dependencies (including devDependencies for build)
 RUN npm ci
-
-# Generate Prisma client
-RUN npx prisma generate
 
 # Copy source code
 COPY . .
@@ -32,11 +28,9 @@ RUN apk add --no-cache dumb-init python3 make g++
 
 # Copy package files
 COPY package*.json ./
-COPY prisma ./prisma/
 
 # Install production dependencies only and clean up build tools
 RUN npm ci --only=production && \
-    npx prisma generate && \
     npm cache clean --force && \
     apk del python3 make g++
 
@@ -59,4 +53,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 # Start the application
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "dist/src/main.js"]
+CMD ["node", "dist/main.js"]
