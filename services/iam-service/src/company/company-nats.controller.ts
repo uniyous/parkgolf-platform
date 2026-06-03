@@ -3,7 +3,7 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { CompanyService } from './company.service';
 import { CompanyResponseDto } from './dto/create-company.dto';
 import { NatsResponse } from '../common/types/response.types';
-import { CompanyStatus } from '@prisma/client';
+import { CompanyStatus } from '../contracts/enums';
 
 /**
  * Company Management NATS Controller

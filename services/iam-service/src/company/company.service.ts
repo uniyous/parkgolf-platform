@@ -1,29 +1,40 @@
 import { Injectable, Logger, NotFoundException, ConflictException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { DrizzleService } from '../db/drizzle.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
-import { Company, CompanyStatus, Prisma } from '@prisma/client';
+import { CompanyStatus } from '../contracts/enums';
+import { eq, and, or, ilike, count, desc, type SQL } from 'drizzle-orm';
+import { companies, adminCompanies } from '../db/schema';
+import type { Company } from '../db/schema';
 
 @Injectable()
 export class CompanyService {
   private readonly logger = new Logger(CompanyService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
+
+  private get db() {
+    return this.drizzle.db;
+  }
 
   async create(createCompanyDto: CreateCompanyDto): Promise<Company> {
     // Check if company code already exists
-    const existingByCode = await this.prisma.company.findUnique({
-      where: { code: createCompanyDto.code },
-    });
+    const [existingByCode] = await this.db
+      .select()
+      .from(companies)
+      .where(eq(companies.code, createCompanyDto.code))
+      .limit(1);
     if (existingByCode) {
       throw new ConflictException(`Company with code '${createCompanyDto.code}' already exists`);
     }
 
     // Check if email already exists
     if (createCompanyDto.email) {
-      const existingByEmail = await this.prisma.company.findUnique({
-        where: { email: createCompanyDto.email },
-      });
+      const [existingByEmail] = await this.db
+        .select()
+        .from(companies)
+        .where(eq(companies.email, createCompanyDto.email))
+        .limit(1);
       if (existingByEmail) {
         throw new ConflictException(`Company with email '${createCompanyDto.email}' already exists`);
       }
@@ -31,16 +42,19 @@ export class CompanyService {
 
     // Check if business number already exists
     if (createCompanyDto.businessNumber) {
-      const existingByBn = await this.prisma.company.findUnique({
-        where: { businessNumber: createCompanyDto.businessNumber },
-      });
+      const [existingByBn] = await this.db
+        .select()
+        .from(companies)
+        .where(eq(companies.businessNumber, createCompanyDto.businessNumber))
+        .limit(1);
       if (existingByBn) {
         throw new ConflictException(`Company with business number '${createCompanyDto.businessNumber}' already exists`);
       }
     }
 
-    return this.prisma.company.create({
-      data: {
+    const [row] = await this.db
+      .insert(companies)
+      .values({
         name: createCompanyDto.name,
         code: createCompanyDto.code,
         description: createCompanyDto.description,
@@ -53,8 +67,9 @@ export class CompanyService {
         status: createCompanyDto.status || CompanyStatus.ACTIVE,
         isActive: createCompanyDto.isActive ?? true,
         metadata: createCompanyDto.metadata,
-      },
-    });
+      })
+      .returning();
+    return row;
   }
 
   async findAll(options?: {
@@ -67,42 +82,49 @@ export class CompanyService {
     const { page = 1, limit = 20, status, isActive, search } = options || {};
     const skip = (page - 1) * limit;
 
-    const where: Prisma.CompanyWhereInput = {};
+    const conds: SQL[] = [];
 
     if (status) {
-      where.status = status;
+      conds.push(eq(companies.status, status));
     }
 
     if (isActive !== undefined) {
-      where.isActive = isActive;
+      conds.push(eq(companies.isActive, isActive));
     }
 
     if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { code: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { businessNumber: { contains: search, mode: 'insensitive' } },
-      ];
+      conds.push(
+        or(
+          ilike(companies.name, `%${search}%`),
+          ilike(companies.code, `%${search}%`),
+          ilike(companies.email, `%${search}%`),
+          ilike(companies.businessNumber, `%${search}%`),
+        ),
+      );
     }
 
-    const [companies, total] = await Promise.all([
-      this.prisma.company.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-      }),
-      this.prisma.company.count({ where }),
+    const where = conds.length ? and(...conds) : undefined;
+
+    const [companyList, [totalRow]] = await Promise.all([
+      this.db
+        .select()
+        .from(companies)
+        .where(where)
+        .offset(skip)
+        .limit(limit)
+        .orderBy(desc(companies.createdAt)),
+      this.db.select({ value: count() }).from(companies).where(where),
     ]);
 
-    return { companies, total, page, limit };
+    return { companies: companyList, total: totalRow.value, page, limit };
   }
 
   async findOne(id: number): Promise<Company> {
-    const company = await this.prisma.company.findUnique({
-      where: { id },
-    });
+    const [company] = await this.db
+      .select()
+      .from(companies)
+      .where(eq(companies.id, id))
+      .limit(1);
 
     if (!company) {
       throw new NotFoundException(`Company with ID ${id} not found`);
@@ -112,9 +134,11 @@ export class CompanyService {
   }
 
   async findByCode(code: string): Promise<Company> {
-    const company = await this.prisma.company.findUnique({
-      where: { code },
-    });
+    const [company] = await this.db
+      .select()
+      .from(companies)
+      .where(eq(companies.code, code))
+      .limit(1);
 
     if (!company) {
       throw new NotFoundException(`Company with code '${code}' not found`);
@@ -128,45 +152,55 @@ export class CompanyService {
 
     // Check for unique constraints if updating
     if (updateCompanyDto.code && updateCompanyDto.code !== company.code) {
-      const existingByCode = await this.prisma.company.findUnique({
-        where: { code: updateCompanyDto.code },
-      });
+      const [existingByCode] = await this.db
+        .select()
+        .from(companies)
+        .where(eq(companies.code, updateCompanyDto.code))
+        .limit(1);
       if (existingByCode) {
         throw new ConflictException(`Company with code '${updateCompanyDto.code}' already exists`);
       }
     }
 
     if (updateCompanyDto.email && updateCompanyDto.email !== company.email) {
-      const existingByEmail = await this.prisma.company.findUnique({
-        where: { email: updateCompanyDto.email },
-      });
+      const [existingByEmail] = await this.db
+        .select()
+        .from(companies)
+        .where(eq(companies.email, updateCompanyDto.email))
+        .limit(1);
       if (existingByEmail) {
         throw new ConflictException(`Company with email '${updateCompanyDto.email}' already exists`);
       }
     }
 
     if (updateCompanyDto.businessNumber && updateCompanyDto.businessNumber !== company.businessNumber) {
-      const existingByBn = await this.prisma.company.findUnique({
-        where: { businessNumber: updateCompanyDto.businessNumber },
-      });
+      const [existingByBn] = await this.db
+        .select()
+        .from(companies)
+        .where(eq(companies.businessNumber, updateCompanyDto.businessNumber))
+        .limit(1);
       if (existingByBn) {
         throw new ConflictException(`Company with business number '${updateCompanyDto.businessNumber}' already exists`);
       }
     }
 
-    return this.prisma.company.update({
-      where: { id },
-      data: updateCompanyDto,
-    });
+    const [row] = await this.db
+      .update(companies)
+      .set(updateCompanyDto)
+      .where(eq(companies.id, id))
+      .returning();
+    return row;
   }
 
   async remove(id: number): Promise<void> {
     await this.findOne(id);
 
     // Check if company has any admin associations
-    const adminCompanyCount = await this.prisma.adminCompany.count({
-      where: { companyId: id },
-    });
+    const [adminCompanyCountRow] = await this.db
+      .select({ value: count() })
+      .from(adminCompanies)
+      .where(eq(adminCompanies.companyId, id));
+    const adminCompanyCount = adminCompanyCountRow.value;
 
     if (adminCompanyCount > 0) {
       throw new ConflictException(
@@ -174,27 +208,27 @@ export class CompanyService {
       );
     }
 
-    await this.prisma.company.delete({
-      where: { id },
-    });
+    await this.db.delete(companies).where(eq(companies.id, id));
   }
 
   async updateStatus(id: number, status: CompanyStatus): Promise<Company> {
     await this.findOne(id);
-    return this.prisma.company.update({
-      where: { id },
-      data: { status },
-    });
+    const [row] = await this.db
+      .update(companies)
+      .set({ status })
+      .where(eq(companies.id, id))
+      .returning();
+    return row;
   }
 
   async getAdmins(companyId: number): Promise<any[]> {
     await this.findOne(companyId);
 
-    const adminCompanies = await this.prisma.adminCompany.findMany({
-      where: { companyId, isActive: true },
-      include: {
+    const adminCompanyList = await this.db.query.adminCompanies.findMany({
+      where: and(eq(adminCompanies.companyId, companyId), eq(adminCompanies.isActive, true)),
+      with: {
         admin: {
-          select: {
+          columns: {
             id: true,
             email: true,
             name: true,
@@ -206,17 +240,17 @@ export class CompanyService {
           },
         },
         companyRole: {
-          select: {
+          columns: {
             code: true,
             name: true,
             level: true,
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: desc(adminCompanies.createdAt),
     });
 
-    return adminCompanies.map((ac) => ({
+    return adminCompanyList.map((ac) => ({
       ...ac.admin,
       companyRole: ac.companyRole,
       isPrimary: ac.isPrimary,
@@ -231,14 +265,26 @@ export class CompanyService {
     suspended: number;
     pending: number;
   }> {
-    const [total, active, inactive, suspended, pending] = await Promise.all([
-      this.prisma.company.count(),
-      this.prisma.company.count({ where: { status: CompanyStatus.ACTIVE } }),
-      this.prisma.company.count({ where: { status: CompanyStatus.INACTIVE } }),
-      this.prisma.company.count({ where: { status: CompanyStatus.SUSPENDED } }),
-      this.prisma.company.count({ where: { status: CompanyStatus.PENDING } }),
+    const [
+      [totalRow],
+      [activeRow],
+      [inactiveRow],
+      [suspendedRow],
+      [pendingRow],
+    ] = await Promise.all([
+      this.db.select({ value: count() }).from(companies),
+      this.db.select({ value: count() }).from(companies).where(eq(companies.status, CompanyStatus.ACTIVE)),
+      this.db.select({ value: count() }).from(companies).where(eq(companies.status, CompanyStatus.INACTIVE)),
+      this.db.select({ value: count() }).from(companies).where(eq(companies.status, CompanyStatus.SUSPENDED)),
+      this.db.select({ value: count() }).from(companies).where(eq(companies.status, CompanyStatus.PENDING)),
     ]);
 
-    return { total, active, inactive, suspended, pending };
+    return {
+      total: totalRow.value,
+      active: activeRow.value,
+      inactive: inactiveRow.value,
+      suspended: suspendedRow.value,
+      pending: pendingRow.value,
+    };
   }
 }

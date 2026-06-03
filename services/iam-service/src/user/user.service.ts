@@ -6,12 +6,14 @@ import {
     BadRequestException,
     UnauthorizedException,
 } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { DrizzleService } from '../db/drizzle.service';
+import { users } from '../db/schema';
+import { eq, count } from 'drizzle-orm';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import * as bcrypt from 'bcrypt';
-import { User } from '@prisma/client';
+import type { User } from '../db/schema';
 
 const PASSWORD_EXPIRY_DAYS = 90;
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
@@ -20,7 +22,9 @@ const MS_PER_DAY = 1000 * 60 * 60 * 24;
 export class UserService {
     private readonly logger = new Logger(UserService.name);
 
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly drizzle: DrizzleService) {}
+
+    private get db() { return this.drizzle.db; }
 
     private readonly SALT_ROUNDS = 10;
 
@@ -30,9 +34,11 @@ export class UserService {
     }
 
     async signUp(createUserDto: CreateUserDto): Promise<Omit<User, 'password'>> {
-        const existingUser = await this.prisma.user.findUnique({
-            where: { email: createUserDto.email },
-        });
+        const [existingUser] = await this.db
+            .select()
+            .from(users)
+            .where(eq(users.email, createUserDto.email))
+            .limit(1);
 
         if (existingUser) {
             throw new ConflictException('Email already registered.');
@@ -45,16 +51,17 @@ export class UserService {
         );
 
         try {
-            const newUser = await this.prisma.user.create({
-                data: {
+            const [newUser] = await this.db
+                .insert(users)
+                .values({
                     email: createUserDto.email,
                     password: hashedPassword,
                     name: createUserDto.name,
                     phone: createUserDto.phone,
                     roleCode: createUserDto.role || 'USER',
                     isActive: true,
-                },
-            });
+                })
+                .returning();
             return this.omitPassword(newUser);
         } catch (error) {
             this.logger.error(`Prisma error during user creation: ${error.message}`);
@@ -66,7 +73,11 @@ export class UserService {
         id: number,
         updateUserDto: UpdateUserDto,
     ): Promise<Omit<User, 'password'>> {
-        const user = await this.prisma.user.findUnique({ where: { id } });
+        const [user] = await this.db
+            .select()
+            .from(users)
+            .where(eq(users.id, id))
+            .limit(1);
         if (!user) {
             throw new NotFoundException(`User with ID ${id} not found.`);
         }
@@ -74,9 +85,11 @@ export class UserService {
         const dataToUpdate: Partial<User> = {};
 
         if (updateUserDto.email && updateUserDto.email !== user.email) {
-            const existingUserWithNewEmail = await this.prisma.user.findUnique({
-                where: { email: updateUserDto.email },
-            });
+            const [existingUserWithNewEmail] = await this.db
+                .select()
+                .from(users)
+                .where(eq(users.email, updateUserDto.email))
+                .limit(1);
             if (existingUserWithNewEmail && existingUserWithNewEmail.id !== id) {
                 throw new ConflictException('Email already in use by another account.');
             }
@@ -104,34 +117,47 @@ export class UserService {
             return this.omitPassword(user);
         }
 
-        const updatedUser = await this.prisma.user.update({
-            where: { id },
-            data: dataToUpdate,
-        });
+        const [updatedUser] = await this.db
+            .update(users)
+            .set(dataToUpdate)
+            .where(eq(users.id, id))
+            .returning();
 
         return this.omitPassword(updatedUser);
     }
 
     async deleteUser(id: number): Promise<{ message: string }> {
-        const user = await this.prisma.user.findUnique({ where: { id } });
+        const [user] = await this.db
+            .select()
+            .from(users)
+            .where(eq(users.id, id))
+            .limit(1);
         if (!user) {
             throw new NotFoundException(`User with ID ${id} not found.`);
         }
 
-        await this.prisma.user.delete({
-            where: { id },
-        });
+        await this.db.delete(users).where(eq(users.id, id));
 
         return { message: `User with ID ${id} successfully deleted.` };
     }
 
     // Optional: A helper to find a user if needed elsewhere, e.g., for auth
     async findOneById(id: number): Promise<User | null> {
-        return this.prisma.user.findUnique({ where: { id } });
+        const [user] = await this.db
+            .select()
+            .from(users)
+            .where(eq(users.id, id))
+            .limit(1);
+        return user ?? null;
     }
 
     async findOneByEmail(email: string): Promise<User | null> {
-        return this.prisma.user.findUnique({ where: { email } });
+        const [user] = await this.db
+            .select()
+            .from(users)
+            .where(eq(users.email, email))
+            .limit(1);
+        return user ?? null;
     }
 
 
@@ -142,17 +168,18 @@ export class UserService {
 
     async findAll(page: number = 1, limit: number = 20) {
         const skip = (page - 1) * limit;
-        const [users, total] = await Promise.all([
-            this.prisma.user.findMany({
-                skip,
-                take: limit,
-                orderBy: { createdAt: 'desc' },
+        const [rows, [totalRow]] = await Promise.all([
+            this.db.query.users.findMany({
+                offset: skip,
+                limit,
+                orderBy: (u, { desc }) => [desc(u.createdAt)],
             }),
-            this.prisma.user.count(),
+            this.db.select({ value: count() }).from(users),
         ]);
+        const total = totalRow.value;
 
         return {
-            users: users.map(user => this.omitPassword(user)),
+            users: rows.map(user => this.omitPassword(user)),
             total,
             page,
             totalPages: Math.ceil(total / limit),
@@ -160,9 +187,11 @@ export class UserService {
     }
 
     async findOne(id: string): Promise<Omit<User, 'password'>> {
-        const user = await this.prisma.user.findUnique({ 
-            where: { id: parseInt(id) } 
-        });
+        const [user] = await this.db
+            .select()
+            .from(users)
+            .where(eq(users.id, parseInt(id)))
+            .limit(1);
         if (!user) {
             throw new NotFoundException(`User with ID ${id} not found.`);
         }
@@ -174,21 +203,28 @@ export class UserService {
     }
 
     async remove(id: number): Promise<User> {
-        const user = await this.prisma.user.findUnique({ where: { id } });
+        const [user] = await this.db
+            .select()
+            .from(users)
+            .where(eq(users.id, id))
+            .limit(1);
         if (!user) {
             throw new NotFoundException(`User with ID ${id} not found.`);
         }
 
-        await this.prisma.user.delete({ where: { id } });
+        await this.db.delete(users).where(eq(users.id, id));
         return user;
     }
 
 
     async getStats(): Promise<any> {
-        const totalUsers = await this.prisma.user.count();
-        const activeUsers = await this.prisma.user.count({
-            where: { isActive: true }
-        });
+        const [totalRow] = await this.db.select({ value: count() }).from(users);
+        const totalUsers = totalRow.value;
+        const [activeRow] = await this.db
+            .select({ value: count() })
+            .from(users)
+            .where(eq(users.isActive, true));
+        const activeUsers = activeRow.value;
         const inactiveUsers = totalUsers - activeUsers;
 
         return {
@@ -200,7 +236,12 @@ export class UserService {
     }
 
     async findByEmail(email: string): Promise<User | null> {
-        return this.prisma.user.findUnique({ where: { email } });
+        const [user] = await this.db
+            .select()
+            .from(users)
+            .where(eq(users.email, email))
+            .limit(1);
+        return user ?? null;
     }
 
     async validateUser(email: string, password: string): Promise<User | null> {
@@ -218,21 +259,24 @@ export class UserService {
     }
 
     async resetPassword(id: string, newPassword: string): Promise<Omit<User, 'password'>> {
-        const user = await this.prisma.user.findUnique({
-            where: { id: parseInt(id) }
-        });
+        const [user] = await this.db
+            .select()
+            .from(users)
+            .where(eq(users.id, parseInt(id)))
+            .limit(1);
         if (!user) {
             throw new NotFoundException(`User with ID ${id} not found.`);
         }
 
         const hashedPassword = await bcrypt.hash(newPassword, this.SALT_ROUNDS);
-        const updatedUser = await this.prisma.user.update({
-            where: { id: parseInt(id) },
-            data: {
+        const [updatedUser] = await this.db
+            .update(users)
+            .set({
                 password: hashedPassword,
                 passwordChangedAt: new Date(),
-            },
-        });
+            })
+            .where(eq(users.id, parseInt(id)))
+            .returning();
 
         return this.omitPassword(updatedUser);
     }
@@ -255,9 +299,11 @@ export class UserService {
         }
 
         // 사용자 조회
-        const user = await this.prisma.user.findUnique({
-            where: { id: userId },
-        });
+        const [user] = await this.db
+            .select()
+            .from(users)
+            .where(eq(users.id, userId))
+            .limit(1);
         if (!user) {
             throw new NotFoundException(`사용자를 찾을 수 없습니다.`);
         }
@@ -278,13 +324,13 @@ export class UserService {
         const hashedPassword = await bcrypt.hash(newPassword, this.SALT_ROUNDS);
         const passwordChangedAt = new Date();
 
-        await this.prisma.user.update({
-            where: { id: userId },
-            data: {
+        await this.db
+            .update(users)
+            .set({
                 password: hashedPassword,
                 passwordChangedAt,
-            },
-        });
+            })
+            .where(eq(users.id, userId));
 
         return {
             message: '비밀번호가 성공적으로 변경되었습니다.',
@@ -300,10 +346,11 @@ export class UserService {
         daysSinceChange: number | null;
         passwordChangedAt: Date | null;
     }> {
-        const user = await this.prisma.user.findUnique({
-            where: { id: userId },
-            select: { passwordChangedAt: true, createdAt: true },
-        });
+        const [user] = await this.db
+            .select({ passwordChangedAt: users.passwordChangedAt, createdAt: users.createdAt })
+            .from(users)
+            .where(eq(users.id, userId))
+            .limit(1);
 
         if (!user) {
             throw new NotFoundException('사용자를 찾을 수 없습니다.');
@@ -322,17 +369,20 @@ export class UserService {
     }
 
     async updateRole(id: string, role: string): Promise<Omit<User, 'password'>> {
-        const user = await this.prisma.user.findUnique({
-            where: { id: parseInt(id) }
-        });
+        const [user] = await this.db
+            .select()
+            .from(users)
+            .where(eq(users.id, parseInt(id)))
+            .limit(1);
         if (!user) {
             throw new NotFoundException(`User with ID ${id} not found.`);
         }
 
-        const updatedUser = await this.prisma.user.update({
-            where: { id: parseInt(id) },
-            data: { roleCode: role },
-        });
+        const [updatedUser] = await this.db
+            .update(users)
+            .set({ roleCode: role })
+            .where(eq(users.id, parseInt(id)))
+            .returning();
 
         return this.omitPassword(updatedUser);
     }
@@ -341,9 +391,11 @@ export class UserService {
     // 권한 변경은 역할(roleCode) 변경을 통해 수행
     async updatePermissions(id: string, _permissionCodes: string[]): Promise<Omit<User, 'password'>> {
         const userId = parseInt(id);
-        const user = await this.prisma.user.findUnique({
-            where: { id: userId }
-        });
+        const [user] = await this.db
+            .select()
+            .from(users)
+            .where(eq(users.id, userId))
+            .limit(1);
         if (!user) {
             throw new NotFoundException(`User with ID ${id} not found.`);
         }

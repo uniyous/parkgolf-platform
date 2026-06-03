@@ -4,10 +4,12 @@ import { UserService } from '../user/user.service';
 import { AccountDeletionService } from '../user/account-deletion.service';
 import { AdminService } from '../admin/admin.service';
 import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from '../../prisma/prisma.service';
+import { eq } from 'drizzle-orm';
+import { DrizzleService } from '../db/drizzle.service';
+import { refreshTokens, adminRefreshTokens, roleMasters } from '../db/schema';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
-import { User, Admin } from '@prisma/client';
+import type { User, Admin } from '../db/schema';
 import { JwtPayload, UserJwtPayload, AdminJwtPayload } from './interfaces/jwt-payload.interface';
 
 const REFRESH_TOKEN_EXPIRES_IN = '7d';
@@ -23,10 +25,14 @@ export class AuthService {
         private accountDeletionService: AccountDeletionService,
         private adminService: AdminService,
         private jwtService: JwtService,
-        private prisma: PrismaService,
+        private drizzle: DrizzleService,
         private configService: ConfigService,
     ) {
         this.refreshSecret = this.configService.getOrThrow<string>('JWT_REFRESH_SECRET');
+    }
+
+    private get db() {
+        return this.drizzle.db;
     }
 
     private hashToken(token: string): string {
@@ -84,12 +90,10 @@ export class AuthService {
         // Store hashed refresh token in DB
         const hashedToken = this.hashToken(refreshToken);
         const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
-        await this.prisma.refreshToken.create({
-            data: {
-                token: hashedToken,
-                userId: user.id,
-                expiresAt,
-            },
+        await this.db.insert(refreshTokens).values({
+            token: hashedToken,
+            userId: user.id,
+            expiresAt,
         });
 
         return {
@@ -149,23 +153,17 @@ export class AuthService {
 
             // Verify token exists in DB (reuse detection)
             const hashedToken = this.hashToken(refreshToken);
-            const storedToken = await this.prisma.refreshToken.findUnique({
-                where: { token: hashedToken },
-            });
+            const [storedToken] = await this.db.select().from(refreshTokens).where(eq(refreshTokens.token, hashedToken)).limit(1);
 
             if (!storedToken) {
                 // Token reuse detected - revoke all tokens for this user
                 this.logger.warn(`Refresh token reuse detected for user ${payload.sub}`);
-                await this.prisma.refreshToken.deleteMany({
-                    where: { userId: payload.sub },
-                });
+                await this.db.delete(refreshTokens).where(eq(refreshTokens.userId, payload.sub));
                 throw new UnauthorizedException('Token reuse detected');
             }
 
             // Delete the used token (rotation)
-            await this.prisma.refreshToken.delete({
-                where: { id: storedToken.id },
-            });
+            await this.db.delete(refreshTokens).where(eq(refreshTokens.id, storedToken.id));
 
             const user = await this.userService.findOneByEmail(payload.email);
             if (!user) {
@@ -189,12 +187,10 @@ export class AuthService {
 
             // Store new hashed refresh token
             const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
-            await this.prisma.refreshToken.create({
-                data: {
-                    token: this.hashToken(newRefreshToken),
-                    userId: user.id,
-                    expiresAt,
-                },
+            await this.db.insert(refreshTokens).values({
+                token: this.hashToken(newRefreshToken),
+                userId: user.id,
+                expiresAt,
             });
 
             return {
@@ -270,12 +266,10 @@ export class AuthService {
         // Store hashed refresh token in DB
         const hashedToken = this.hashToken(refreshToken);
         const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
-        await this.prisma.adminRefreshToken.create({
-            data: {
-                token: hashedToken,
-                adminId: admin.id,
-                expiresAt,
-            },
+        await this.db.insert(adminRefreshTokens).values({
+            token: hashedToken,
+            adminId: admin.id,
+            expiresAt,
         });
 
         // companies 배열 변환 (프론트엔드 형식에 맞게)
@@ -332,23 +326,17 @@ export class AuthService {
 
             // Verify token exists in DB (reuse detection)
             const hashedToken = this.hashToken(refreshToken);
-            const storedToken = await this.prisma.adminRefreshToken.findUnique({
-                where: { token: hashedToken },
-            });
+            const [storedToken] = await this.db.select().from(adminRefreshTokens).where(eq(adminRefreshTokens.token, hashedToken)).limit(1);
 
             if (!storedToken) {
                 // Token reuse detected - revoke all tokens for this admin
                 this.logger.warn(`Admin refresh token reuse detected for admin ${payload.sub}`);
-                await this.prisma.adminRefreshToken.deleteMany({
-                    where: { adminId: payload.sub },
-                });
+                await this.db.delete(adminRefreshTokens).where(eq(adminRefreshTokens.adminId, payload.sub));
                 throw new UnauthorizedException('Token reuse detected');
             }
 
             // Delete the used token (rotation)
-            await this.prisma.adminRefreshToken.delete({
-                where: { id: storedToken.id },
-            });
+            await this.db.delete(adminRefreshTokens).where(eq(adminRefreshTokens.id, storedToken.id));
 
             const admin = await this.adminService.findByEmail(payload.email);
             if (!admin || !admin.isActive) {
@@ -379,12 +367,10 @@ export class AuthService {
 
             // Store new hashed refresh token
             const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
-            await this.prisma.adminRefreshToken.create({
-                data: {
-                    token: this.hashToken(newRefreshToken),
-                    adminId: admin.id,
-                    expiresAt,
-                },
+            await this.db.insert(adminRefreshTokens).values({
+                token: this.hashToken(newRefreshToken),
+                adminId: admin.id,
+                expiresAt,
             });
 
             return {
@@ -407,17 +393,13 @@ export class AuthService {
     }
 
     async logout(userId: number) {
-        await this.prisma.refreshToken.deleteMany({
-            where: { userId },
-        });
+        await this.db.delete(refreshTokens).where(eq(refreshTokens.userId, userId));
         this.logger.log(`User ${userId} logged out - all refresh tokens revoked`);
         return { message: '로그아웃되었습니다.' };
     }
 
     async adminLogout(adminId: number) {
-        await this.prisma.adminRefreshToken.deleteMany({
-            where: { adminId },
-        });
+        await this.db.delete(adminRefreshTokens).where(eq(adminRefreshTokens.adminId, adminId));
         this.logger.log(`Admin ${adminId} logged out - all refresh tokens revoked`);
         return { message: '로그아웃되었습니다.' };
     }
@@ -496,10 +478,7 @@ export class AuthService {
     }
 
     private async getRoleScope(roleCode: string): Promise<string> {
-        const role = await this.prisma.roleMaster.findUnique({
-            where: { code: roleCode },
-            select: { scope: true },
-        });
+        const [role] = await this.db.select({ scope: roleMasters.scope }).from(roleMasters).where(eq(roleMasters.code, roleCode)).limit(1);
         return role?.scope || 'COMPANY';
     }
 }
