@@ -19,7 +19,7 @@ serviceImageTags:
   booking-service: f0234b6bdaedc1f084d5e1d4711667630ba9d85d
   payment-service: f0234b6bdaedc1f084d5e1d4711667630ba9d85d
   chat-service: d2db22334cc3901bad5444b4e9c89d6e2a5c4103
-  notify-service: f0234b6bdaedc1f084d5e1d4711667630ba9d85d
+  notify-service: 2960b8d0f5a65a91c84d76ff20cfcd707b3dcbc2
   saga-service: c40520331b6abfdaa25fe34d43a4a45060c83123
   partner-service: f0234b6bdaedc1f084d5e1d4711667630ba9d85d
   admin-api: f0234b6bdaedc1f084d5e1d4711667630ba9d85d
