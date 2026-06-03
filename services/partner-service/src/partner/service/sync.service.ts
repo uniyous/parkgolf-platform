@@ -32,7 +32,7 @@ export class SyncService {
     private readonly gameMappingService: GameMappingService,
     private readonly partnerClientService: PartnerClientService,
     private readonly resilienceService: PartnerResilienceService,
-    @Inject('COURSE_SERVICE') private readonly courseClient: ClientProxy,
+    @Inject('CLUB_SERVICE') private readonly courseClient: ClientProxy,
   ) {}
 
   /**
@@ -356,7 +356,7 @@ export class SyncService {
   // ── Private ──
 
   /**
-   * 개별 슬롯 처리: SlotMapping upsert + course-service GameTimeSlot 업데이트
+   * 개별 슬롯 처리: SlotMapping upsert + club-service GameTimeSlot 업데이트
    */
   private async processSlot(
     partner: { id: number; gameMappings: Array<{ id: number; externalCourseName: string; internalGameId: number }> },
@@ -415,14 +415,14 @@ export class SyncService {
       action = 'created';
     }
 
-    // course-service GameTimeSlot 매칭 및 업데이트
+    // club-service GameTimeSlot 매칭 및 업데이트
     await this.syncGameTimeSlot(slotMapping, gameMapping.internalGameId, slot);
 
     return action;
   }
 
   /**
-   * course-service GameTimeSlot과 연동
+   * club-service GameTimeSlot과 연동
    */
   private async syncGameTimeSlot(
     slotMapping: { id: number; internalSlotId: number | null },
@@ -442,7 +442,7 @@ export class SyncService {
           }).pipe(
             timeout(NATS_TIMEOUTS.DEFAULT),
             catchError((err) => {
-              throw new Error(`course-service 조회 실패: ${err.message}`);
+              throw new Error(`club-service 조회 실패: ${err.message}`);
             }),
           ),
         );
@@ -495,7 +495,7 @@ export class SyncService {
         }
       }
     } catch (error) {
-      this.logger.warn(`[syncGameTimeSlot] Failed to sync with course-service: ${error.message}`);
+      this.logger.warn(`[syncGameTimeSlot] Failed to sync with club-service: ${error.message}`);
       await this.prisma.slotMapping.update({
         where: { id: slotMapping.id },
         data: { syncStatus: 'FAILED', syncError: error.message },
@@ -504,7 +504,7 @@ export class SyncService {
   }
 
   /**
-   * course-service GameTimeSlot 외부 예약 인원 업데이트
+   * club-service GameTimeSlot 외부 예약 인원 업데이트
    */
   private async updateGameTimeSlot(internalSlotId: number, slot: ExternalSlotData): Promise<void> {
     await firstValueFrom(

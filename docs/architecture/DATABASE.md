@@ -8,7 +8,7 @@ Park Golf 플랫폼은 8개의 독립 마이크로서비스 데이터베이스�
 | 서비스 | 데이터베이스 | 설명 |
 |--------|------------|------|
 | iam-service | iam_db | 인증, 사용자, 관리자, 역할/권한, 친구, 메뉴, 계정삭제 이력 |
-| course-service | course_db | 골프장, 코스, 홀, 게임, 타임슬롯 |
+| club-service | club_db | 골프장, 코스, 홀, 게임, 타임슬롯 |
 | booking-service | booking_db | 예약, 결제, 정책, 환불/노쇼, 팀선정/더치페이 |
 | saga-service | saga_db | Saga 오케스트레이션, Step 실행 이력, Outbox |
 | payment-service | payment_db | 결제(토스페이먼츠), 환불, 빌링키, 분할결제, 웹훅 |
@@ -495,7 +495,7 @@ member.CompanyMember -> user.User: "userId"
 
 ---
 
-## 2. Course Service (course_db)
+## 2. Course Service (club_db)
 
 ```d2
 classes: {
@@ -515,7 +515,7 @@ classes: {
   }
 }
 
-header: "Course Service (course_db)" {
+header: "Course Service (club_db)" {
   class: db-title
   style.fill: "#E8F5E9"
   style.stroke: "#4CAF50"
@@ -732,8 +732,8 @@ core: "예약/결제" {
   Booking: {
     shape: sql_table
     id: int {constraint: primary_key}
-    gameTimeSlotId: int "cross-ref: course_db"
-    gameId: int "cross-ref: course_db"
+    gameTimeSlotId: int "cross-ref: club_db"
+    gameId: int "cross-ref: club_db"
     gameName: string "cached"
     gameCode: string "cached"
     frontNineCourseId: int "cached"
@@ -809,7 +809,7 @@ team: "팀 선정 / 더치페이" {
     groupId: string {constraint: unique}
     bookerId: int "cross-ref: iam_db"
     bookerName: string "cached"
-    clubId: int "cross-ref: course_db"
+    clubId: int "cross-ref: club_db"
     clubName: string "cached"
     date: string "YYYY-MM-DD"
     teamCount: int
@@ -1680,7 +1680,7 @@ config: "연동 설정" {
     partnerId: int {constraint: foreign_key}
     externalCourseName: string "외부 코스명"
     externalCourseId: string "외부 코스 ID"
-    internalGameId: int "cross-ref: course_db Game.id"
+    internalGameId: int "cross-ref: club_db Game.id"
     isActive: boolean
     createdAt: datetime
     updatedAt: datetime
@@ -1702,7 +1702,7 @@ mapping: "데이터 매핑" {
     date: date
     startTime: string "HH:mm"
     endTime: string "HH:mm"
-    internalSlotId: int "cross-ref: course_db GameTimeSlot.id"
+    internalSlotId: int "cross-ref: club_db GameTimeSlot.id"
     externalMaxPlayers: int
     externalBooked: int "외부 예약 인원"
     externalStatus: string "AVAILABLE/FULLY_BOOKED/CLOSED"
@@ -1764,7 +1764,7 @@ config.PartnerConfig -> log.SyncLog: "1:N"
 mapping.BookingMapping -> config.PartnerConfig: "partnerId" {style.stroke-dash: 3}
 ```
 
-> **서비스 간 참조**: PartnerConfig.clubId -> course_db.Club.id | PartnerConfig.companyId -> iam_db.Company.id | GameMapping.internalGameId -> course_db.Game.id | SlotMapping.internalSlotId -> course_db.GameTimeSlot.id | BookingMapping.internalBookingId -> booking_db.Booking.id
+> **서비스 간 참조**: PartnerConfig.clubId -> club_db.Club.id | PartnerConfig.companyId -> iam_db.Company.id | GameMapping.internalGameId -> club_db.Game.id | SlotMapping.internalSlotId -> club_db.GameTimeSlot.id | BookingMapping.internalBookingId -> booking_db.Booking.id
 
 ---
 
@@ -1887,7 +1887,7 @@ mapping.BookingMapping -> config.PartnerConfig: "partnerId" {style.stroke-dash: 
 | 데이터베이스 | 모델 수 | 주요 모델 |
 |------------|---------|----------|
 | iam_db | 19 | Company, Admin, User, RoleMaster, MenuMaster, CompanyMember, UserHistory |
-| course_db | 8 | Club, Course, Hole, TeeBox, Game, GameTimeSlot |
+| club_db | 8 | Club, Course, Hole, TeeBox, Game, GameTimeSlot |
 | booking_db | 18 | Booking, TeamSelection, TeamSelectionMember, BookingParticipant, Refund, CancellationPolicy, OutboxEvent |
 | saga_db | 3 | SagaExecution, SagaStep, OutboxEvent |
 | payment_db | 6 | Payment, PaymentSplit, Refund, BillingKey, WebhookLog, PaymentOutboxEvent |

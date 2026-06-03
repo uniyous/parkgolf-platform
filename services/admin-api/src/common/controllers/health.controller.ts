@@ -30,7 +30,7 @@ export class HealthController {
   private readonly services = [
     { name: 'auth-service', url: process.env.AUTH_SERVICE_URL || 'https://auth-service-dev-iihuzmuufa-du.a.run.app' },
     { name: 'user-api', url: process.env.USER_API_URL || 'https://user-api-dev-iihuzmuufa-du.a.run.app' },
-    { name: 'course-service', url: process.env.COURSE_SERVICE_URL || 'https://course-service-dev-iihuzmuufa-du.a.run.app' },
+    { name: 'club-service', url: process.env.CLUB_SERVICE_URL || 'https://club-service-dev-iihuzmuufa-du.a.run.app' },
     { name: 'booking-service', url: process.env.BOOKING_SERVICE_URL || 'https://booking-service-dev-iihuzmuufa-du.a.run.app' },
   ];
 

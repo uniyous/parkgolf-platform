@@ -18,7 +18,7 @@
 
 ```
 +-------------------+     +-------------------+
-|   iam-service     |     |  course-service   |
+|   iam-service     |     |  club-service   |
 |                   |     |                   |
 | UserExemption     |     | CompanyExemption  |
 | (사용자 감면 자격)  |     | Policy            |
@@ -427,7 +427,7 @@ model UserExemption {
 }
 ```
 
-### 7-2. course-service — CompanyExemptionPolicy
+### 7-2. club-service — CompanyExemptionPolicy
 
 ```prisma
 enum ExemptionDiscountType {
@@ -491,7 +491,7 @@ iam.exemption.pendingList          승인 대기 목록 (관리자)
   Output: { items: UserExemption[], total }
 ```
 
-### 8-2. course-service — 감면 정책 설정
+### 8-2. club-service — 감면 정책 설정
 
 ```
 course.exemptionPolicies.list      가맹점별 감면 정책 목록
@@ -758,7 +758,7 @@ GCS 증빙 서류 업로드 + Signed URL 조회
 유효기간 만료 Cron + 알림
 ```
 
-### Phase 2 — course-service 감면 정책
+### Phase 2 — club-service 감면 정책
 
 ```
 CompanyExemptionPolicy 모델

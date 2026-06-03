@@ -6,7 +6,7 @@
  * 사전 조건:
  * - KMA_API_KEY가 .env에 설정되어 있어야 함
  * - 인터넷 연결이 필요함 (기상청 API 호출)
- * - NATS 불필요 (course-service mock 처리)
+ * - NATS 불필요 (club-service mock 처리)
  *
  * 테스트 좌표: 서울 (37.5665, 126.9780) → KMA 격자 (60, 127)
  */
@@ -52,10 +52,10 @@ describe('Weather Service Integration Tests', () => {
         WeatherCacheService,
         WeatherService,
         {
-          provide: 'COURSE_SERVICE',
+          provide: 'CLUB_SERVICE',
           useValue: {
             send: () => {
-              throw new Error('COURSE_SERVICE mock - not available in integration test');
+              throw new Error('CLUB_SERVICE mock - not available in integration test');
             },
           },
         },

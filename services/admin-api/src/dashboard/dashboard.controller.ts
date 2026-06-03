@@ -170,7 +170,7 @@ export class DashboardController {
             uptime: '99.9%',
             lastChecked: new Date().toISOString(),
           },
-          'course-service': {
+          'club-service': {
             status: 'healthy',
             responseTime: Math.floor(Math.random() * 100) + 50,
             uptime: '99.8%',

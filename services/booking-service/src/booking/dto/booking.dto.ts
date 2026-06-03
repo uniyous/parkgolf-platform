@@ -25,7 +25,7 @@ export class CreateBookingRequestDto {
   @IsOptional()
   gameId?: number;
 
-  @ApiProperty({ description: 'GameTimeSlot ID (course-service)', example: 1 })
+  @ApiProperty({ description: 'GameTimeSlot ID (club-service)', example: 1 })
   @IsNumber()
   @IsNotEmpty()
   gameTimeSlotId: number;
@@ -547,7 +547,7 @@ export interface BookingCancelledEvent {
 // Saga 이벤트 페이로드
 // =====================================================
 
-// booking-service → course-service: 슬롯 예약 요청
+// booking-service → club-service: 슬롯 예약 요청
 export interface SlotReserveRequest {
   bookingId: number;
   bookingNumber: string;
@@ -556,7 +556,7 @@ export interface SlotReserveRequest {
   requestedAt: string;
 }
 
-// course-service → booking-service: 슬롯 예약 성공
+// club-service → booking-service: 슬롯 예약 성공
 export interface SlotReservedEvent {
   bookingId: number;
   gameTimeSlotId: number;
@@ -564,7 +564,7 @@ export interface SlotReservedEvent {
   reservedAt: string;
 }
 
-// course-service → booking-service: 슬롯 예약 실패
+// club-service → booking-service: 슬롯 예약 실패
 export interface SlotReserveFailedEvent {
   bookingId: number;
   gameTimeSlotId: number;
@@ -591,7 +591,7 @@ export interface PaymentCanceledEvent {
   userId: number;
 }
 
-// booking-service → course-service: 슬롯 해제 요청
+// booking-service → club-service: 슬롯 해제 요청
 export interface SlotReleaseRequest {
   bookingId: number;
   gameTimeSlotId: number;

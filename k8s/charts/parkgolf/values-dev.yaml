@@ -15,7 +15,7 @@ ingress:
 serviceImageTags:
   agent-service: 7273c1303045ec6bf223962495b7f0ee191096d4
   iam-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
-  course-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  club-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
   booking-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
   payment-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
   chat-service: b6965b60adb762aaac08ec7d95512f9b3dd4a2d0

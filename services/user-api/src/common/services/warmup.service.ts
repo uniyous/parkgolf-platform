@@ -43,8 +43,8 @@ export class WarmupService {
       natsPattern: 'iam.auth.ping',
     },
     {
-      name: 'course-service',
-      httpUrl: process.env.COURSE_SERVICE_URL || 'https://course-service-dev-iihuzmuufa-du.a.run.app',
+      name: 'club-service',
+      httpUrl: process.env.CLUB_SERVICE_URL || 'https://club-service-dev-iihuzmuufa-du.a.run.app',
       natsPattern: 'course.ping',
     },
     {

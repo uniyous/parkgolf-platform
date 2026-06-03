@@ -12,7 +12,7 @@ export class BookingTools {
   private readonly logger = new Logger(BookingTools.name);
 
   constructor(
-    @Inject('COURSE_SERVICE') private readonly courseClient: ClientProxy,
+    @Inject('CLUB_SERVICE') private readonly courseClient: ClientProxy,
     @Inject('BOOKING_SERVICE') private readonly bookingClient: ClientProxy,
   ) {}
 

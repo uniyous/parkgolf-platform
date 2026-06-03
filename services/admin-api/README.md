@@ -133,7 +133,7 @@ NATS_URL="nats://localhost:4222"
 
 # Microservices
 AUTH_SERVICE_URL="http://localhost:3011"
-COURSE_SERVICE_URL="http://localhost:3012"
+CLUB_SERVICE_URL="http://localhost:3012"
 BOOKING_SERVICE_URL="http://localhost:3013"
 NOTIFY_SERVICE_URL="http://localhost:3014"
 ```

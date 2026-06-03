@@ -9,7 +9,7 @@ export class SearchTools {
   private readonly logger = new Logger(SearchTools.name);
 
   constructor(
-    @Inject('COURSE_SERVICE') private readonly courseClient: ClientProxy,
+    @Inject('CLUB_SERVICE') private readonly courseClient: ClientProxy,
     @Inject('LOCATION_SERVICE') private readonly locationClient: ClientProxy,
   ) {}
 

@@ -23,7 +23,7 @@ Frontend → BFF (REST) → NATS → Microservice (Prisma)
 | user-api | BFF | 사용자 REST API → NATS 브릿지 | - |
 | chat-gateway | Gateway | WebSocket 서버 (Socket.IO) | - |
 | iam-service | Microservice | 인증/사용자/친구/회사멤버 | iam_db |
-| course-service | Microservice | 골프장/코스/게임/타임슬롯 | course_db |
+| club-service | Microservice | 골프장/코스/게임/타임슬롯 | club_db |
 | booking-service | Microservice | 예약/Saga/정책 | booking_db |
 | payment-service | Microservice | 결제 (Toss Payments) | payment_db |
 | chat-service | Microservice | 채팅 | chat_db |
@@ -142,7 +142,7 @@ export class GamesService {
 
 - **user-api**: 단일 `NATS_CLIENT` 사용
 - **admin-api**: 단일 `NATS_CLIENT` 사용
-- **course-service 등**: 다른 서비스 호출 시 named client 사용 (`BOOKING_SERVICE`, `LOCATION_SERVICE` 등)
+- **club-service 등**: 다른 서비스 호출 시 named client 사용 (`BOOKING_SERVICE`, `LOCATION_SERVICE` 등)
 
 ---
 
@@ -297,7 +297,7 @@ export const Errors = {
 | `USER_` | 사용자 관리 | iam-service |
 | `ADMIN_` | 관리자 관리 | iam-service |
 | `FRIEND_` | 친구 관리 | iam-service |
-| `COURSE_` | 골프장/코스 | course-service |
+| `COURSE_` | 골프장/코스 | club-service |
 | `BOOK_` | 예약 | booking-service |
 | `PAY_` | 결제 | payment-service |
 | `CHAT_` | 채팅 | chat-service |
@@ -348,7 +348,7 @@ interface CreateBookingDto { clubId: string; }
 |--------|------|------|
 | iam-service | `user.list`, `user.get`, `auth.login`, `auth.refresh` | 사용자/인증 |
 | iam-service | `iam.companyMembers.list/create/update/delete/addByBooking` | 회사 멤버 |
-| course-service | `club.list`, `club.get`, `club.findNearby` | 골프장 |
+| club-service | `club.list`, `club.get`, `club.findNearby` | 골프장 |
 | booking-service | `booking.create`, `booking.cancel`, `slot.reserve` | 예약 |
 | booking-service | `policy.cancellation.*`, `policy.refund.*`, `policy.noshow.*`, `policy.operating.*` | 정책 |
 | location-service | `location.getCoordinates`, `location.coord2region`, `location.search.address` | 위치 |
@@ -446,7 +446,7 @@ CMD ["node", "dist/main.js"]
 
 ## 13. Microservice → Microservice NATS 호출 패턴
 
-Microservice가 다른 Microservice를 NATS로 호출하는 경우 (예: agent-service → weather-service, course-service → location-service).
+Microservice가 다른 Microservice를 NATS로 호출하는 경우 (예: agent-service → weather-service, club-service → location-service).
 
 ### 표준 패턴
 

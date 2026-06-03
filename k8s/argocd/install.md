@@ -64,7 +64,7 @@ argocd app sync parkgolf-dev
 USER=$(kubectl get secret parkgolf-secrets -n parkgolf-dev -o jsonpath='{.data.POSTGRES_USER}' | base64 -d)
 PASS=$(kubectl get secret parkgolf-secrets -n parkgolf-dev -o jsonpath='{.data.POSTGRES_PASSWORD}' | base64 -d)
 
-for DB in iam_db course_db booking_db payment_db saga_db chat_db notify_db partner_db; do
+for DB in iam_db club_db booking_db payment_db saga_db chat_db notify_db partner_db; do
   kubectl exec -i -n parkgolf-dev postgres-0 -- env PGPASSWORD="$PASS" \
     pg_restore -U "$USER" -d "$DB" --clean --if-exists --no-owner \
     < backup/20260510-174141/${DB}.dump

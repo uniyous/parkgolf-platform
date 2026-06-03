@@ -187,7 +187,7 @@ classes: {
 
 ```
 iam_db:     fill "#FFF8E1" / stroke "#FFB300"
-course_db:  fill "#E8F5E9" / stroke "#4CAF50"
+club_db:  fill "#E8F5E9" / stroke "#4CAF50"
 booking_db: fill "#E3F2FD" / stroke "#1E88E5"
 saga_db:    fill "#FCE4EC" / stroke "#EC407A"
 payment_db: fill "#F3E5F5" / stroke "#AB47BC"

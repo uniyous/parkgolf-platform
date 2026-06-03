@@ -24,7 +24,7 @@ export class BookingService {
     private readonly prisma: PrismaService,
     private readonly outboxProcessor: OutboxProcessorService,
     @Optional() @Inject('NOTIFICATION_SERVICE') private readonly notificationPublisher?: ClientProxy,
-    @Optional() @Inject('COURSE_SERVICE') private readonly courseServiceClient?: ClientProxy,
+    @Optional() @Inject('CLUB_SERVICE') private readonly courseServiceClient?: ClientProxy,
     @Optional() @Inject('IAM_SERVICE') private readonly iamService?: ClientProxy,
     @Optional() @Inject('CHAT_SERVICE') private readonly chatClient?: ClientProxy,
   ) {}
@@ -122,7 +122,7 @@ export class BookingService {
     if (clubId) {
       where.clubId = clubId;
     }
-    // companyId 필터: course-service에서 해당 회사의 clubId 목록을 조회하여 필터링
+    // companyId 필터: club-service에서 해당 회사의 clubId 목록을 조회하여 필터링
     if (companyId && !clubId && this.courseServiceClient) {
       try {
         const clubsResult = await firstValueFrom(
@@ -771,7 +771,7 @@ export class BookingService {
     const totalBookedSlots = gameStats.reduce((sum, g) => sum + g.bookedSlots, 0);
     let averageUtilization = 0;
 
-    // course-service에서 전체 슬롯 수 조회
+    // club-service에서 전체 슬롯 수 조회
     if (this.courseServiceClient) {
       try {
         const slotStats = await firstValueFrom(
@@ -786,7 +786,7 @@ export class BookingService {
           averageUtilization = Math.round((totalBookedSlots / totalSlots) * 100 * 10) / 10;
         }
       } catch {
-        this.logger.warn(`Failed to fetch slot stats from course-service for clubId=${clubId}`);
+        this.logger.warn(`Failed to fetch slot stats from club-service for clubId=${clubId}`);
       }
     }
 
@@ -1100,7 +1100,7 @@ export class BookingService {
       return results;
     });
 
-    // 트랜잭션 후: course-service 슬롯 해제 + 예약 취소 이벤트
+    // 트랜잭션 후: club-service 슬롯 해제 + 예약 취소 이벤트
     for (const booking of cancelledBookings) {
       if (this.courseServiceClient) {
         this.courseServiceClient.emit('gameTimeSlots.release', {

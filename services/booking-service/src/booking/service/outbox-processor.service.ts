@@ -35,7 +35,7 @@ export class OutboxProcessorService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly pgboss: PgBossService,
-    @Inject('COURSE_SERVICE') private readonly courseServiceClient: ClientProxy,
+    @Inject('CLUB_SERVICE') private readonly courseServiceClient: ClientProxy,
     @Inject('NOTIFICATION_SERVICE') private readonly notificationClient: ClientProxy,
     @Inject('PAYMENT_SERVICE') private readonly paymentServiceClient: ClientProxy,
   ) {}

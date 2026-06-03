@@ -25,7 +25,7 @@ graph TB
 
             subgraph CORE ["Core Services"]
                 IAM["iam-service"]
-                COURSE["course-service"]
+                COURSE["club-service"]
                 BOOKING["booking-service"]
                 SAGA["saga-service"]
                 PAY["payment-service"]
@@ -100,7 +100,7 @@ graph TB
 | Database | Service | Models |
 |----------|---------|--------|
 | iam_db | iam-service | Users, Admins, Roles, Friends, CompanyMembers, Menus |
-| course_db | course-service | Companies, Clubs, Courses, Games, TimeSlots, Schedules |
+| club_db | club-service | Companies, Clubs, Courses, Games, TimeSlots, Schedules |
 | booking_db | booking-service | Bookings, Refunds, NoShowRecords, Policies |
 | saga_db | saga-service | SagaExecutions, SagaSteps, OutboxEvents |
 | payment_db | payment-service | Payments, BillingKeys, Refunds, WebhookLogs |
@@ -222,7 +222,7 @@ services: all
 services: iam-service,user-api,agent-service
 ```
 
-15개 서비스: admin-api, user-api, chat-gateway, iam-service, course-service, booking-service, saga-service, payment-service, partner-service, chat-service, notify-service, agent-service, weather-service, location-service, job-service
+15개 서비스: admin-api, user-api, chat-gateway, iam-service, club-service, booking-service, saga-service, payment-service, partner-service, chat-service, notify-service, agent-service, weather-service, location-service, job-service
 
 ### cd-apps.yml
 

@@ -21,7 +21,7 @@ export class CourseNatsController {
     this.logger.debug(`NATS ping received: ${payload.timestamp}`);
     return NatsResponse.success({
       pong: true,
-      service: 'course-service',
+      service: 'club-service',
       timestamp: new Date().toISOString(),
       receivedAt: payload.timestamp,
     });

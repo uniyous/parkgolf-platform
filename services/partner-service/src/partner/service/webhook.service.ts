@@ -13,7 +13,7 @@ import * as crypto from 'crypto';
  * - booking.created: 외부 예약 생성 → booking-service에 전파
  * - booking.cancelled: 외부 예약 취소 → booking-service에 전파
  * - booking.updated: 외부 예약 변경 → BookingMapping 업데이트
- * - slot.updated: 외부 슬롯 변경 → course-service에 externalBooked 업데이트
+ * - slot.updated: 외부 슬롯 변경 → club-service에 externalBooked 업데이트
  */
 @Injectable()
 export class WebhookService {
@@ -23,7 +23,7 @@ export class WebhookService {
     private readonly prisma: PrismaService,
     private readonly cryptoService: CryptoService,
     @Inject('BOOKING_SERVICE') private readonly bookingClient: ClientProxy,
-    @Inject('COURSE_SERVICE') private readonly courseClient: ClientProxy,
+    @Inject('CLUB_SERVICE') private readonly courseClient: ClientProxy,
   ) {}
 
   /**
@@ -290,7 +290,7 @@ export class WebhookService {
   }
 
   /**
-   * 외부 슬롯 변경 → course-service externalBooked 업데이트
+   * 외부 슬롯 변경 → club-service externalBooked 업데이트
    */
   private async handleSlotUpdated(
     partnerId: number,
@@ -322,7 +322,7 @@ export class WebhookService {
       },
     });
 
-    // course-service에 externalBooked 업데이트
+    // club-service에 externalBooked 업데이트
     try {
       await firstValueFrom(
         this.courseClient.send('slot.updateExternalBooked', {

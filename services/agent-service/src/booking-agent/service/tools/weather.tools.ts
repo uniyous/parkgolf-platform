@@ -9,7 +9,7 @@ export class WeatherTools {
   private readonly logger = new Logger(WeatherTools.name);
 
   constructor(
-    @Inject('COURSE_SERVICE') private readonly courseClient: ClientProxy,
+    @Inject('CLUB_SERVICE') private readonly courseClient: ClientProxy,
     @Inject('WEATHER_SERVICE') private readonly weatherClient: ClientProxy,
     @Inject('LOCATION_SERVICE') private readonly locationClient: ClientProxy,
   ) {}

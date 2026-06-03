@@ -533,7 +533,7 @@ temp/
 # Services Folder Exclusions (Monorepo)
 # ========================================
 
-# Node.js services (admin-api, auth-service, course-service, booking-service, notify-service, search-service, user-api)
+# Node.js services (admin-api, auth-service, club-service, booking-service, notify-service, search-service, user-api)
 services/*/node_modules/
 services/*/dist/
 services/*/build/

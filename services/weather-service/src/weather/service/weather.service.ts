@@ -26,7 +26,7 @@ export class WeatherService {
     private readonly coordinateConverter: CoordinateConverter,
     private readonly cacheService: WeatherCacheService,
     private readonly kmaApi: KmaApiService,
-    @Inject('COURSE_SERVICE') private readonly courseClient: ClientProxy,
+    @Inject('CLUB_SERVICE') private readonly courseClient: ClientProxy,
   ) {}
 
   /**
@@ -146,7 +146,7 @@ export class WeatherService {
     let lon: number;
 
     if (request.clubId) {
-      // course-service에서 골프장 좌표 조회
+      // club-service에서 골프장 좌표 조회
       const club = await this.getClubLocation(request.clubId);
       lat = club.lat;
       lon = club.lon;

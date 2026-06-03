@@ -33,7 +33,7 @@
 |--------|------|-------------|
 | **booking-service** | 예약 도메인, 팀 선정, 그룹 예약, Saga Step 핸들러 | booking_db |
 | **saga-service** | Saga 오케스트레이션 (예약 생성/취소/환불) | saga_db |
-| **course-service** | 타임슬롯 관리, 슬롯 예약/해제 | course_db |
+| **club-service** | 타임슬롯 관리, 슬롯 예약/해제 | club_db |
 | **iam-service** | 인증/사용자/CompanyMember 관리 | iam_db |
 | **user-api** | BFF, 클라이언트 요청 처리 | - |
 | **payment-service** | 결제 준비/승인/취소, 더치페이 분할결제 | payment_db |
@@ -75,7 +75,7 @@ flowchart TB
     subgraph "Microservices"
         SAGA[saga-service]
         C[booking-service]
-        D[course-service]
+        D[club-service]
         P[payment-service]
         IAM[iam-service]
         E[notify-service]
@@ -88,7 +88,7 @@ flowchart TB
 
     subgraph "Databases"
         F[(booking_db)]
-        G[(course_db)]
+        G[(club_db)]
         H[(payment_db)]
         I[(iam_db)]
     end
@@ -339,11 +339,11 @@ flowchart TB
 |------|------|--------|-----|------|
 | **API Level** | booking-service | PostgreSQL (idempotency_keys) | 24시간 | 클라이언트 중복 요청 방지 |
 | **Outbox Level** | booking-service | PostgreSQL (outbox_events) | - | 이벤트 중복 발행 방지 |
-| **Saga Level** | course-service | PostgreSQL (processed_slot_reservations) | 60초 | 슬롯 중복 예약 방지 |
-| **DB Level** | course-service | PostgreSQL (game_time_slots.version) | - | 동시성 제어 (Optimistic Lock) |
+| **Saga Level** | club-service | PostgreSQL (processed_slot_reservations) | 60초 | 슬롯 중복 예약 방지 |
+| **DB Level** | club-service | PostgreSQL (game_time_slots.version) | - | 동시성 제어 (Optimistic Lock) |
 | **Payment Level** | payment-service | PostgreSQL (payments.orderId, payments.bookingId) | - | 중복 결제 방지 |
 
-### 4.3 Saga 레벨 멱등성 (course-service)
+### 4.3 Saga 레벨 멱등성 (club-service)
 
 ```typescript
 // game-time-slot.service.ts
@@ -395,7 +395,7 @@ WHERE id = :slotId AND version = :currentVersion;
 ### 5.2 재시도 로직
 
 ```typescript
-// course-service: 최대 3회 재시도, 지수 백오프
+// club-service: 최대 3회 재시도, 지수 백오프
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 50;
 
@@ -439,7 +439,7 @@ flowchart LR
         E[Idempotency TTL: 24시간]
     end
 
-    subgraph "course-service"
+    subgraph "club-service"
         F[TX Timeout: 30초]
         G[TX MaxWait: 10초]
         H[Lock Retry: 3회]
@@ -513,7 +513,7 @@ sequenceDiagram
     participant API as API
     participant BS as booking-service
     participant DB as booking-db
-    participant CS as course-service
+    participant CS as club-service
     participant NS as notify-service
 
     User->>API: 취소 요청 (bookingId, reason)
@@ -540,7 +540,7 @@ sequenceDiagram
 ```
 
 > **참고**: 현장결제 취소는 Outbox를 사용하지 않고 **Direct NATS Emit**으로 처리합니다.
-> 로컬 `GameTimeSlotCache`는 트랜잭션 내에서 즉시 복원하고, course-service에는 비동기 emit으로 알립니다.
+> 로컬 `GameTimeSlotCache`는 트랜잭션 내에서 즉시 복원하고, club-service에는 비동기 emit으로 알립니다.
 
 ### 7.3 취소 프로세스 (카드결제 — 환불 포함)
 
@@ -552,7 +552,7 @@ sequenceDiagram
     participant BS as booking-service
     participant DB1 as booking-db
     participant NATS as NATS
-    participant CS as course-service
+    participant CS as club-service
     participant PS as payment-service
     participant TOSS as 토스페이먼츠
     participant NS as notify-service
@@ -602,7 +602,7 @@ sequenceDiagram
 ### 7.5 슬롯 해제 (Compensation)
 
 ```typescript
-// course-service: releaseSlotForSaga
+// club-service: releaseSlotForSaga
 async releaseSlotForSaga(timeSlotId: number, playerCount: number) {
   return await this.prisma.$transaction(async (tx) => {
     const slot = await tx.gameTimeSlot.findUnique({
@@ -741,7 +741,7 @@ SYSTEM           // 시스템 취소 (Saga 실패 등)
 |------|--------|------|
 | `[REQ-xxx]` | booking-service | 요청 추적 ID |
 | `[booking.saga.*]` | booking-service | Saga Step 핸들러 처리 |
-| `[Saga]` | course-service | 슬롯 예약 처리 |
+| `[Saga]` | club-service | 슬롯 예약 처리 |
 | `[Payment]` | payment-service | 결제 처리 |
 
 ### 8.2 K8s 디버깅
@@ -899,7 +899,7 @@ sequenceDiagram
     participant BS as booking-service
     participant DB as booking-db
     participant NATS as NATS
-    participant CS as course-service
+    participant CS as club-service
 
     Note over Agent: TeamSelection READY 상태
 
@@ -1121,7 +1121,7 @@ async expirePendingSplits() {
 | 버전 | 날짜 | 변경 내용 |
 |------|------|----------|
 | 6.0 | 2026-03-09 | **Saga 분리**: saga-service 독립 마이크로서비스 분리에 따라 Saga 트랜잭션 내용을 [SAGA.md](./SAGA.md)로 이관, booking-service는 Saga Step 핸들러 역할로 재정의, 섹션 재번호 매김 |
-| 5.2 | 2026-03-04 | **Saga 아키텍처 변경**: course-service fire-and-forget emit(`slot.reserved`/`slot.reserve.failed`/`slot.released`) 제거 → OutboxProcessor Request-Reply 응답 수신 후 SagaHandler 직접 호출, `booking.settlementStatus` NATS 패턴 추가 (allPaid SSOT), 정산 allPaid 공식 통일 |
+| 5.2 | 2026-03-04 | **Saga 아키텍처 변경**: club-service fire-and-forget emit(`slot.reserved`/`slot.reserve.failed`/`slot.released`) 제거 → OutboxProcessor Request-Reply 응답 수신 후 SagaHandler 직접 호출, `booking.settlementStatus` NATS 패턴 추가 (allPaid SSOT), 정산 allPaid 공식 통일 |
 | 5.1 | 2026-03-03 | **문서 현행화**: action: CREATED→SAGA_STARTED 수정, Saga 분기 코드 실제 구현 반영(isOnsitePayment 패턴), 취소 프로세스 Outbox→Direct Emit 수정(slot.release는 직접 emit), Section 8.4 파일 참조 saga-handler.service.ts로 수정, 로그 예시 실제 형식 반영, TeamSelectionService 컴포넌트 다이어그램 추가 |
 | 5.0 | 2026-03-03 | **그룹 예약 리팩토링**: BookingGroup 테이블 제거 → TeamSelection/TeamSelectionMember로 팀 선정 분리, Booking에 groupId/teamSelectionId 흡수, 정산 상태 파생(조회 시 계산), 3-Phase 구조(팀 선정 → 부킹 → 결제) |
 | 4.0 | 2026-03-03 | 그룹 예약(BookingGroup, BookingParticipant) 섹션 추가, 더치페이(PaymentSplit) 분할결제 섹션 추가, Outbox 즉시 트리거·이벤트 라우팅·Request-Reply 패턴 문서화, 누락 상수 추가 (PROCESSING_LOCK_MS, NATS_RETRY_COUNT, PAYMENT_SEND_TIMEOUT, SPLIT_EXPIRATION), 새 상태 enum 추가 (SettlementStatus, ParticipantStatus, SplitStatus) |

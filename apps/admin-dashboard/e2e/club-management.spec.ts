@@ -6,7 +6,7 @@ test.setTimeout(60000);
 /**
  * 골프장 관리 E2E 테스트 (강화 버전)
  *
- * API: admin-api -> NATS -> course-service
+ * API: admin-api -> NATS -> club-service
  * - course.clubs.list, course.clubs.getById, etc.
  * - course.courses.*, course.holes.*
  *

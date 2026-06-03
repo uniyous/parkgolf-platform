@@ -1,7 +1,7 @@
 {
-  "name": "parkgolf-course-service",
+  "name": "parkgolf-club-service",
   "version": "0.0.1",
-  "description": "parkgolf-course-service - NestJS microservice",
+  "description": "parkgolf-club-service - NestJS microservice",
   "author": "Parkgolf Team",
   "private": true,
   "license": "UNLICENSED",
