@@ -1,6 +1,8 @@
 import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { eq } from 'drizzle-orm';
+import { DrizzleService } from '../../db/drizzle.service';
+import { bookings, bookingHistory } from '../../db/schema';
 
 /**
  * Saga 이벤트 후속 처리 서비스
@@ -12,9 +14,13 @@ export class SagaHandlerService {
   private readonly logger = new Logger(SagaHandlerService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly drizzle: DrizzleService,
     @Optional() @Inject('NOTIFICATION_SERVICE') private readonly notificationPublisher?: ClientProxy,
   ) {}
+
+  private get db() {
+    return this.drizzle.db;
+  }
 
   /**
    * 결제 취소(환불) 완료 처리
@@ -32,9 +38,7 @@ export class SagaHandlerService {
     this.logger.log(`[SagaHandler] bookingId=${data.bookingId}, paymentId=${data.paymentId}, cancelAmount=${data.cancelAmount}`);
 
     try {
-      const booking = await this.prisma.booking.findUnique({
-        where: { id: data.bookingId },
-      });
+      const [booking] = await this.db.select().from(bookings).where(eq(bookings.id, data.bookingId)).limit(1);
 
       if (!booking) {
         this.logger.error(`[SagaHandler] Booking ${data.bookingId} NOT FOUND for payment.canceled event`);
@@ -42,17 +46,15 @@ export class SagaHandlerService {
       }
 
       // BookingHistory에 환불 완료 기록
-      await this.prisma.bookingHistory.create({
-        data: {
-          bookingId: data.bookingId,
-          action: 'REFUND_COMPLETED',
-          userId: booking.userId,
-          details: {
-            paymentId: data.paymentId,
-            paymentKey: data.paymentKey,
-            cancelAmount: data.cancelAmount,
-            refundedAt: new Date().toISOString(),
-          },
+      await this.db.insert(bookingHistory).values({
+        bookingId: data.bookingId,
+        action: 'REFUND_COMPLETED',
+        userId: booking.userId!,
+        details: {
+          paymentId: data.paymentId,
+          paymentKey: data.paymentKey,
+          cancelAmount: data.cancelAmount,
+          refundedAt: new Date().toISOString(),
         },
       });
 

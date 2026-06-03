@@ -1,6 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, IsEnum } from 'class-validator';
-import { Booking, BookingStatus, Payment, BookingHistory, BookingParticipant, GameTimeSlotCache } from '@prisma/client';
+import { BookingStatus } from '../../contracts/enums';
+import type {
+  Booking,
+  Payment,
+  BookingHistoryRow as BookingHistory,
+  BookingParticipantRow as BookingParticipant,
+  GameTimeSlotCacheRow as GameTimeSlotCache,
+} from '../../db/schema';
 
 /** Booking 엔티티 타입 (관계 포함) */
 export type BookingWithRelations = Booking & {

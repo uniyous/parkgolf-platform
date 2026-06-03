@@ -1,8 +1,13 @@
 import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout, catchError } from 'rxjs';
-import { PrismaService } from '../../../prisma/prisma.service';
-import { BookingStatus, TimeSlotCacheStatus, OutboxStatus, ParticipantRole, ParticipantStatus } from '@prisma/client';
+import { eq, and, lt, gt, inArray, desc, sql } from 'drizzle-orm';
+import { DrizzleService, type DrizzleTx } from '../../db/drizzle.service';
+import {
+  bookings, bookingHistory, bookingParticipants, gameCache, gameTimeSlotCache,
+  bookingOutboxEvents, idempotencyKeys, teamSelectionMembers,
+} from '../../db/schema';
+import { BookingStatus, TimeSlotCacheStatus, OutboxStatus, ParticipantRole, ParticipantStatus } from '../../contracts/enums';
 import { AppException } from '../../common/exceptions/app.exception';
 import { Errors } from '../../common/exceptions/catalog/error-catalog';
 
@@ -20,9 +25,13 @@ export class BookingSagaStepService {
   private readonly logger = new Logger(BookingSagaStepService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly drizzle: DrizzleService,
     @Optional() @Inject('CLUB_SERVICE') private readonly courseClient?: ClientProxy,
   ) {}
+
+  private get db() {
+    return this.drizzle.db;
+  }
 
   /**
    * 예약 레코드 생성 (PENDING 상태)
@@ -51,23 +60,15 @@ export class BookingSagaStepService {
 
     // 멱등성 체크
     if (dto.idempotencyKey) {
-      const existing = await this.prisma.idempotencyKey.findUnique({
-        where: { key: dto.idempotencyKey },
-      });
-      if (existing) {
-        const booking = await this.prisma.booking.findUnique({
-          where: { id: parseInt(existing.aggregateId) },
-        });
-        if (booking) {
-          return this.toSagaResponse(booking);
-        }
+      const [existing] = await this.db.select().from(idempotencyKeys).where(eq(idempotencyKeys.key, dto.idempotencyKey)).limit(1);
+      if (existing?.aggregateId) {
+        const [booking] = await this.db.select().from(bookings).where(eq(bookings.id, parseInt(existing.aggregateId))).limit(1);
+        if (booking) return this.toSagaResponse(booking);
       }
     }
 
     // 슬롯 캐시에서 게임 정보 조회 (미스 시 club-service에서 동기화)
-    let slotCache = await this.prisma.gameTimeSlotCache.findUnique({
-      where: { gameTimeSlotId: dto.gameTimeSlotId },
-    });
+    let [slotCache] = await this.db.select().from(gameTimeSlotCache).where(eq(gameTimeSlotCache.gameTimeSlotId, dto.gameTimeSlotId)).limit(1);
 
     if (!slotCache) {
       slotCache = await this.fetchAndCacheSlot(dto.gameTimeSlotId);
@@ -83,15 +84,13 @@ export class BookingSagaStepService {
 
     // 동일 유저 + 동일 날짜 + 시간 중복 체크
     if (dto.userId) {
-      const overlapping = await this.prisma.booking.findFirst({
-        where: {
-          userId: dto.userId,
-          bookingDate: slotCache.date,
-          status: { in: [BookingStatus.PENDING, BookingStatus.SLOT_RESERVED, BookingStatus.CONFIRMED] },
-          startTime: { lt: slotCache.endTime },
-          endTime: { gt: slotCache.startTime },
-        },
-      });
+      const [overlapping] = await this.db.select().from(bookings).where(and(
+        eq(bookings.userId, dto.userId),
+        eq(bookings.bookingDate, slotCache.date),
+        inArray(bookings.status, [BookingStatus.PENDING, BookingStatus.SLOT_RESERVED, BookingStatus.CONFIRMED]),
+        lt(bookings.startTime, slotCache.endTime),
+        gt(bookings.endTime, slotCache.startTime),
+      )).limit(1);
 
       if (overlapping) {
         throw new AppException(Errors.Booking.TIME_OVERLAP,
@@ -99,9 +98,7 @@ export class BookingSagaStepService {
       }
     }
 
-    let gameInfo = await this.prisma.gameCache.findUnique({
-      where: { gameId: slotCache.gameId },
-    });
+    let [gameInfo] = await this.db.select().from(gameCache).where(eq(gameCache.gameId, slotCache.gameId)).limit(1);
 
     if (!gameInfo) {
       gameInfo = await this.fetchAndCacheGame(slotCache.gameId);
@@ -119,66 +116,60 @@ export class BookingSagaStepService {
     const idempotencyKeyExpiry = new Date();
     idempotencyKeyExpiry.setHours(idempotencyKeyExpiry.getHours() + 24);
 
-    const booking = await this.prisma.$transaction(async (prisma) => {
-      const newBooking = await prisma.booking.create({
-        data: {
-          gameTimeSlotId: dto.gameTimeSlotId,
-          gameId: slotCache.gameId,
-          gameName: slotCache.gameName,
-          gameCode: slotCache.gameCode,
-          frontNineCourseId: gameInfo.frontNineCourseId,
-          frontNineCourseName: gameInfo.frontNineCourseName,
-          backNineCourseId: gameInfo.backNineCourseId,
-          backNineCourseName: gameInfo.backNineCourseName,
-          bookingDate: slotCache.date,
-          startTime: slotCache.startTime,
-          endTime: slotCache.endTime,
-          clubId: slotCache.clubId,
-          clubName: slotCache.clubName,
-          userId: dto.userId,
-          playerCount: dto.playerCount,
-          pricePerPerson,
-          serviceFee,
-          totalPrice,
-          status: BookingStatus.PENDING,
-          paymentMethod: dto.paymentMethod,
-          specialRequests: dto.specialRequests,
-          bookingNumber,
-          idempotencyKey: dto.idempotencyKey,
-          userEmail: dto.userEmail,
-          userName: dto.userName,
-          userPhone: dto.userPhone,
-          groupId: dto.groupId,
-          teamNumber: dto.teamNumber,
-          teamSelectionId: dto.teamSelectionId,
-        },
-      });
+    const booking = await this.db.transaction(async (tx) => {
+      const [newBooking] = await tx.insert(bookings).values({
+        gameTimeSlotId: dto.gameTimeSlotId,
+        gameId: slotCache.gameId,
+        gameName: slotCache.gameName,
+        gameCode: slotCache.gameCode,
+        frontNineCourseId: gameInfo.frontNineCourseId,
+        frontNineCourseName: gameInfo.frontNineCourseName,
+        backNineCourseId: gameInfo.backNineCourseId,
+        backNineCourseName: gameInfo.backNineCourseName,
+        bookingDate: slotCache.date,
+        startTime: slotCache.startTime,
+        endTime: slotCache.endTime,
+        clubId: slotCache.clubId,
+        clubName: slotCache.clubName,
+        userId: dto.userId,
+        playerCount: dto.playerCount,
+        pricePerPerson,
+        serviceFee,
+        totalPrice,
+        status: BookingStatus.PENDING,
+        paymentMethod: dto.paymentMethod,
+        specialRequests: dto.specialRequests,
+        bookingNumber,
+        idempotencyKey: dto.idempotencyKey,
+        userEmail: dto.userEmail,
+        userName: dto.userName,
+        userPhone: dto.userPhone,
+        groupId: dto.groupId,
+        teamNumber: dto.teamNumber,
+        teamSelectionId: dto.teamSelectionId,
+      }).returning();
 
       if (dto.idempotencyKey) {
-        await prisma.idempotencyKey.create({
-          data: {
-            key: dto.idempotencyKey,
-            aggregateType: 'Booking',
-            aggregateId: String(newBooking.id),
-            expiresAt: idempotencyKeyExpiry,
-          },
+        await tx.insert(idempotencyKeys).values({
+          key: dto.idempotencyKey,
+          aggregateType: 'Booking',
+          aggregateId: String(newBooking.id),
+          expiresAt: idempotencyKeyExpiry,
         });
       }
 
-      await prisma.bookingHistory.create({
-        data: {
-          bookingId: newBooking.id,
-          action: 'SAGA_STARTED',
-          userId: dto.userId,
-          details: {
-            playerCount: dto.playerCount,
-            totalPrice: totalPrice.toString(),
-            paymentMethod: dto.paymentMethod,
-            gameName: slotCache.gameName,
-            gameTimeSlotId: dto.gameTimeSlotId,
-            idempotencyKey: dto.idempotencyKey,
-            orchestrator: 'saga-service',
-          },
+      await tx.insert(bookingHistory).values({
+        bookingId: newBooking.id,
+        action: 'SAGA_STARTED',
+        userId: dto.userId,
+        details: {
+          playerCount: dto.playerCount,
+          totalPrice: totalPrice.toString(),
+          paymentMethod: dto.paymentMethod,
+          gameName: slotCache.gameName,
+          gameTimeSlotId: dto.gameTimeSlotId,
+          idempotencyKey: dto.idempotencyKey,
+          orchestrator: 'saga-service',
         },
       });
 
@@ -186,8 +177,8 @@ export class BookingSagaStepService {
       // booker는 BOOKER role, 나머지는 MEMBER role
       if (dto.paymentMethod === 'dutchpay' && Array.isArray(dto.teamMembers) && dto.teamMembers.length > 0) {
         const sharePerPerson = Math.round(totalPrice / dto.teamMembers.length);
-        await prisma.bookingParticipant.createMany({
-          data: dto.teamMembers.map((m) => ({
+        await tx.insert(bookingParticipants).values(
+          dto.teamMembers.map((m) => ({
             bookingId: newBooking.id,
             userId: m.userId,
             userName: m.userName || '',
@@ -196,8 +187,7 @@ export class BookingSagaStepService {
             status: ParticipantStatus.PENDING,
             amount: sharePerPerson,
           })),
-          skipDuplicates: true,
-        });
+        ).onConflictDoNothing();
       }
 
       return newBooking;
@@ -234,9 +224,7 @@ export class BookingSagaStepService {
     paymentMethod?: string;
     reservedAt: string;
   }) {
-    const booking = await this.prisma.booking.findUnique({
-      where: { id: data.bookingId },
-    });
+    const [booking] = await this.db.select().from(bookings).where(eq(bookings.id, data.bookingId)).limit(1);
 
     if (!booking) {
       throw new AppException(Errors.Booking.NOT_FOUND);
@@ -250,53 +238,43 @@ export class BookingSagaStepService {
     const isOnsitePayment = !booking.paymentMethod || booking.paymentMethod === 'onsite';
     const newStatus = isOnsitePayment ? BookingStatus.CONFIRMED : BookingStatus.SLOT_RESERVED;
 
-    await this.prisma.$transaction(async (prisma) => {
-      await prisma.booking.update({
-        where: { id: data.bookingId },
-        data: { status: newStatus },
-      });
+    await this.db.transaction(async (tx) => {
+      await tx.update(bookings).set({ status: newStatus }).where(eq(bookings.id, data.bookingId));
 
-      await prisma.bookingHistory.create({
-        data: {
-          bookingId: data.bookingId,
-          action: 'SLOT_RESERVED',
-          userId: booking.userId,
-          details: {
-            gameTimeSlotId: data.gameTimeSlotId,
-            playerCount: data.playerCount,
-            reservedAt: data.reservedAt,
-            paymentMethod: booking.paymentMethod,
-          },
+      await tx.insert(bookingHistory).values({
+        bookingId: data.bookingId,
+        action: 'SLOT_RESERVED',
+        userId: booking.userId!,
+        details: {
+          gameTimeSlotId: data.gameTimeSlotId,
+          playerCount: data.playerCount,
+          reservedAt: data.reservedAt,
+          paymentMethod: booking.paymentMethod,
         },
       });
 
       if (isOnsitePayment) {
-        await prisma.bookingHistory.create({
-          data: {
-            bookingId: data.bookingId,
-            action: 'CONFIRMED',
-            userId: booking.userId,
-            details: { confirmedAt: new Date().toISOString() },
-          },
+        await tx.insert(bookingHistory).values({
+          bookingId: data.bookingId,
+          action: 'CONFIRMED',
+          userId: booking.userId!,
+          details: { confirmedAt: new Date().toISOString() },
         });
 
         // 그룹 예약: BookingParticipant 자동 생성
         if (booking.teamSelectionId && booking.teamNumber) {
           await this.createParticipantsFromTeamSelection(
-            prisma, data.bookingId, booking.teamSelectionId, booking.teamNumber, Number(booking.pricePerPerson),
+            tx, data.bookingId, booking.teamSelectionId, booking.teamNumber, Number(booking.pricePerPerson),
           );
         }
       }
 
       // 로컬 캐시 업데이트
-      await prisma.gameTimeSlotCache.updateMany({
-        where: { gameTimeSlotId: data.gameTimeSlotId },
-        data: {
-          bookedPlayers: { increment: data.playerCount },
-          availablePlayers: { decrement: data.playerCount },
-          lastSyncAt: new Date(),
-        },
-      });
+      await tx.update(gameTimeSlotCache).set({
+        bookedPlayers: sql`${gameTimeSlotCache.bookedPlayers} + ${data.playerCount}`,
+        availablePlayers: sql`${gameTimeSlotCache.availablePlayers} - ${data.playerCount}`,
+        lastSyncAt: new Date(),
+      }).where(eq(gameTimeSlotCache.gameTimeSlotId, data.gameTimeSlotId));
     });
 
     this.logger.log(`Booking ${data.bookingId} → ${newStatus} via saga-service`);
@@ -315,9 +293,7 @@ export class BookingSagaStepService {
     amount: number;
     userId: number;
   }) {
-    const booking = await this.prisma.booking.findUnique({
-      where: { id: data.bookingId },
-    });
+    const [booking] = await this.db.select().from(bookings).where(eq(bookings.id, data.bookingId)).limit(1);
 
     if (!booking) {
       throw new AppException(Errors.Booking.NOT_FOUND);
@@ -326,33 +302,29 @@ export class BookingSagaStepService {
     if (booking.status !== BookingStatus.SLOT_RESERVED) {
       // FAILED 상태에서 결제 도착 → 자동 환불 필요
       if (booking.status === BookingStatus.FAILED) {
-        await this.prisma.$transaction(async (prisma) => {
-          await prisma.bookingHistory.create({
-            data: {
-              bookingId: data.bookingId,
-              action: 'AUTO_REFUND_REQUESTED',
-              userId: booking.userId,
-              details: {
-                reason: 'Payment arrived after booking timeout',
-                paymentId: data.paymentId,
-                paymentKey: data.paymentKey,
-                amount: data.amount,
-                requestedAt: new Date().toISOString(),
-              },
+        await this.db.transaction(async (tx) => {
+          await tx.insert(bookingHistory).values({
+            bookingId: data.bookingId,
+            action: 'AUTO_REFUND_REQUESTED',
+            userId: booking.userId!,
+            details: {
+              reason: 'Payment arrived after booking timeout',
+              paymentId: data.paymentId,
+              paymentKey: data.paymentKey,
+              amount: data.amount,
+              requestedAt: new Date().toISOString(),
             },
           });
 
-          await prisma.bookingOutboxEvent.create({
-            data: {
-              aggregateType: 'Booking',
-              aggregateId: String(data.bookingId),
-              eventType: 'payment.cancelByBookingId',
-              payload: {
-                bookingId: data.bookingId,
-                cancelReason: 'Auto-refund: payment arrived after booking timeout',
-              } as any,
-              status: OutboxStatus.PENDING,
+          await tx.insert(bookingOutboxEvents).values({
+            aggregateType: 'Booking',
+            aggregateId: String(data.bookingId),
+            eventType: 'payment.cancelByBookingId',
+            payload: {
+              bookingId: data.bookingId,
+              cancelReason: 'Auto-refund: payment arrived after booking timeout',
             },
+            status: OutboxStatus.PENDING,
           });
         });
       }
@@ -375,42 +347,35 @@ export class BookingSagaStepService {
       };
     }
 
-    await this.prisma.$transaction(async (prisma) => {
-      await prisma.booking.update({
-        where: { id: data.bookingId },
-        data: { status: BookingStatus.CONFIRMED },
-      });
+    await this.db.transaction(async (tx) => {
+      await tx.update(bookings).set({ status: BookingStatus.CONFIRMED }).where(eq(bookings.id, data.bookingId));
 
-      await prisma.bookingHistory.create({
-        data: {
-          bookingId: data.bookingId,
-          action: 'PAYMENT_CONFIRMED',
-          userId: booking.userId,
-          details: {
-            paymentId: data.paymentId,
-            paymentKey: data.paymentKey,
-            orderId: data.orderId,
-            amount: data.amount,
-            confirmedAt: new Date().toISOString(),
-          },
+      await tx.insert(bookingHistory).values({
+        bookingId: data.bookingId,
+        action: 'PAYMENT_CONFIRMED',
+        userId: booking.userId!,
+        details: {
+          paymentId: data.paymentId,
+          paymentKey: data.paymentKey,
+          orderId: data.orderId,
+          amount: data.amount,
+          confirmedAt: new Date().toISOString(),
         },
       });
 
-      await prisma.bookingHistory.create({
-        data: {
-          bookingId: data.bookingId,
-          action: 'CONFIRMED',
-          userId: booking.userId,
-          details: {
-            confirmedAt: new Date().toISOString(),
-            paymentMethod: booking.paymentMethod,
-          },
+      await tx.insert(bookingHistory).values({
+        bookingId: data.bookingId,
+        action: 'CONFIRMED',
+        userId: booking.userId!,
+        details: {
+          confirmedAt: new Date().toISOString(),
+          paymentMethod: booking.paymentMethod,
         },
       });
 
       if (booking.teamSelectionId && booking.teamNumber) {
         await this.createParticipantsFromTeamSelection(
-          prisma, data.bookingId, booking.teamSelectionId, booking.teamNumber, Number(booking.pricePerPerson),
+          tx, data.bookingId, booking.teamSelectionId, booking.teamNumber, Number(booking.pricePerPerson),
         );
       }
     });
@@ -439,9 +404,7 @@ export class BookingSagaStepService {
     cancelledBy?: number;
     cancelledByType?: string;
   }) {
-    const booking = await this.prisma.booking.findUnique({
-      where: { id: data.bookingId },
-    });
+    const [booking] = await this.db.select().from(bookings).where(eq(bookings.id, data.bookingId)).limit(1);
 
     if (!booking) {
       throw new AppException(Errors.Booking.NOT_FOUND);
@@ -453,38 +416,30 @@ export class BookingSagaStepService {
 
     const previousStatus = booking.status;
 
-    await this.prisma.$transaction(async (prisma) => {
-      await prisma.booking.update({
-        where: { id: data.bookingId },
-        data: { status: BookingStatus.CANCELLED },
-      });
+    await this.db.transaction(async (tx) => {
+      await tx.update(bookings).set({ status: BookingStatus.CANCELLED }).where(eq(bookings.id, data.bookingId));
 
-      await prisma.bookingHistory.create({
-        data: {
-          bookingId: data.bookingId,
-          action: 'CANCELLED',
-          userId: booking.userId,
-          details: {
-            reason: data.cancelReason,
-            previousStatus,
-            cancelledBy: data.cancelledBy,
-            cancelledByType: data.cancelledByType,
-          },
+      await tx.insert(bookingHistory).values({
+        bookingId: data.bookingId,
+        action: 'CANCELLED',
+        userId: booking.userId!,
+        details: {
+          reason: data.cancelReason,
+          previousStatus,
+          cancelledBy: data.cancelledBy,
+          cancelledByType: data.cancelledByType,
         },
       });
 
       // 로컬 슬롯 캐시 가용성 복구
       if (booking.gameTimeSlotId) {
-        await prisma.gameTimeSlotCache.updateMany({
-          where: { gameTimeSlotId: booking.gameTimeSlotId },
-          data: {
-            bookedPlayers: { decrement: booking.playerCount },
-            availablePlayers: { increment: booking.playerCount },
-            isAvailable: true,
-            status: TimeSlotCacheStatus.AVAILABLE,
-            lastSyncAt: new Date(),
-          },
-        });
+        await tx.update(gameTimeSlotCache).set({
+          bookedPlayers: sql`${gameTimeSlotCache.bookedPlayers} - ${booking.playerCount}`,
+          availablePlayers: sql`${gameTimeSlotCache.availablePlayers} + ${booking.playerCount}`,
+          isAvailable: true,
+          status: TimeSlotCacheStatus.AVAILABLE,
+          lastSyncAt: new Date(),
+        }).where(eq(gameTimeSlotCache.gameTimeSlotId, booking.gameTimeSlotId));
       }
     });
 
@@ -511,9 +466,7 @@ export class BookingSagaStepService {
     adminNote?: string;
     adminId?: number;
   }) {
-    const booking = await this.prisma.booking.findUnique({
-      where: { id: data.bookingId },
-    });
+    const [booking] = await this.db.select().from(bookings).where(eq(bookings.id, data.bookingId)).limit(1);
 
     if (!booking) {
       throw new AppException(Errors.Booking.NOT_FOUND);
@@ -521,38 +474,30 @@ export class BookingSagaStepService {
 
     const previousStatus = booking.status;
 
-    await this.prisma.$transaction(async (prisma) => {
-      await prisma.booking.update({
-        where: { id: data.bookingId },
-        data: { status: BookingStatus.CANCELLED },
-      });
+    await this.db.transaction(async (tx) => {
+      await tx.update(bookings).set({ status: BookingStatus.CANCELLED }).where(eq(bookings.id, data.bookingId));
 
-      await prisma.bookingHistory.create({
-        data: {
-          bookingId: data.bookingId,
-          action: 'ADMIN_CANCEL_REQUESTED',
-          userId: booking.userId,
-          details: {
-            reason: data.cancelReason,
-            adminNote: data.adminNote,
-            adminId: data.adminId,
-            previousStatus,
-          },
+      await tx.insert(bookingHistory).values({
+        bookingId: data.bookingId,
+        action: 'ADMIN_CANCEL_REQUESTED',
+        userId: booking.userId!,
+        details: {
+          reason: data.cancelReason,
+          adminNote: data.adminNote,
+          adminId: data.adminId,
+          previousStatus,
         },
       });
 
       // 로컬 슬롯 캐시 가용성 복구
       if (booking.gameTimeSlotId) {
-        await prisma.gameTimeSlotCache.updateMany({
-          where: { gameTimeSlotId: booking.gameTimeSlotId },
-          data: {
-            bookedPlayers: { decrement: booking.playerCount },
-            availablePlayers: { increment: booking.playerCount },
-            isAvailable: true,
-            status: TimeSlotCacheStatus.AVAILABLE,
-            lastSyncAt: new Date(),
-          },
-        });
+        await tx.update(gameTimeSlotCache).set({
+          bookedPlayers: sql`${gameTimeSlotCache.bookedPlayers} - ${booking.playerCount}`,
+          availablePlayers: sql`${gameTimeSlotCache.availablePlayers} + ${booking.playerCount}`,
+          isAvailable: true,
+          status: TimeSlotCacheStatus.AVAILABLE,
+          lastSyncAt: new Date(),
+        }).where(eq(gameTimeSlotCache.gameTimeSlotId, booking.gameTimeSlotId));
       }
     });
 
@@ -576,22 +521,17 @@ export class BookingSagaStepService {
     cancelAmount?: number;
     adminId?: number;
   }) {
-    const booking = await this.prisma.booking.findUnique({
-      where: { id: data.bookingId },
-      select: { userId: true },
-    });
+    const [booking] = await this.db.select({ userId: bookings.userId }).from(bookings).where(eq(bookings.id, data.bookingId)).limit(1);
 
-    await this.prisma.bookingHistory.create({
-      data: {
-        bookingId: data.bookingId,
-        action: 'REFUND_FINALIZED',
-        userId: booking?.userId || 0,
-        details: {
-          finalizedAt: new Date().toISOString(),
-          cancelAmount: data.cancelAmount,
-          adminId: data.adminId,
-          orchestrator: 'saga-service',
-        },
+    await this.db.insert(bookingHistory).values({
+      bookingId: data.bookingId,
+      action: 'REFUND_FINALIZED',
+      userId: booking?.userId || 0,
+      details: {
+        finalizedAt: new Date().toISOString(),
+        cancelAmount: data.cancelAmount,
+        adminId: data.adminId,
+        orchestrator: 'saga-service',
       },
     });
 
@@ -613,30 +553,22 @@ export class BookingSagaStepService {
       return { status: 'SKIPPED' };
     }
 
-    const booking = await this.prisma.booking.findUnique({
-      where: { id: bookingId },
-      select: { userId: true },
-    });
+    const [booking] = await this.db.select({ userId: bookings.userId }).from(bookings).where(eq(bookings.id, bookingId)).limit(1);
 
-    await this.prisma.$transaction(async (prisma) => {
-      await prisma.booking.update({
-        where: { id: bookingId },
-        data: {
-          status: BookingStatus.FAILED,
-          sagaFailReason: 'Saga compensation — booking creation rolled back',
-        },
-      });
+    await this.db.transaction(async (tx) => {
+      await tx.update(bookings).set({
+        status: BookingStatus.FAILED,
+        sagaFailReason: 'Saga compensation — booking creation rolled back',
+      }).where(eq(bookings.id, bookingId));
 
-      await prisma.bookingHistory.create({
-        data: {
-          bookingId,
-          action: 'SAGA_FAILED',
-          userId: booking?.userId || 0,
-          details: {
-            reason: 'Compensation rollback',
-            failedAt: new Date().toISOString(),
-            orchestrator: 'saga-service',
-          },
+      await tx.insert(bookingHistory).values({
+        bookingId,
+        action: 'SAGA_FAILED',
+        userId: booking?.userId || 0,
+        details: {
+          reason: 'Compensation rollback',
+          failedAt: new Date().toISOString(),
+          orchestrator: 'saga-service',
         },
       });
     });
@@ -656,39 +588,28 @@ export class BookingSagaStepService {
     cancelledByType?: string;
   }) {
     // 최근 CANCELLED/CANCEL_REQUESTED 히스토리에서 previousStatus 조회
-    const history = await this.prisma.bookingHistory.findFirst({
-      where: {
-        bookingId: data.bookingId,
-        action: { in: ['CANCELLED', 'CANCEL_REQUESTED'] },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const [history] = await this.db.select().from(bookingHistory).where(and(
+      eq(bookingHistory.bookingId, data.bookingId),
+      inArray(bookingHistory.action, ['CANCELLED', 'CANCEL_REQUESTED']),
+    )).orderBy(desc(bookingHistory.createdAt)).limit(1);
 
     const previousStatus = (history?.details as Record<string, unknown>)?.previousStatus as string;
     const restoreStatus = previousStatus || 'CONFIRMED';
 
-    const booking = await this.prisma.booking.findUnique({
-      where: { id: data.bookingId },
-      select: { userId: true },
-    });
+    const [booking] = await this.db.select({ userId: bookings.userId }).from(bookings).where(eq(bookings.id, data.bookingId)).limit(1);
 
-    await this.prisma.$transaction(async (prisma) => {
-      await prisma.booking.update({
-        where: { id: data.bookingId },
-        data: { status: restoreStatus as BookingStatus },
-      });
+    await this.db.transaction(async (tx) => {
+      await tx.update(bookings).set({ status: restoreStatus as BookingStatus }).where(eq(bookings.id, data.bookingId));
 
-      await prisma.bookingHistory.create({
-        data: {
-          bookingId: data.bookingId,
-          action: 'STATUS_RESTORED',
-          userId: booking?.userId || 0,
-          details: {
-            restoredTo: restoreStatus,
-            reason: 'Saga compensation rollback',
-            restoredAt: new Date().toISOString(),
-            orchestrator: 'saga-service',
-          },
+      await tx.insert(bookingHistory).values({
+        bookingId: data.bookingId,
+        action: 'STATUS_RESTORED',
+        userId: booking?.userId || 0,
+        details: {
+          restoredTo: restoreStatus,
+          reason: 'Saga compensation rollback',
+          restoredAt: new Date().toISOString(),
+          orchestrator: 'saga-service',
         },
       });
     });
@@ -705,48 +626,38 @@ export class BookingSagaStepService {
     bookingId: number;
     reason: string;
   }) {
-    const booking = await this.prisma.booking.findUnique({
-      where: { id: data.bookingId },
-    });
+    const [booking] = await this.db.select().from(bookings).where(eq(bookings.id, data.bookingId)).limit(1);
 
     if (!booking) {
       throw new AppException(Errors.Booking.NOT_FOUND);
     }
 
-    await this.prisma.$transaction(async (prisma) => {
-      await prisma.booking.update({
-        where: { id: data.bookingId },
-        data: {
-          status: BookingStatus.FAILED,
-          sagaFailReason: data.reason,
-        },
-      });
+    await this.db.transaction(async (tx) => {
+      await tx.update(bookings).set({
+        status: BookingStatus.FAILED,
+        sagaFailReason: data.reason,
+      }).where(eq(bookings.id, data.bookingId));
 
-      await prisma.bookingHistory.create({
-        data: {
-          bookingId: data.bookingId,
-          action: 'PAYMENT_TIMEOUT',
-          userId: booking.userId,
-          details: {
-            reason: data.reason,
-            timeoutAt: new Date().toISOString(),
-            orchestrator: 'saga-service',
-          },
+      await tx.insert(bookingHistory).values({
+        bookingId: data.bookingId,
+        action: 'PAYMENT_TIMEOUT',
+        userId: booking.userId!,
+        details: {
+          reason: data.reason,
+          timeoutAt: new Date().toISOString(),
+          orchestrator: 'saga-service',
         },
       });
 
       // 로컬 슬롯 캐시 가용성 복구
       if (booking.gameTimeSlotId) {
-        await prisma.gameTimeSlotCache.updateMany({
-          where: { gameTimeSlotId: booking.gameTimeSlotId },
-          data: {
-            bookedPlayers: { decrement: booking.playerCount },
-            availablePlayers: { increment: booking.playerCount },
-            isAvailable: true,
-            status: TimeSlotCacheStatus.AVAILABLE,
-            lastSyncAt: new Date(),
-          },
-        });
+        await tx.update(gameTimeSlotCache).set({
+          bookedPlayers: sql`${gameTimeSlotCache.bookedPlayers} - ${booking.playerCount}`,
+          availablePlayers: sql`${gameTimeSlotCache.availablePlayers} + ${booking.playerCount}`,
+          isAvailable: true,
+          status: TimeSlotCacheStatus.AVAILABLE,
+          lastSyncAt: new Date(),
+        }).where(eq(gameTimeSlotCache.gameTimeSlotId, booking.gameTimeSlotId));
       }
     });
 
@@ -766,21 +677,18 @@ export class BookingSagaStepService {
   async findExpiredSlotReservedBookings(timeoutMinutes: number) {
     const threshold = new Date(Date.now() - timeoutMinutes * 60 * 1000);
 
-    const expired = await this.prisma.booking.findMany({
-      where: {
-        status: BookingStatus.SLOT_RESERVED,
-        createdAt: { lt: threshold },
-      },
-      select: {
-        id: true,
-        bookingNumber: true,
-        gameTimeSlotId: true,
-        playerCount: true,
-        userId: true,
-        clubId: true,
-        paymentMethod: true,
-      },
-    });
+    const expired = await this.db.select({
+      id: bookings.id,
+      bookingNumber: bookings.bookingNumber,
+      gameTimeSlotId: bookings.gameTimeSlotId,
+      playerCount: bookings.playerCount,
+      userId: bookings.userId,
+      clubId: bookings.clubId,
+      paymentMethod: bookings.paymentMethod,
+    }).from(bookings).where(and(
+      eq(bookings.status, BookingStatus.SLOT_RESERVED),
+      lt(bookings.createdAt, threshold),
+    ));
 
     return expired;
   }
@@ -805,65 +713,57 @@ export class BookingSagaStepService {
     pricePerPerson?: number;
   }) {
     // 중복 체크
-    const existing = await this.prisma.booking.findUnique({
-      where: { externalBookingId: data.externalBookingId },
-    });
+    const [existing] = await this.db.select().from(bookings).where(eq(bookings.externalBookingId, data.externalBookingId)).limit(1);
     if (existing) {
       this.logger.warn(`External booking ${data.externalBookingId} already exists (id=${existing.id})`);
-      return this.toSagaResponse(existing as unknown as Record<string, unknown>);
+      return this.toSagaResponse(existing);
     }
 
     const bookingNumber = this.generateBookingNumber();
     const pricePerPerson = data.pricePerPerson ?? 0;
     const totalPrice = pricePerPerson * data.playerCount;
 
-    const booking = await this.prisma.$transaction(async (prisma) => {
-      const newBooking = await prisma.booking.create({
-        data: {
-          gameTimeSlotId: data.gameTimeSlotId,
-          gameId: data.gameId,
-          gameName: data.gameName,
-          bookingDate: new Date(data.bookingDate),
-          startTime: data.startTime,
-          endTime: data.endTime || '',
-          clubId: data.clubId,
-          clubName: data.clubName,
-          guestName: data.playerName,
-          guestPhone: data.playerPhone,
-          playerCount: data.playerCount,
-          pricePerPerson,
-          serviceFee: 0,
-          totalPrice,
-          status: BookingStatus.CONFIRMED,
+    const booking = await this.db.transaction(async (tx) => {
+      const [newBooking] = await tx.insert(bookings).values({
+        gameTimeSlotId: data.gameTimeSlotId,
+        gameId: data.gameId,
+        gameName: data.gameName,
+        bookingDate: new Date(data.bookingDate),
+        startTime: data.startTime,
+        endTime: data.endTime || '',
+        clubId: data.clubId,
+        clubName: data.clubName,
+        guestName: data.playerName,
+        guestPhone: data.playerPhone,
+        playerCount: data.playerCount,
+        pricePerPerson,
+        serviceFee: 0,
+        totalPrice,
+        status: BookingStatus.CONFIRMED,
+        source: 'PARTNER',
+        externalBookingId: data.externalBookingId,
+        paymentMethod: 'onsite',
+        bookingNumber,
+      }).returning();
+
+      await tx.insert(bookingHistory).values({
+        bookingId: newBooking.id,
+        action: 'CREATED',
+        userId: 0,
+        details: {
           source: 'PARTNER',
           externalBookingId: data.externalBookingId,
-          paymentMethod: 'onsite',
-          bookingNumber,
+          createdAt: new Date().toISOString(),
         },
       });
 
-      await prisma.bookingHistory.create({
-        data: {
-          bookingId: newBooking.id,
-          action: 'CREATED',
-          userId: 0,
-          details: {
-            source: 'PARTNER',
-            externalBookingId: data.externalBookingId,
-            createdAt: new Date().toISOString(),
-          },
-        },
-      });
-
-      await prisma.bookingHistory.create({
-        data: {
-          bookingId: newBooking.id,
-          action: 'CONFIRMED',
-          userId: 0,
-          details: {
-            source: 'PARTNER',
-            confirmedAt: new Date().toISOString(),
-          },
+      await tx.insert(bookingHistory).values({
+        bookingId: newBooking.id,
+        action: 'CONFIRMED',
+        userId: 0,
+        details: {
+          source: 'PARTNER',
+          confirmedAt: new Date().toISOString(),
         },
       });
 
@@ -871,7 +771,7 @@ export class BookingSagaStepService {
     });
 
     this.logger.log(`External booking created: ${booking.bookingNumber} (externalId=${data.externalBookingId})`);
-    return this.toSagaResponse(booking as unknown as Record<string, unknown>);
+    return this.toSagaResponse(booking);
   }
 
   /**
@@ -881,9 +781,7 @@ export class BookingSagaStepService {
     externalBookingId: string;
     cancelReason?: string;
   }) {
-    const booking = await this.prisma.booking.findUnique({
-      where: { externalBookingId: data.externalBookingId },
-    });
+    const [booking] = await this.db.select().from(bookings).where(eq(bookings.externalBookingId, data.externalBookingId)).limit(1);
 
     if (!booking) {
       this.logger.warn(`External booking ${data.externalBookingId} not found`);
@@ -894,38 +792,30 @@ export class BookingSagaStepService {
       return { status: 'ALREADY_CANCELLED', bookingId: booking.id };
     }
 
-    await this.prisma.$transaction(async (prisma) => {
-      await prisma.booking.update({
-        where: { id: booking.id },
-        data: { status: BookingStatus.CANCELLED },
-      });
+    await this.db.transaction(async (tx) => {
+      await tx.update(bookings).set({ status: BookingStatus.CANCELLED }).where(eq(bookings.id, booking.id));
 
-      await prisma.bookingHistory.create({
-        data: {
-          bookingId: booking.id,
-          action: 'CANCELLED',
-          userId: 0,
-          details: {
-            reason: data.cancelReason || '외부 시스템 취소',
-            source: 'PARTNER',
-            previousStatus: booking.status,
-            cancelledAt: new Date().toISOString(),
-          },
+      await tx.insert(bookingHistory).values({
+        bookingId: booking.id,
+        action: 'CANCELLED',
+        userId: 0,
+        details: {
+          reason: data.cancelReason || '외부 시스템 취소',
+          source: 'PARTNER',
+          previousStatus: booking.status,
+          cancelledAt: new Date().toISOString(),
         },
       });
 
       // 로컬 슬롯 캐시 가용성 복구
       if (booking.gameTimeSlotId) {
-        await prisma.gameTimeSlotCache.updateMany({
-          where: { gameTimeSlotId: booking.gameTimeSlotId },
-          data: {
-            bookedPlayers: { decrement: booking.playerCount },
-            availablePlayers: { increment: booking.playerCount },
-            isAvailable: true,
-            status: TimeSlotCacheStatus.AVAILABLE,
-            lastSyncAt: new Date(),
-          },
-        });
+        await tx.update(gameTimeSlotCache).set({
+          bookedPlayers: sql`${gameTimeSlotCache.bookedPlayers} - ${booking.playerCount}`,
+          availablePlayers: sql`${gameTimeSlotCache.availablePlayers} + ${booking.playerCount}`,
+          isAvailable: true,
+          status: TimeSlotCacheStatus.AVAILABLE,
+          lastSyncAt: new Date(),
+        }).where(eq(gameTimeSlotCache.gameTimeSlotId, booking.gameTimeSlotId));
       }
     });
 
@@ -986,38 +876,30 @@ export class BookingSagaStepService {
   }
 
   private async createParticipantsFromTeamSelection(
-    prisma: unknown,
+    tx: DrizzleTx,
     bookingId: number,
     teamSelectionId: number,
     teamNumber: number,
     pricePerPerson: number,
   ): Promise<void> {
-    const tx = prisma as {
-      teamSelectionMember: { findMany: (args: unknown) => Promise<Array<{ userId: number; userName: string; userEmail: string; role: string }>> };
-      bookingParticipant: { upsert: (args: unknown) => Promise<unknown> };
-    };
-
-    const members = await tx.teamSelectionMember.findMany({
-      where: { teamSelectionId, teamNumber },
-    });
+    const members = await tx.select().from(teamSelectionMembers).where(and(
+      eq(teamSelectionMembers.teamSelectionId, teamSelectionId),
+      eq(teamSelectionMembers.teamNumber, teamNumber),
+    ));
 
     if (members.length === 0) return;
 
-    for (const member of members) {
-      await tx.bookingParticipant.upsert({
-        where: { bookingId_userId: { bookingId, userId: member.userId } },
-        update: {},
-        create: {
-          bookingId,
-          userId: member.userId,
-          userName: member.userName,
-          userEmail: member.userEmail,
-          role: member.role as ParticipantRole,
-          status: ParticipantStatus.PENDING,
-          amount: pricePerPerson,
-        },
-      });
-    }
+    await tx.insert(bookingParticipants).values(
+      members.map((member) => ({
+        bookingId,
+        userId: member.userId,
+        userName: member.userName,
+        userEmail: member.userEmail,
+        role: member.role as ParticipantRole,
+        status: ParticipantStatus.PENDING,
+        amount: pricePerPerson,
+      })),
+    ).onConflictDoNothing();
 
     this.logger.log(`Created ${members.length} BookingParticipants for booking ${bookingId}`);
   }
@@ -1059,46 +941,28 @@ export class BookingSagaStepService {
         }
       }
 
-      const cached = await this.prisma.gameTimeSlotCache.upsert({
-        where: { gameTimeSlotId },
-        update: {
-          gameId: slot.gameId,
-          gameName: slot.gameName || '',
-          gameCode: slot.gameCode || '',
-          clubId,
-          clubName,
-          date: new Date(slot.date),
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-          maxPlayers: slot.maxPlayers || 4,
-          bookedPlayers: slot.bookedPlayers || 0,
-          availablePlayers,
-          isAvailable: availablePlayers > 0,
-          price: slot.price || 0,
-          isPremium: slot.isPremium || false,
-          status: TimeSlotCacheStatus.AVAILABLE,
-          lastSyncAt: new Date(),
-        },
-        create: {
-          gameTimeSlotId,
-          gameId: slot.gameId,
-          gameName: slot.gameName || '',
-          gameCode: slot.gameCode || '',
-          clubId,
-          clubName,
-          date: new Date(slot.date),
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-          maxPlayers: slot.maxPlayers || 4,
-          bookedPlayers: slot.bookedPlayers || 0,
-          availablePlayers,
-          isAvailable: availablePlayers > 0,
-          price: slot.price || 0,
-          isPremium: slot.isPremium || false,
-          status: TimeSlotCacheStatus.AVAILABLE,
-          lastSyncAt: new Date(),
-        },
-      });
+      const values = {
+        gameTimeSlotId,
+        gameId: slot.gameId,
+        gameName: slot.gameName || '',
+        gameCode: slot.gameCode || '',
+        clubId,
+        clubName,
+        date: new Date(slot.date),
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        maxPlayers: slot.maxPlayers || 4,
+        bookedPlayers: slot.bookedPlayers || 0,
+        availablePlayers,
+        isAvailable: availablePlayers > 0,
+        price: slot.price || 0,
+        isPremium: slot.isPremium || false,
+        status: TimeSlotCacheStatus.AVAILABLE,
+        lastSyncAt: new Date(),
+      };
+      const [cached] = await this.db.insert(gameTimeSlotCache).values(values)
+        .onConflictDoUpdate({ target: gameTimeSlotCache.gameTimeSlotId, set: values })
+        .returning();
 
       this.logger.log(`[CacheMiss] Slot ${gameTimeSlotId} cached successfully`);
       return cached;
@@ -1132,34 +996,22 @@ export class BookingSagaStepService {
       }
 
       const game = response.data;
-      const cached = await this.prisma.gameCache.upsert({
-        where: { gameId },
-        update: {
-          name: game.name || '',
-          code: game.code || '',
-          clubId: game.clubId || 0,
-          clubName: game.clubName || '',
-          frontNineCourseId: game.frontNineCourseId || 0,
-          frontNineCourseName: game.frontNineCourseName || '',
-          backNineCourseId: game.backNineCourseId || 0,
-          backNineCourseName: game.backNineCourseName || '',
-          basePrice: game.basePrice || 0,
-          lastSyncAt: new Date(),
-        },
-        create: {
-          gameId,
-          name: game.name || '',
-          code: game.code || '',
-          clubId: game.clubId || 0,
-          clubName: game.clubName || '',
-          frontNineCourseId: game.frontNineCourseId || 0,
-          frontNineCourseName: game.frontNineCourseName || '',
-          backNineCourseId: game.backNineCourseId || 0,
-          backNineCourseName: game.backNineCourseName || '',
-          basePrice: game.basePrice || 0,
-          lastSyncAt: new Date(),
-        },
-      });
+      const values = {
+        gameId,
+        name: game.name || '',
+        code: game.code || '',
+        clubId: game.clubId || 0,
+        clubName: game.clubName || '',
+        frontNineCourseId: game.frontNineCourseId || 0,
+        frontNineCourseName: game.frontNineCourseName || '',
+        backNineCourseId: game.backNineCourseId || 0,
+        backNineCourseName: game.backNineCourseName || '',
+        basePrice: game.basePrice || 0,
+        lastSyncAt: new Date(),
+      };
+      const [cached] = await this.db.insert(gameCache).values(values)
+        .onConflictDoUpdate({ target: gameCache.gameId, set: values })
+        .returning();
 
       this.logger.log(`[CacheMiss] Game ${gameId} cached successfully`);
       return cached;

@@ -1,7 +1,9 @@
 import { Injectable, Logger, Inject, OnModuleInit } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { PrismaService } from '../../../prisma/prisma.service';
-import { OutboxStatus } from '@prisma/client';
+import { eq, sql } from 'drizzle-orm';
+import { DrizzleService } from '../../db/drizzle.service';
+import { bookingOutboxEvents } from '../../db/schema';
+import { OutboxStatus } from '../../contracts/enums';
 import { firstValueFrom, timeout, catchError, of } from 'rxjs';
 import type { Job } from 'pg-boss';
 import { NATS_TIMEOUTS } from '../../common/constants';
@@ -33,12 +35,16 @@ export class OutboxProcessorService implements OnModuleInit {
   private readonly logger = new Logger(OutboxProcessorService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly drizzle: DrizzleService,
     private readonly pgboss: PgBossService,
     @Inject('CLUB_SERVICE') private readonly courseServiceClient: ClientProxy,
     @Inject('NOTIFICATION_SERVICE') private readonly notificationClient: ClientProxy,
     @Inject('PAYMENT_SERVICE') private readonly paymentServiceClient: ClientProxy,
   ) {}
+
+  private get db() {
+    return this.drizzle.db;
+  }
 
   async onModuleInit() {
     // Primary: 단건 outbox 트리거 worker
@@ -57,9 +63,7 @@ export class OutboxProcessorService implements OnModuleInit {
    * pg-boss worker — outboxEventId로 단건 조회 후 발행
    */
   private async handleOutboxJob(job: Job<OutboxJobData>): Promise<unknown> {
-    const event = await this.prisma.bookingOutboxEvent.findUnique({
-      where: { id: job.data.outboxEventId },
-    });
+    const [event] = await this.db.select().from(bookingOutboxEvents).where(eq(bookingOutboxEvents.id, job.data.outboxEventId)).limit(1);
     if (!event) return { skipped: true, reason: 'not_found' };
     if (event.status !== OutboxStatus.PENDING) return { skipped: true, currentStatus: event.status };
 
@@ -115,12 +119,7 @@ export class OutboxProcessorService implements OnModuleInit {
   async processOutboxEvents(): Promise<void> {
     try {
       // PENDING 상태의 이벤트 조회 (FOR UPDATE SKIP LOCKED로 동시성 제어)
-      const events = await this.prisma.$queryRaw<Array<{
-        id: number;
-        event_type: string;
-        payload: any;
-        retry_count: number;
-      }>>`
+      const events = (await this.db.execute(sql`
         SELECT id, event_type, payload, retry_count
         FROM booking_outbox_events
         WHERE status = 'PENDING'
@@ -128,7 +127,7 @@ export class OutboxProcessorService implements OnModuleInit {
         ORDER BY created_at ASC
         LIMIT ${BATCH_SIZE}
         FOR UPDATE SKIP LOCKED
-      `;
+      `)) as unknown as Array<{ id: number; event_type: string; payload: any; retry_count: number }>;
 
       if (events.length === 0) {
         return;
@@ -159,10 +158,7 @@ export class OutboxProcessorService implements OnModuleInit {
 
     try {
       // PROCESSING 상태로 변경
-      await this.prisma.bookingOutboxEvent.update({
-        where: { id: event.id },
-        data: { status: OutboxStatus.PROCESSING },
-      });
+      await this.db.update(bookingOutboxEvents).set({ status: OutboxStatus.PROCESSING }).where(eq(bookingOutboxEvents.id, event.id));
 
       const client = this.getClientForEventType(event.event_type);
       const isRequestReply = this.isRequestReplyEvent(event.event_type);
@@ -236,13 +232,10 @@ export class OutboxProcessorService implements OnModuleInit {
    * 이벤트 발행 성공 처리
    */
   private async markEventAsSent(eventId: number): Promise<void> {
-    await this.prisma.bookingOutboxEvent.update({
-      where: { id: eventId },
-      data: {
-        status: OutboxStatus.SENT,
-        processedAt: new Date(),
-      },
-    });
+    await this.db.update(bookingOutboxEvents).set({
+      status: OutboxStatus.SENT,
+      processedAt: new Date(),
+    }).where(eq(bookingOutboxEvents.id, eventId));
   }
 
   /**
@@ -255,14 +248,11 @@ export class OutboxProcessorService implements OnModuleInit {
     const newRetryCount = event.retry_count + 1;
     const isFinalFailure = newRetryCount >= MAX_RETRY_COUNT;
 
-    await this.prisma.bookingOutboxEvent.update({
-      where: { id: event.id },
-      data: {
-        status: isFinalFailure ? OutboxStatus.FAILED : OutboxStatus.PENDING,
-        retryCount: newRetryCount,
-        lastError: errorMessage,
-      },
-    });
+    await this.db.update(bookingOutboxEvents).set({
+      status: isFinalFailure ? OutboxStatus.FAILED : OutboxStatus.PENDING,
+      retryCount: newRetryCount,
+      lastError: errorMessage,
+    }).where(eq(bookingOutboxEvents.id, event.id));
 
     if (isFinalFailure) {
       this.logger.error(
