@@ -280,6 +280,11 @@ export class BookingService {
     const endDate = new Date(dateRange.endDate);
     endDate.setHours(23, 59, 59, 999);
     const validStatuses = ['CONFIRMED', 'COMPLETED'];
+    // raw sql 파라미터에는 JS Date를 직접 바인딩할 수 없어(drizzle/postgres-js 직렬화 불가)
+    // ISO 문자열 + ::timestamp 로 전달한다. 배열 비교는 ANY(${arr}) 대신 inArray() 사용.
+    const startTs = startDate.toISOString();
+    const endTs = endDate.toISOString();
+    const statusFilter = inArray(sql`status::text`, validStatuses);
 
     const gameStats = (await this.db.execute(sql`
       SELECT game_id AS "gameId", game_name AS "gameName", COUNT(*)::int AS "totalBookings",
@@ -287,13 +292,13 @@ export class BookingService {
         COUNT(DISTINCT game_time_slot_id)::int AS "bookedSlots",
         COUNT(*) FILTER (WHERE EXTRACT(DOW FROM booking_date) IN (0, 6))::int AS "weekendBookings",
         COUNT(*) FILTER (WHERE EXTRACT(DOW FROM booking_date) NOT IN (0, 6))::int AS "weekdayBookings"
-      FROM bookings WHERE club_id = ${clubId} AND booking_date >= ${startDate} AND booking_date <= ${endDate} AND status::text = ANY(${validStatuses})
+      FROM bookings WHERE club_id = ${clubId} AND booking_date >= ${startTs}::timestamp AND booking_date <= ${endTs}::timestamp AND ${statusFilter}
       GROUP BY game_id, game_name ORDER BY COUNT(*) DESC
     `)) as unknown as Array<{ gameId: number; gameName: string | null; totalBookings: number; totalRevenue: number; averagePrice: number; bookedSlots: number; weekendBookings: number; weekdayBookings: number }>;
 
     const peakHoursRaw = (await this.db.execute(sql`
       SELECT game_id AS "gameId", start_time AS "startTime", COUNT(*)::int AS cnt
-      FROM bookings WHERE club_id = ${clubId} AND booking_date >= ${startDate} AND booking_date <= ${endDate} AND status::text = ANY(${validStatuses})
+      FROM bookings WHERE club_id = ${clubId} AND booking_date >= ${startTs}::timestamp AND booking_date <= ${endTs}::timestamp AND ${statusFilter}
       GROUP BY game_id, start_time ORDER BY game_id, cnt DESC
     `)) as unknown as Array<{ gameId: number; startTime: string; cnt: number }>;
 
@@ -306,7 +311,7 @@ export class BookingService {
 
     const overallPeakTimes = (await this.db.execute(sql`
       SELECT start_time AS "startTime" FROM bookings
-      WHERE club_id = ${clubId} AND booking_date >= ${startDate} AND booking_date <= ${endDate} AND status::text = ANY(${validStatuses})
+      WHERE club_id = ${clubId} AND booking_date >= ${startTs}::timestamp AND booking_date <= ${endTs}::timestamp AND ${statusFilter}
       GROUP BY start_time ORDER BY COUNT(*) DESC LIMIT 3
     `)) as unknown as Array<{ startTime: string }>;
 

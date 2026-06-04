@@ -1,5 +1,5 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { eq, and, lt, gte, lte, asc, count, sql } from 'drizzle-orm';
+import { eq, and, lt, gte, lte, asc, count, inArray, sql } from 'drizzle-orm';
 import { DrizzleService } from '../../db/drizzle.service';
 import { TimeSlotStatus } from '../../contracts/enums';
 import type { GameTimeSlot } from '../../db/schema';
@@ -446,7 +446,8 @@ export class GameTimeSlotService {
           totalRevenue: 0,
         };
       }
-      conditions.push(sql`${gameTimeSlots.gameId} = ANY(${gameIdsForClub})`);
+      // ANY(${arr})는 drizzle/postgres-js raw 바인딩에서 배열 직렬화 실패 → inArray() 사용
+      conditions.push(inArray(gameTimeSlots.gameId, gameIdsForClub));
     }
 
     const slots = await this.db

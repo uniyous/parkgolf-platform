@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { eq, and, count, gte, desc, sql } from 'drizzle-orm';
+import { eq, and, count, gte, lt, desc, sql } from 'drizzle-orm';
 import { DrizzleService } from '../../db/drizzle.service';
 import { notifications, deadLetterNotifications, type Notification } from '../../db/schema';
 import { NotificationType } from '../../contracts/enums';
@@ -125,7 +125,7 @@ export class DeadLetterService {
     const threshold = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
     const rows = await this.db
       .delete(deadLetterNotifications)
-      .where(sql`${deadLetterNotifications.movedAt} < ${threshold}`)
+      .where(lt(deadLetterNotifications.movedAt, threshold))
       .returning({ id: deadLetterNotifications.id });
     this.logger.log(`Cleaned up ${rows.length} old dead letter notifications`);
     return rows.length;
