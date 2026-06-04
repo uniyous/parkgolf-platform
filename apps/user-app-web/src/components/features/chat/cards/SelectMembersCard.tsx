@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Users, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CHAT_CARD_WIDTH } from './cardStyles';
 import type { SelectMembersData } from '@/lib/api/chatApi';
 
 interface SelectMembersCardProps {
@@ -56,7 +57,7 @@ export const SelectMembersCard: React.FC<SelectMembersCardProps> = ({
   };
 
   return (
-    <div className="rounded-xl border border-violet-500/20 bg-violet-500/10 p-4 mt-2 space-y-4 w-full min-w-[260px] max-w-[420px]">
+    <div className={cn('rounded-xl border border-violet-500/20 bg-violet-500/10 p-4 mt-2 space-y-4', CHAT_CARD_WIDTH)}>
         {/* Header */}
         <div>
           <h4 className="text-lg font-semibold text-white flex items-center gap-2">

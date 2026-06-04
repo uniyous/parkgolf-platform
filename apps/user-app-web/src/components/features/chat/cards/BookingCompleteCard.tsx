@@ -1,5 +1,7 @@
 import React from 'react';
 import { CheckCircle, Calendar, Users, Banknote } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { CHAT_CARD_WIDTH_COMPACT } from './cardStyles';
 import type { BookingCompleteData } from '@/lib/api/chatApi';
 
 interface BookingCompleteCardProps {
@@ -11,7 +13,7 @@ export const BookingCompleteCard: React.FC<BookingCompleteCardProps> = ({ data }
     new Intl.NumberFormat('ko-KR').format(price);
 
   return (
-    <div className="mt-2 bg-violet-500/10 rounded-xl p-4 border border-violet-500/20">
+    <div className={cn('mt-2 bg-violet-500/10 rounded-xl p-4 border border-violet-500/20', CHAT_CARD_WIDTH_COMPACT)}>
       <div className="flex items-center gap-2 mb-3">
         <CheckCircle className="w-5 h-5 text-violet-400" />
         <span className="text-lg font-semibold text-violet-400">예약 완료</span>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { MapPin, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CHAT_CARD_WIDTH } from './cardStyles';
 import type { ClubCardData } from '@/lib/api/chatApi';
 
 interface ClubCardProps {
@@ -13,7 +14,7 @@ export const ClubCard: React.FC<ClubCardProps> = ({ data, onSelect, selectedClub
   const hasSelection = !!selectedClubId;
 
   return (
-    <div className="space-y-2 mt-2 w-full min-w-[260px] max-w-[420px]">
+    <div className={cn('space-y-2 mt-2', CHAT_CARD_WIDTH)}>
       {data.clubs.map((club) => {
         const isSelected = selectedClubId === club.id;
         const isDisabled = hasSelection && !isSelected;

@@ -1,5 +1,7 @@
 import React from 'react';
 import { CheckCircle2, MapPin, Clock, Users } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { CHAT_CARD_WIDTH } from './cardStyles';
 import type { TeamCompleteData } from '@/lib/api/chatApi';
 
 interface TeamCompleteCardProps {
@@ -15,7 +17,7 @@ export const TeamCompleteCard: React.FC<TeamCompleteCardProps> = ({
   completed,
 }) => {
   return (
-    <div className="rounded-xl border border-violet-500/20 bg-violet-500/10 p-4 mt-2 space-y-3 w-full min-w-[260px] max-w-[420px]">
+    <div className={cn('rounded-xl border border-violet-500/20 bg-violet-500/10 p-4 mt-2 space-y-3', CHAT_CARD_WIDTH)}>
       {/* Header */}
       <div className="flex items-center gap-2">
         <CheckCircle2 className="w-5 h-5 text-violet-400" />

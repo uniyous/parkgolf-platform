@@ -1,5 +1,7 @@
 import React from 'react';
 import { Cloud, Sun, CloudRain, Thermometer } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { CHAT_CARD_WIDTH_COMPACT } from './cardStyles';
 import type { WeatherCardData } from '@/lib/api/chatApi';
 
 interface WeatherCardProps {
@@ -30,7 +32,7 @@ export const WeatherCard: React.FC<WeatherCardProps> = ({ data }) => {
     : `${data.temperature}°C`;
 
   return (
-    <div className="mt-2 w-full min-w-[260px] max-w-[420px] md:max-w-[320px] bg-violet-500/10 rounded-xl p-3 border border-violet-500/20">
+    <div className={cn('mt-2 bg-violet-500/10 rounded-xl p-3 border border-violet-500/20', CHAT_CARD_WIDTH_COMPACT)}>
       {locationName && (
         <p className="text-base text-white/50 mb-1.5">{locationName} · {data.date}</p>
       )}
