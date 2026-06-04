@@ -60,7 +60,9 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
 
   return (
     <div className="flex justify-start">
-      <div className="max-w-[85%]">
+      {/* 너비는 안쪽 말풍선 박스가 단일 max-w로 결정 (모바일 360 / 데스크톱 440).
+          여기서 max-w-[85%] 같은 화면 비례 제약을 걸면 모바일이 기기·텍스트마다 달라져 제거. */}
+      <div className="min-w-0">
         {showLabel && (
           <div className="flex items-center gap-2 mb-1.5">
             <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-400 to-violet-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
@@ -71,7 +73,7 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
         )}
 
         <div className="flex items-end gap-1.5">
-          <div className="bg-violet-500/10 border-l-[3px] border-l-violet-400 rounded-2xl rounded-tl-sm px-3.5 py-2.5 md:max-w-[440px]">
+          <div className="bg-violet-500/10 border-l-[3px] border-l-violet-400 rounded-2xl rounded-tl-sm px-3.5 py-2.5 max-w-[360px] md:max-w-[440px]">
             <p className="text-base text-white whitespace-pre-wrap break-words leading-relaxed">{content}</p>
 
             {actions?.map((action, index) => (
