@@ -285,7 +285,9 @@ export class GameService {
 
     this.logger.log(`Searching games - search: ${search || 'none'}, date: ${searchDate}, timeOfDay: ${timeOfDay || 'all'}, timeRange: ${startTimeFrom || 'any'}-${startTimeTo || 'any'}, clubId: ${clubId || 'all'}, price: ${minPrice}-${maxPrice}, minPlayers: ${minPlayers}`);
 
-    const targetDate = new Date(searchDate);
+    // 주의: JS Date 객체를 sql 템플릿 파라미터로 직접 바인딩하면 drizzle/postgres-js가
+    // 직렬화하지 못해 쿼리가 실패한다("Received an instance of Date"). 문자열(YYYY-MM-DD) +
+    // ::date 캐스팅으로 전달한다.
 
     // 최적화: 단일 Raw SQL 쿼리로 Game + Club + Course + TimeSlots 모두 조회
     // 필요한 필드만 선택하여 over-fetching 방지
@@ -314,7 +316,7 @@ export class GameService {
           ) AS slots
         FROM game_time_slots gts
         INNER JOIN games g2 ON gts.game_id = g2.id
-        WHERE gts.date = ${targetDate}
+        WHERE gts.date = ${searchDate}::date
           AND gts.status = 'AVAILABLE'
           AND gts.is_active = true
           AND gts.booked_players < gts.max_players
@@ -426,7 +428,7 @@ export class GameService {
       SELECT COUNT(DISTINCT g.id) AS count
       FROM games g
       INNER JOIN game_time_slots gts ON g.id = gts.game_id
-        AND gts.date = ${targetDate}
+        AND gts.date = ${searchDate}::date
         AND gts.status = 'AVAILABLE'
         AND gts.is_active = true
         AND gts.booked_players < gts.max_players
