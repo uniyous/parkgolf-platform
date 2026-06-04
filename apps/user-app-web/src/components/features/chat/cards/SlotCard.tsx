@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Clock, Check, MapPin, Calendar, Flag, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CHAT_CARD_WIDTH } from './cardStyles';
 import type { SlotCardData } from '@/lib/api/chatApi';
 
 const SLOTS_PER_PAGE = 4;
@@ -79,7 +80,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({ data, onSelect, selectedSlot
   // ── 라운드 그룹 레이아웃 ──
   if (data.rounds && data.rounds.length > 0) {
     return (
-      <div className="mt-2 w-full min-w-[260px] max-w-[420px] rounded-2xl bg-violet-500/10 border border-violet-500/20 overflow-hidden">
+      <div className={cn('mt-2 rounded-2xl bg-violet-500/10 border border-violet-500/20 overflow-hidden', CHAT_CARD_WIDTH)}>
         {/* 골프장 헤더 */}
         {data.clubName && (
           <>
@@ -227,7 +228,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({ data, onSelect, selectedSlot
 
   // ── 하위 호환: flat slots 그리드 ──
   return (
-    <div className="mt-2 w-full min-w-[260px] max-w-[420px] rounded-2xl bg-violet-500/10 border border-violet-500/20 overflow-hidden">
+    <div className={cn('mt-2 rounded-2xl bg-violet-500/10 border border-violet-500/20 overflow-hidden', CHAT_CARD_WIDTH)}>
         {methodSelector}
         <div className="grid grid-cols-2 gap-2 p-3">
           {data.slots.map((slot) => {

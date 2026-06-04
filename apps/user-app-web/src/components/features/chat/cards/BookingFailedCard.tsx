@@ -1,4 +1,6 @@
 import React from 'react';
+import { cn } from '@/lib/utils';
+import { CHAT_CARD_WIDTH_COMPACT } from './cardStyles';
 
 interface BookingFailedData {
   reason?: string;
@@ -11,7 +13,7 @@ interface BookingFailedCardProps {
 
 export const BookingFailedCard: React.FC<BookingFailedCardProps> = ({ data, onRetry }) => {
   return (
-    <div className="mt-2 w-full min-w-[260px] max-w-[420px] md:max-w-[320px] bg-red-500/10 rounded-xl p-3 border border-red-500/20">
+    <div className={cn('mt-2 bg-red-500/10 rounded-xl p-3 border border-red-500/20', CHAT_CARD_WIDTH_COMPACT)}>
       <div className="text-sm text-red-400 mb-2">❌ {data.reason || '예약에 실패했습니다'}</div>
       {onRetry && (
         <button
