@@ -108,12 +108,10 @@ Frontend → BFF (REST) → NATS → Microservice (Prisma)
 
 ## Skill 참조
 
-도메인별 상세 가이드는 Skill로 분리.
+워크플로우 단계별 실행은 Skill로 분리 (`.claude/skills/`).
 
-- `nestjs-service` — NestJS (BFF, NATS, 예외, DTO, Dockerfile)
-- `react-app` — React (React Query, Tailwind, bffParser)
-- `ios-app` — iOS (SwiftUI, MVVM, APIClient)
-- `android-app` — Android (Compose, Hilt)
-- `cicd` — 인프라/배포 (GKE, Firebase, Actions)
+- `spec` — `/spec UNI-123`: Linear 이슈 → `docs/specs/active/` 계약 문서 생성 + 역링크
+- `pr` — `/pr`: feature 브랜치 → develop draft PR (base·커밋 문법·spec 포함 점검)
 - `testing` — Contract / Integration / E2E
-- `docs-writing` — 문서 작성/현행화
+
+도메인 코딩 규칙(NestJS/React/iOS/Android/CICD)은 본 CLAUDE.md와 `docs/`가 담당.
