@@ -65,6 +65,19 @@ Frontend → BFF (REST) → NATS → Microservice (Prisma)
 
 ---
 
+## 개발 워크플로우 / Spec 문서
+
+플로우: `plan(Linear 이슈) → spec → coding → draft PR → review`
+
+- **spec = 계약 문서** (`docs/specs/`): Linear 이슈가 "왜/무엇", spec은 "어떤 인터페이스로"를 고정
+- **폴더**: `active/`(진행 중) · `archive/`(merge·폐기). 파일명 `{이슈ID}-{kebab-요약}.md`
+- **작성 기준**: 다계층·다서비스·새 NATS 계약·saga/결제는 spec 필수. 단일 파일 버그픽스·UI 조정은 이슈로 충분(생략)
+- **규칙**: spec과 코드는 **같은 PR** · 구현 중 계약 변경 시 **spec 먼저 수정** · merge 후 `git mv active/ → archive/`(삭제 금지)
+
+상세·템플릿: `docs/specs/README.md`
+
+---
+
 ## Linear 이슈 / 서브이슈 작명
 
 제목은 커밋 규칙과 **동일 문법**으로 통일: `[N] <type>(<scope>): <요약>` (순서 prefix는 선택)
