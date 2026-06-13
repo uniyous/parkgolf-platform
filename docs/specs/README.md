@@ -1,6 +1,6 @@
 # Spec 문서
 
-개발 플로우 `plan(Linear) → spec → coding → draft PR → review`에서 **spec(계약) 단계** 산출물.
+개발 플로우 `plan(Linear) → spec → implement → draft PR → review`에서 **spec(계약) 단계** 산출물.
 Linear 이슈는 "왜/무엇", spec은 "어떤 인터페이스로"를 고정한다.
 
 ## 폴더
@@ -18,7 +18,7 @@ docs/specs/
 
 ```
 spec 작성   active/UNI-123-*.md 생성, Linear 이슈 본문에 경로 링크 1줄
-coding      active/ 에 둔 채 코드와 함께 같은 브랜치에서 커밋
+implement   active/ 에 둔 채 코드와 함께 같은 브랜치에서 커밋
 draft PR    spec.md 가 디프에 포함 → review가 spec+구현을 한 화면에서 검토
 merge 후    git mv active/UNI-123-*.md archive/  (같은 PR 또는 후속)
 폐기        archive/ 로 이동 + 상단에 superseded 사유·대체 spec 링크 1줄

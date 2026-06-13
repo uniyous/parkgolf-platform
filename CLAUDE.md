@@ -67,7 +67,7 @@ Frontend → BFF (REST) → NATS → Microservice (Prisma)
 
 ## 개발 워크플로우 / Spec 문서
 
-플로우: `plan(Linear 이슈) → spec → coding → draft PR → review`
+플로우: `plan(Linear 이슈) → spec → implement → draft PR → review`
 
 - **spec = 계약 문서** (`docs/specs/`): Linear 이슈가 "왜/무엇", spec은 "어떤 인터페이스로"를 고정
 - **폴더**: `active/`(진행 중) · `archive/`(merge·폐기). 파일명 `{이슈ID}-{kebab-요약}.md`
