@@ -37,7 +37,6 @@ export class OutboxProcessorService implements OnModuleInit {
   constructor(
     private readonly drizzle: DrizzleService,
     private readonly pgboss: PgBossService,
-    @Inject('CLUB_SERVICE') private readonly courseServiceClient: ClientProxy,
     @Inject('NOTIFICATION_SERVICE') private readonly notificationClient: ClientProxy,
     @Inject('PAYMENT_SERVICE') private readonly paymentServiceClient: ClientProxy,
   ) {}
@@ -202,16 +201,14 @@ export class OutboxProcessorService implements OnModuleInit {
    * 이벤트 타입에 따른 NATS 클라이언트 선택
    */
   private getClientForEventType(eventType: string): ClientProxy {
-    if (eventType.startsWith('slot.') || eventType.startsWith('gameTimeSlots.')) {
-      return this.courseServiceClient;
-    }
     if (eventType.startsWith('payment.')) {
       return this.paymentServiceClient;
     }
     if (eventType.startsWith('booking.') || eventType.startsWith('notification.')) {
       return this.notificationClient;
     }
-    return this.courseServiceClient;
+    // slot.*/gameTimeSlots.* (인벤토리)는 saga-service가 club-service로 직접 호출 — outbox 경유 안 함 (UNI-92)
+    throw new Error(`Outbox: no NATS client for event type '${eventType}'`);
   }
 
   /**
@@ -219,10 +216,6 @@ export class OutboxProcessorService implements OnModuleInit {
    */
   private isRequestReplyEvent(eventType: string): boolean {
     const requestReplyEvents = [
-      'slot.reserve',
-      'slot.release',
-      'gameTimeSlots.reserve',
-      'gameTimeSlots.release',
       'payment.cancelByBookingId',
     ];
     return requestReplyEvents.includes(eventType);
