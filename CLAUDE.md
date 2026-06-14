@@ -65,6 +65,19 @@ Frontend → BFF (REST) → NATS → Microservice (Prisma)
 
 ---
 
+## 개발 워크플로우 / Spec 문서
+
+플로우: `plan(Linear 이슈) → spec → implement → draft PR → review`
+
+- **spec = 계약 문서** (`docs/specs/`): Linear 이슈가 "왜/무엇", spec은 "어떤 인터페이스로"를 고정
+- **폴더**: `active/`(진행 중) · `archive/`(merge·폐기). 파일명 `{이슈ID}-{kebab-요약}.md`
+- **작성 기준**: 다계층·다서비스·새 NATS 계약·saga/결제는 spec 필수. 단일 파일 버그픽스·UI 조정은 이슈로 충분(생략)
+- **규칙**: spec과 코드는 **같은 PR** · 구현 중 계약 변경 시 **spec 먼저 수정** · merge 후 `git mv active/ → archive/`(삭제 금지)
+
+상세·템플릿: `docs/specs/README.md`
+
+---
+
 ## Linear 이슈 / 서브이슈 작명
 
 제목은 커밋 규칙과 **동일 문법**으로 통일: `[N] <type>(<scope>): <요약>` (순서 prefix는 선택)
@@ -95,12 +108,10 @@ Frontend → BFF (REST) → NATS → Microservice (Prisma)
 
 ## Skill 참조
 
-도메인별 상세 가이드는 Skill로 분리.
+워크플로우 단계별 실행은 Skill로 분리 (`.claude/skills/`).
 
-- `nestjs-service` — NestJS (BFF, NATS, 예외, DTO, Dockerfile)
-- `react-app` — React (React Query, Tailwind, bffParser)
-- `ios-app` — iOS (SwiftUI, MVVM, APIClient)
-- `android-app` — Android (Compose, Hilt)
-- `cicd` — 인프라/배포 (GKE, Firebase, Actions)
+- `spec` — `/spec UNI-123`: Linear 이슈 → `docs/specs/active/` 계약 문서 생성 + 역링크
+- `pr` — `/pr`: feature 브랜치 → develop draft PR (base·커밋 문법·spec 포함 점검)
 - `testing` — Contract / Integration / E2E
-- `docs-writing` — 문서 작성/현행화
+
+도메인 코딩 규칙(NestJS/React/iOS/Android/CICD)은 본 CLAUDE.md와 `docs/`가 담당.
