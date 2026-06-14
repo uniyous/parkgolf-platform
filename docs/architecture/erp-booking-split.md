@@ -201,6 +201,71 @@ erDiagram
 
 ---
 
+## saga 처리 — 엔진 공유 · 정의 분리
+
+saga-service는 🟨 공유 코어. **제네릭 엔진**(`startSaga(name, payload)` → 레지스트리에서 정의 조회 → step 실행/보상)이 핵심이고, 부킹 흐름은 **이름별 정의**로 등록된다.
+
+**결정**: 데스크/온라인은 **엔진은 단일 공유, 진입 API·정의는 분리**.
+
+| 층 | 처리 | 근거 |
+|---|---|---|
+| 엔진·레지스트리·보상·step-executor | **단일 공유** | 제네릭. UNI-91 "트랜잭션 코어 공유(복제 금지)"와 일치 |
+| 진입 NATS 패턴 + saga 정의 | **분리** | `saga.booking.create`/`CREATE_BOOKING`(마켓) vs `saga.deskbooking.create`/`CREATE_DESK_BOOKING`(매니저) |
+| 공통 step(`slot.reserve`/`slot.release`) | **step 조각 공유** | 양 정의가 동일 RESERVE_SLOT 재사용 — 인벤토리 단일 권위 |
+
+> **분리 이유**: 온라인은 파트너 검증·PG·더치페이·외부통보가 붙고, 데스크는 그게 전부 없고 현장결제·워크인·직원 행위자가 붙는다. 한 정의에 `condition`으로 합치면 분기 폭발 → 정의는 나누고 엔진만 공유.
+>
+> **현재 혼재**: `onsite` 분기가 booking-service `isOnsitePayment`에 박혀(booking-saga-step.service.ts:238·745) `CREATE_BOOKING` 하나가 양 채널 처리 중. 분리 시 이 분기를 `CREATE_DESK_BOOKING` + club-booking-service로 추출.
+
+### 온라인 부킹 — CREATE_BOOKING (현행 · 마켓)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as user-app
+    participant UAPI as user-api
+    participant SG as saga-service〔CREATE_BOOKING〕
+    participant BK as booking-service
+    participant PT as partner-service
+    participant CL as club-service
+    participant PY as payment-service
+
+    U->>UAPI: 예약 요청
+    UAPI->>SG: saga.booking.create
+    SG->>BK: booking.saga.create 〔예약 레코드〕
+    SG->>PT: checkByClub · verifyAvailability 〔파트너 골프장만〕
+    SG->>CL: slot.reserve 🔑 단일 권위
+    SG->>BK: booking.saga.slotReserved
+    SG->>PY: payment.splitPrepare 〔더치페이만〕
+    SG->>PT: notifyCreated 〔파트너만〕
+    SG-->>UAPI: {success, data, saga}
+    Note over PY,SG: 온라인 PG 결제는 이후<br/>booking.paymentConfirmed 이벤트로 별도 saga
+```
+
+### 데스크 부킹 — CREATE_DESK_BOOKING (신규 · 매니저)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant ST as admin-dashboard〔직원〕
+    participant AAPI as admin-api
+    participant SG as saga-service〔CREATE_DESK_BOOKING〕
+    participant CB as club-booking-service
+    participant CL as club-service
+
+    ST->>AAPI: 데스크/전화 예약 〔워크인·비회원 가능〕
+    AAPI->>SG: saga.deskbooking.create
+    SG->>CB: deskbooking.saga.create 〔예약+고객+직원 행위자〕
+    SG->>CL: slot.reserve 🔑 동일 단일 권위 〔공유 step〕
+    SG->>CB: deskbooking.saga.confirm + 현장결제 기록〔현금·단말〕
+    SG-->>AAPI: {success, data, saga}
+    Note over CB,SG: PG·파트너·더치페이 없음<br/>현장결제는 club-booking-service 내부 기록
+```
+
+공통점은 `slot.reserve`(club-service 단일 권위) 하나뿐 — 나머지는 갈린다. 이 단일 공통 step이 양 채널 중복예약을 구조적으로 차단한다.
+
+---
+
 ## 인증 / 신원 전략 — 연합(federation) 채택
 
 **결정**: 전면 SSO가 아니라 **단일 iam-service · 두 신원 트랙 분리 · company-member로 느슨한 연합**. 운영자(매니저)와 소비자(마켓)는 서로 다른 사용자군·다른 앱이므로 "한 번 로그인으로 양쪽" SSO는 부적합하고, 신원 도메인을 섞을 위험만 크다.
