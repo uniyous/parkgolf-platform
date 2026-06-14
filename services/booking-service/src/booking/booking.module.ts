@@ -9,6 +9,8 @@ import { SagaHandlerService } from './service/saga-handler.service';
 import { BookingSagaStepService } from './service/booking-saga-step.service';
 import { OutboxProcessorService } from './service/outbox-processor.service';
 import { ParticipantCancelService } from './service/participant-cancel.service';
+import { InternalClubProvider } from './inventory/internal-club.provider';
+import { INVENTORY_PROVIDER } from './inventory/inventory-provider.interface';
 
 @Module({
   controllers: [
@@ -24,6 +26,9 @@ import { ParticipantCancelService } from './service/participant-cancel.service';
     BookingSagaStepService,
     OutboxProcessorService,
     ParticipantCancelService,
+    InternalClubProvider,
+    // 결정 B: booking-service는 1st-party(InternalClub)만 사용. partner는 saga-service가 선택.
+    { provide: INVENTORY_PROVIDER, useExisting: InternalClubProvider },
   ],
 })
 export class BookingModule {}

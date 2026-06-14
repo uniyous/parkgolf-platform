@@ -1,7 +1,6 @@
-import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom, timeout, catchError } from 'rxjs';
+import { Injectable, Logger } from '@nestjs/common';
 import { eq, and, lt, gt, inArray, desc, sql } from 'drizzle-orm';
+import { InternalClubProvider } from '../inventory/internal-club.provider';
 import { DrizzleService, type DrizzleTx } from '../../db/drizzle.service';
 import {
   bookings, bookingHistory, bookingParticipants, gameCache, gameTimeSlotCache,
@@ -26,7 +25,7 @@ export class BookingSagaStepService {
 
   constructor(
     private readonly drizzle: DrizzleService,
-    @Optional() @Inject('CLUB_SERVICE') private readonly courseClient?: ClientProxy,
+    private readonly inventory: InternalClubProvider,
   ) {}
 
   private get db() {
@@ -908,55 +907,27 @@ export class BookingSagaStepService {
    * 캐시 미스 시 club-service에서 슬롯 정보 조회 → 캐시 upsert
    */
   private async fetchAndCacheSlot(gameTimeSlotId: number) {
-    if (!this.courseClient) {
-      this.logger.warn('[CacheMiss] CLUB_SERVICE client not available');
-      return null;
-    }
-
     try {
-      this.logger.log(`[CacheMiss] Fetching slot ${gameTimeSlotId} from club-service`);
-      const response = await firstValueFrom(
-        this.courseClient.send('gameTimeSlots.get', { timeSlotId: gameTimeSlotId }).pipe(
-          timeout(5000),
-          catchError((err) => { throw new Error(`Failed to fetch slot: ${err.message}`); }),
-        ),
-      );
-
-      if (!response?.success || !response?.data) {
-        this.logger.warn(`[CacheMiss] Slot ${gameTimeSlotId} not found in club-service`);
-        return null;
-      }
-
-      const slot = response.data;
-      const availablePlayers = (slot.maxPlayers || slot.maxBookings || 0) - (slot.bookedPlayers || slot.currentBookings || 0);
-
-      // game 정보에서 clubId 추출 (mapTimeSlotToResponse에서 clubId는 game 관계에서 옴)
-      let clubId = slot.clubId || 0;
-      let clubName = slot.clubName || '';
-      if (!clubId && slot.gameId) {
-        const gameResp = await this.fetchAndCacheGame(slot.gameId);
-        if (gameResp) {
-          clubId = gameResp.clubId;
-          clubName = gameResp.clubName;
-        }
-      }
+      this.logger.log(`[CacheMiss] Fetching slot ${gameTimeSlotId} via InventoryProvider`);
+      // clubId는 provider가 내부에서 해석(snapshot 동봉), playerCount는 가용성 판정과 무관하므로 1.
+      const { snapshot } = await this.inventory.getAvailability({ clubId: 0, gameTimeSlotId, playerCount: 1 });
 
       const values = {
         gameTimeSlotId,
-        gameId: slot.gameId,
-        gameName: slot.gameName || '',
-        gameCode: slot.gameCode || '',
-        clubId,
-        clubName,
-        date: new Date(slot.date),
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-        maxPlayers: slot.maxPlayers || 4,
-        bookedPlayers: slot.bookedPlayers || 0,
-        availablePlayers,
-        isAvailable: availablePlayers > 0,
-        price: slot.price || 0,
-        isPremium: slot.isPremium || false,
+        gameId: snapshot.gameId,
+        gameName: snapshot.gameName,
+        gameCode: snapshot.gameCode,
+        clubId: snapshot.clubId,
+        clubName: snapshot.clubName,
+        date: new Date(snapshot.date),
+        startTime: snapshot.startTime,
+        endTime: snapshot.endTime,
+        maxPlayers: snapshot.maxPlayers || 4,
+        bookedPlayers: snapshot.bookedPlayers || 0,
+        availablePlayers: snapshot.availablePlayers,
+        isAvailable: snapshot.availablePlayers > 0,
+        price: snapshot.pricePerPerson || 0,
+        isPremium: snapshot.isPremium || false,
         status: TimeSlotCacheStatus.AVAILABLE,
         lastSyncAt: new Date(),
       };
@@ -976,37 +947,25 @@ export class BookingSagaStepService {
    * 캐시 미스 시 club-service에서 게임 정보 조회 → 캐시 upsert
    */
   private async fetchAndCacheGame(gameId: number) {
-    if (!this.courseClient) {
-      this.logger.warn('[CacheMiss] CLUB_SERVICE client not available');
-      return null;
-    }
-
     try {
-      this.logger.log(`[CacheMiss] Fetching game ${gameId} from club-service`);
-      const response = await firstValueFrom(
-        this.courseClient.send('games.get', { gameId }).pipe(
-          timeout(5000),
-          catchError((err) => { throw new Error(`Failed to fetch game: ${err.message}`); }),
-        ),
-      );
-
-      if (!response?.success || !response?.data) {
+      this.logger.log(`[CacheMiss] Fetching game ${gameId} via InventoryProvider`);
+      const game = await this.inventory.getGame(gameId);
+      if (!game) {
         this.logger.warn(`[CacheMiss] Game ${gameId} not found in club-service`);
         return null;
       }
 
-      const game = response.data;
       const values = {
         gameId,
-        name: game.name || '',
-        code: game.code || '',
-        clubId: game.clubId || 0,
-        clubName: game.clubName || '',
-        frontNineCourseId: game.frontNineCourseId || 0,
-        frontNineCourseName: game.frontNineCourseName || '',
-        backNineCourseId: game.backNineCourseId || 0,
-        backNineCourseName: game.backNineCourseName || '',
-        basePrice: game.basePrice || 0,
+        name: game.name,
+        code: game.code,
+        clubId: game.clubId,
+        clubName: game.clubName,
+        frontNineCourseId: game.frontNineCourseId,
+        frontNineCourseName: game.frontNineCourseName,
+        backNineCourseId: game.backNineCourseId,
+        backNineCourseName: game.backNineCourseName,
+        basePrice: game.basePrice,
         lastSyncAt: new Date(),
       };
       const [cached] = await this.db.insert(gameCache).values(values)

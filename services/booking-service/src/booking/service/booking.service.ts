@@ -10,6 +10,7 @@ import { randomUUID } from 'crypto';
 import { OutboxProcessorService } from './outbox-processor.service';
 import { AppException } from '../../common/exceptions/app.exception';
 import { Errors } from '../../common/exceptions/catalog/error-catalog';
+import { InternalClubProvider } from '../inventory/internal-club.provider';
 
 @Injectable()
 export class BookingService {
@@ -18,9 +19,10 @@ export class BookingService {
   constructor(
     private readonly drizzle: DrizzleService,
     private readonly outboxProcessor: OutboxProcessorService,
+    private readonly inventory: InternalClubProvider,
     @Optional() @Inject('NOTIFICATION_SERVICE') private readonly notificationPublisher?: ClientProxy,
+    // :75 club.findByCompany(테넌시, UNI-94) · :335 gameTimeSlots.stats 용으로 유지
     @Optional() @Inject('CLUB_SERVICE') private readonly courseServiceClient?: ClientProxy,
-    @Optional() @Inject('IAM_SERVICE') private readonly iamService?: ClientProxy,
     @Optional() @Inject('CHAT_SERVICE') private readonly chatClient?: ClientProxy,
   ) {}
 
@@ -163,7 +165,7 @@ export class BookingService {
       await tx.insert(bookingHistory).values({ bookingId: id, action: 'CONFIRMED', userId: existing.userId!, details: { confirmedBy: 'admin' } });
       return confirmed;
     });
-    await this.registerCompanyMember(booking.clubId, booking.userId);
+    await this.inventory.registerCompanyMember(booking.clubId, booking.userId);
     return BookingResponseDto.fromEntity(booking);
   }
 
@@ -227,19 +229,6 @@ export class BookingService {
     };
     await this.db.insert(gameTimeSlotCache).values(values).onConflictDoUpdate({ target: gameTimeSlotCache.gameTimeSlotId, set: { ...values, lastSyncAt: new Date(), updatedAt: new Date() } });
     this.logger.log(`GameTimeSlot cache synced for gameTimeSlotId: ${data.gameTimeSlotId}`);
-  }
-
-  private async registerCompanyMember(clubId: number | null, userId: number | null): Promise<void> {
-    if (!clubId || !userId || !this.courseServiceClient || !this.iamService) return;
-    try {
-      const clubResponse = await firstValueFrom(this.courseServiceClient.send('club.findOne', { id: clubId }));
-      const companyId = clubResponse?.data?.companyId;
-      if (!companyId) return;
-      await firstValueFrom(this.iamService.send('iam.companyMembers.addByBooking', { companyId, userId }));
-      this.logger.log(`CompanyMember registered: companyId=${companyId}, userId=${userId}`);
-    } catch (error) {
-      this.logger.warn(`Failed to register CompanyMember: clubId=${clubId}, userId=${userId}`, error?.message);
-    }
   }
 
   async getBookingStats(dateRange: { startDate: string; endDate: string }) {
@@ -457,9 +446,7 @@ export class BookingService {
     });
 
     for (const booking of cancelledBookings) {
-      if (this.courseServiceClient) {
-        this.courseServiceClient.emit('gameTimeSlots.release', { timeSlotId: booking.gameTimeSlotId, playerCount: booking.playerCount });
-      }
+      this.inventory.releaseSlot(booking.gameTimeSlotId, booking.playerCount);
       if (this.notificationPublisher) {
         this.notificationPublisher.emit('booking.cancelled', {
           bookingId: booking.id, bookingNumber: booking.bookingNumber, userId: booking.userId, gameId: booking.gameId, gameName: booking.gameName,
