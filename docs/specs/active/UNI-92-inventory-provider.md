@@ -57,9 +57,16 @@ interface ReserveResult {
 
 - provider 선택 = `clubs.BookingMode`(또는 partnerConfigs.companyId) 기준. 외부 ERP 미사용 골프장 = Internal, 파트너 연동 = External.
 
+### provider 호출 위치 — 결정 B (단일 경계 횡단)
+
+`slot.reserve`는 saga-service step이 club-service로 **직접** 호출(create-booking.saga `RESERVE_SLOT`). booking-service의 직접 결합은 캐시미스 조회·`club.findOne`·`iam`·outbox 보상뿐.
+
+- **B 채택**: saga-service가 provider **선택**(InternalClub=`slot.*` / ExternalPartner=`partner.slot.*`)하여 대상 서비스를 **직접** 호출 → 경계 횡단 **1회**. (A=saga→booking→club은 2회 횡단이라 분리 목적과 충돌, 비채택)
+- booking-service의 `IInventoryProvider`/`InternalClubProvider`는 booking 자체 결합(캐시미스 가용성 조회 등)에 사용. partner 어댑터(UNI-98)는 partner-service 계약 정렬 + saga 선택으로 구현(booking-service에 partner 클라 추가 안 함).
+
 ### saga-service 변경
 
-- `create-booking.saga.ts`: `CHECK_PARTNER`/`VERIFY_EXTERNAL`/`NOTIFY_EXTERNAL` 조건 분기(`isPartnerClub`) → **provider 선택으로 추상화**. `RESERVE_SLOT` step은 provider.reserve 경유(단일 권위 불변).
+- `create-booking.saga.ts`: `CHECK_PARTNER`/`VERIFY_EXTERNAL`/`NOTIFY_EXTERNAL` 조건 분기(`isPartnerClub`) → providerType 키 **선택**으로 대체(분기 제거). `RESERVE_SLOT`은 providerType별 subject 선택(`slot.reserve` vs `partner.slot.reserve`).
 - saga 응답 shape `{success, data, saga}` **불변** (BFF 정규화 영향 없음).
 
 ## 범위 / 변경 파일

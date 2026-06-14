@@ -26,6 +26,7 @@ export interface SlotSnapshot {
   maxPlayers: number;
   bookedPlayers: number;
   availablePlayers: number;
+  isPremium: boolean;
 }
 
 export interface AvailabilityQuery {
