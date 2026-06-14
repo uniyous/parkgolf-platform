@@ -63,6 +63,17 @@ Frontend → BFF (REST) → NATS → Microservice (Prisma)
 
 상세: `.github/workflows/README.md`, `cicd` skill
 
+### Worktree 구조 (Linear 이슈 단위)
+
+- **worktree 레이아웃** (형제 폴더, `.git` 공유):
+  - `parkgolf` = `main` 브랜치 — 릴리스 baseline, 직접 작업 X
+  - `parkgolf-develop` = `develop` 브랜치 — 통합 baseline, `git fetch`로 최신 유지
+  - `parkgolf-uni-<N>` = Linear 부모 이슈별 작업 worktree
+- **브랜치**: `feat/UNI-<N>-<chunk>` (origin/develop 기준), PR base=develop, **청크마다 PR** (거대 단일 PR 금지)
+- **서브이슈(96/97/98 등)는 부모 worktree 내 커밋** — 서브별 worktree/브랜치 X. **Linear 계층은 2단까지**(이슈→하위, 하위의 하위 금지)
+- **부모 설계/에픽 이슈는 살아있는 레퍼런스** — 변경은 `## 결정 YYYY-MM-DD` 스탬프, 추가 요건은 신규 하위 이슈
+- 신규 worktree: `git worktree add ../parkgolf-uni-<N> -b feat/UNI-<N>-<chunk> origin/develop`
+
 ---
 
 ## 개발 워크플로우 / Spec 문서
