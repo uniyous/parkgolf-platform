@@ -196,4 +196,36 @@ erDiagram
 
 ---
 
+## 인증 / 신원 전략 — 연합(federation) 채택
+
+**결정**: 전면 SSO가 아니라 **단일 iam-service · 두 신원 트랙 분리 · company-member로 느슨한 연합**. 운영자(매니저)와 소비자(마켓)는 서로 다른 사용자군·다른 앱이므로 "한 번 로그인으로 양쪽" SSO는 부적합하고, 신원 도메인을 섞을 위험만 크다.
+
+```mermaid
+flowchart TB
+    subgraph IAM["🟨 iam-service · 공유 코어 (단일 인스턴스)"]
+        direction LR
+        ADMIN["admin 트랙<br/>운영자·직원<br/>type=admin · roleCode"]
+        USER["user 트랙<br/>소비자<br/>user · device"]
+        CM["company-member<br/>BOOKING·MANUAL·WALK_IN"]
+        ADMIN -.연결.-> CM
+        USER -.연결.-> CM
+    end
+
+    AAPI["admin-api · 매니저"] -->|운영자 로그인| ADMIN
+    UAPI["user-api · 마켓"] -->|소비자 로그인| USER
+    AAPI -->|"요청 검증 = JWKS stateless"| IAM
+    UAPI -->|"요청 검증 = JWKS stateless"| IAM
+```
+
+**원칙**
+- **두 트랙 분리 유지**: `admin`(운영자·직원, roleCode) / `user`(소비자, device). 이미 JWT `type`으로 구분 — 현행 유지.
+- **연합 = company-member**: 소비자가 예약·데스크 방문 시 `CompanyMemberSource`(BOOKING/MANUAL/**WALK_IN**)로 클럽에 연결. 워크인 source가 이미 정의돼 데스크 연결까지 선반영됨 → club-booking-service가 이 경로 활용.
+- **완전 분리(iam 물리 2개) 비채택**: 소비자 데스크 방문 시 신원 연결이 복잡해지고, 기존 company-member 연합 장치를 버리게 됨.
+
+**클라우드 분리 대비 — 토큰 검증 경로**
+- 현재 토큰 검증은 `auth.validateToken` **NATS 왕복(iam 경유)** → 물리 분리 시 매 요청이 클라우드 경계를 넘음(지연·결합).
+- → **각 BFF에서 stateless JWT 검증**(공유 서명키/JWKS)로 전환. iam 왕복은 **로그인·갱신·폐기에만**. `slot.reserve`(InventoryProvider)와 함께 "경계 넘는 핫패스"를 제거하는 두 번째 지점.
+
+---
+
 > 상세 설계(InventoryProvider 계약 명세 · 정책 루트 단독/연동 · 3티어 패키징 · 결제/정산 미결정)는 UNI-91 본문 참조. 이 문서는 구성도·ERD부터 채우며 확장한다.
