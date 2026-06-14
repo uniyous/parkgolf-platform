@@ -11,7 +11,7 @@ flowchart TB
         direction TB
         ADM["admin-dashboard<br/>운영자 콘솔·데스크 예약"]
         AAPI["admin-api · BFF"]
-        CBS["club-booking-service 〔신규〕<br/>상담/데스크/워크인 예약·현장결제"]
+        CBS["desk-booking-service 〔신규〕<br/>상담/데스크/워크인 예약·현장결제"]
         CLUB["club-service<br/>🔑 인벤토리 단일 권위<br/>club_db"]
     end
 
@@ -77,7 +77,7 @@ flowchart TB
 **범례**
 - 🟦 매니저 / 🟧 마켓플레이스 = 미래 각각 독립 클라우드(VPC 격리) 후보. 🟨 공유 코어 = 양쪽 공유. ⬜ 공통 유틸 = 무상태·각 클라우드 직접 호출.
 - 실선 = 동기 request/reply, 점선 = 비동기/이벤트. **모든 서비스 간 통신은 NATS** — 크로스-DB 접근 0.
-- 🔑 **인벤토리 단일 권위**: 데스크(`club-booking-service`)·마켓(`booking-service`) 어느 채널이든 `club-service` 동일 `reserve` 경로 → 중복예약 구조적 차단. 분리선이 생겨도 이 불변식은 `InventoryProvider` 계약으로 유지.
+- 🔑 **인벤토리 단일 권위**: 데스크(`desk-booking-service`)·마켓(`booking-service`) 어느 채널이든 `club-service` 동일 `reserve` 경로 → 중복예약 구조적 차단. 분리선이 생겨도 이 불변식은 `InventoryProvider` 계약으로 유지.
 - DB 파티션: 매니저측 `club_db` / 마켓측 `booking_db`·`partner_db` 별도 인스턴스 가능 구조 → 분리는 `DATABASE_URL` 교체 수준.
 
 ---
@@ -86,7 +86,7 @@ flowchart TB
 
 부킹 엔진 2개는 각자 DB·테이블을 가진다(크로스-DB 0, 타 서비스 데이터는 ID 참조만). 슬롯 인벤토리의 권위는 항상 `club-service` — 양쪽 모두 `slot_id`로 참조하고 물리 FK를 걸지 않는다.
 
-### club-booking-service (매니저 측 · club_db)
+### desk-booking-service (매니저 측 · club_db)
 
 운영자 데스크/전화/워크인 예약. 직원이 행위자(대리예약·오버라이드), 비회원·워크인 고객, **현장결제**(현금·카드단말).
 
@@ -190,7 +190,7 @@ erDiagram
 
 **두 엔진의 차이 요약**
 
-| 구분 | club-booking-service (매니저) | booking-service (마켓) |
+| 구분 | desk-booking-service (매니저) | booking-service (마켓) |
 |---|---|---|
 | 채널 | 전화·데스크·워크인 | 웹·앱(온라인) |
 | 행위자 | 직원(대리·오버라이드) | 소비자 본인 |
@@ -215,7 +215,7 @@ saga-service는 🟨 공유 코어. **제네릭 엔진**(`startSaga(name, payloa
 
 > **분리 이유**: 온라인은 파트너 검증·PG·더치페이·외부통보가 붙고, 데스크는 그게 전부 없고 현장결제·워크인·직원 행위자가 붙는다. 한 정의에 `condition`으로 합치면 분기 폭발 → 정의는 나누고 엔진만 공유.
 >
-> **현재 혼재**: `onsite` 분기가 booking-service `isOnsitePayment`에 박혀(booking-saga-step.service.ts:238·745) `CREATE_BOOKING` 하나가 양 채널 처리 중. 분리 시 이 분기를 `CREATE_DESK_BOOKING` + club-booking-service로 추출.
+> **현재 혼재**: `onsite` 분기가 booking-service `isOnsitePayment`에 박혀(booking-saga-step.service.ts:238·745) `CREATE_BOOKING` 하나가 양 채널 처리 중. 분리 시 이 분기를 `CREATE_DESK_BOOKING` + desk-booking-service로 추출.
 
 ### 온라인 부킹 — CREATE_BOOKING (현행 · 마켓)
 
@@ -250,7 +250,7 @@ sequenceDiagram
     participant ST as admin-dashboard〔직원〕
     participant AAPI as admin-api
     participant SG as saga-service〔CREATE_DESK_BOOKING〕
-    participant CB as club-booking-service
+    participant CB as desk-booking-service
     participant CL as club-service
 
     ST->>AAPI: 데스크/전화 예약 〔워크인·비회원 가능〕
@@ -259,7 +259,7 @@ sequenceDiagram
     SG->>CL: slot.reserve 🔑 동일 단일 권위 〔공유 step〕
     SG->>CB: deskbooking.saga.confirm + 현장결제 기록〔현금·단말〕
     SG-->>AAPI: {success, data, saga}
-    Note over CB,SG: PG·파트너·더치페이 없음<br/>현장결제는 club-booking-service 내부 기록
+    Note over CB,SG: PG·파트너·더치페이 없음<br/>현장결제는 desk-booking-service 내부 기록
 ```
 
 공통점은 `slot.reserve`(club-service 단일 권위) 하나뿐 — 나머지는 갈린다. 이 단일 공통 step이 양 채널 중복예약을 구조적으로 차단한다.
@@ -289,7 +289,7 @@ flowchart TB
 
 **원칙**
 - **두 트랙 분리 유지**: `admin`(운영자·직원, roleCode) / `user`(소비자, device). 이미 JWT `type`으로 구분 — 현행 유지.
-- **연합 = company-member**: 소비자가 예약·데스크 방문 시 `CompanyMemberSource`(BOOKING/MANUAL/**WALK_IN**)로 클럽에 연결. 워크인 source가 이미 정의돼 데스크 연결까지 선반영됨 → club-booking-service가 이 경로 활용.
+- **연합 = company-member**: 소비자가 예약·데스크 방문 시 `CompanyMemberSource`(BOOKING/MANUAL/**WALK_IN**)로 클럽에 연결. 워크인 source가 이미 정의돼 데스크 연결까지 선반영됨 → desk-booking-service가 이 경로 활용.
 - **완전 분리(iam 물리 2개) 비채택**: 소비자 데스크 방문 시 신원 연결이 복잡해지고, 기존 company-member 연합 장치를 버리게 됨.
 
 **클라우드 분리 대비 — 토큰 검증 경로**
