@@ -22,6 +22,7 @@ export class InternalClubProvider implements IInventoryProvider {
 
   constructor(
     @Optional() @Inject('CLUB_SERVICE') private readonly club?: ClientProxy,
+    @Optional() @Inject('IAM_SERVICE') private readonly iam?: ClientProxy,
   ) {}
 
   private ensureClient(): ClientProxy {
@@ -113,6 +114,29 @@ export class InternalClubProvider implements IInventoryProvider {
   async confirm(_ref: ReservationRef): Promise<ConfirmResult> {
     // club-service 슬롯 확정은 reserve 시점에 점유 확정됨 — 별도 confirm subject 없음.
     return { confirmed: true };
+  }
+
+  /** 슬롯 점유 해제 (fire-and-forget) — 그룹/팀 취소 경로용. */
+  releaseSlot(gameTimeSlotId: number, playerCount: number): void {
+    if (!this.club) return;
+    this.club.emit('gameTimeSlots.release', { timeSlotId: gameTimeSlotId, playerCount });
+  }
+
+  /**
+   * 회원의 클럽 소속 등록 (club.findOne → companyId → iam.companyMembers.addByBooking).
+   * club+iam을 함께 래핑하는 1st-party 전용 — 인벤토리 계약 밖.
+   */
+  async registerCompanyMember(clubId: number | null, userId: number | null): Promise<void> {
+    if (!clubId || !userId || !this.club || !this.iam) return;
+    try {
+      const clubResp = await firstValueFrom(this.club.send('club.findOne', { id: clubId }));
+      const companyId = clubResp?.data?.companyId;
+      if (!companyId) return;
+      await firstValueFrom(this.iam.send('iam.companyMembers.addByBooking', { companyId, userId }));
+      this.logger.log(`CompanyMember registered: companyId=${companyId}, userId=${userId}`);
+    } catch (error) {
+      this.logger.warn(`Failed to register CompanyMember: clubId=${clubId}, userId=${userId}: ${(error as Error).message}`);
+    }
   }
 
   /**
