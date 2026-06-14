@@ -18,8 +18,10 @@ flowchart TB
     %% ===== 파크골프 마켓플레이스 (수요 B2C) =====
     subgraph MKT["🟧 파크골프 마켓플레이스 · 수요 B2C"]
         direction TB
-        APPS["user-app-web/ios/android<br/>platform-dashboard"]
+        UAPP["user-app-web/ios/android"]
+        PDASH["platform-dashboard<br/>플랫폼 운영"]
         UAPI["user-api · BFF"]
+        PAPI["platform-api · BFF 〔신규〕"]
         BK["booking-service<br/>booking_db"]
         PART["partner-service<br/>partner_db"]
         AG["agent-service"]
@@ -44,7 +46,9 @@ flowchart TB
     end
 
     ADM --> AAPI --> CBS
-    APPS --> UAPI --> BK
+    UAPP --> UAPI --> BK
+    PDASH --> PAPI --> BK
+    PAPI --> PART
     PART --> BK
     AG --> UAPI
     CH --> UAPI
@@ -57,6 +61,7 @@ flowchart TB
     SAGA --> PAY
     AAPI -.-> IAM
     UAPI -.-> IAM
+    PAPI -.-> IAM
     SAGA -.-> NOTI
 
     classDef mgr fill:#dbeafe,stroke:#2563eb,color:#1e3a5f;
@@ -64,7 +69,7 @@ flowchart TB
     classDef core fill:#fef9c3,stroke:#ca8a04,color:#713f12;
     classDef util fill:#f3f4f6,stroke:#9ca3af,color:#374151;
     class ADM,AAPI,CBS,CLUB mgr;
-    class APPS,UAPI,BK,PART,AG,CH mkt;
+    class UAPP,PDASH,UAPI,PAPI,BK,PART,AG,CH mkt;
     class SAGA,PAY,IAM,NOTI core;
     class LOC,WEA,JOB util;
 ```
@@ -228,4 +233,23 @@ flowchart TB
 
 ---
 
-> 상세 설계(InventoryProvider 계약 명세 · 정책 루트 단독/연동 · 3티어 패키징 · 결제/정산 미결정)는 UNI-91 본문 참조. 이 문서는 구성도·ERD부터 채우며 확장한다.
+## BFF 분리 — admin-api / platform-api / user-api
+
+**결정**: 현재 `admin-api`가 매니저(admin-dashboard)와 마켓 플랫폼 운영(platform-dashboard)을 **동시에 서빙**(platform-dashboard가 `/api/admin/*` 호출)하는 혼재 상태를 **BFF 3분할**로 정리한다. BFF 경계를 클라우드 경계와 일치시켜 분리 준비.
+
+| BFF | 소속 | 서빙 앱 | 비고 |
+|---|---|---|---|
+| `admin-api` | 🟦 매니저 | admin-dashboard (운영자 콘솔·데스크) | 마켓 라우트 제거 |
+| `platform-api` 〔신규〕 | 🟧 마켓 | platform-dashboard (플랫폼 운영) | 현 admin-api의 마켓 운영 라우트(partners 등) 이관 |
+| `user-api` | 🟧 마켓 | user-app web/ios/android (소비자) | 현행 유지 |
+
+- 이관 대상: 현 `admin-api`의 마켓 성격 라우트(`partners`, 플랫폼 전역 관리 등) → `platform-api`. 매니저 성격(운영자·회사·정책·데스크 예약)은 `admin-api` 잔류.
+- 인증: 세 BFF 모두 단일 iam 연합 사용(JWKS stateless 검증) — [인증/신원 전략](#인증--신원-전략--연합federation-채택) 참조.
+
+## 범위 밖 / 후속 (미설계)
+
+- **결제 · 정산 · 마감**: 매니저 현장결제(현금·카드단말) / 마켓 온라인 PG + 중앙정산·커미션 / 일·월 마감 — **현재 설계·구현 전무**. 파급이 가장 크므로 **별도 이슈로 분리**해 추후 설계·구현. 이 문서는 결제·정산 모델을 확정하지 않는다.
+
+---
+
+> 상세 설계(InventoryProvider 계약 명세 · 정책 루트 단독/연동 · 3티어 패키징)는 UNI-91 본문 참조. 이 문서는 구성도·ERD부터 채우며 확장한다.
