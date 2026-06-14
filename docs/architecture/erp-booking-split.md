@@ -311,6 +311,31 @@ flowchart TB
 - 이관 대상: 현 `admin-api`의 마켓 성격 라우트(`partners`, 플랫폼 전역 관리 등) → `platform-api`. 매니저 성격(운영자·회사·정책·데스크 예약)은 `admin-api` 잔류.
 - 인증: 세 BFF 모두 단일 iam 연합 사용(JWKS stateless 검증) — [인증/신원 전략](#인증--신원-전략--연합federation-채택) 참조.
 
+## 3티어 패키징
+
+배포 프로파일 3종. 매니저 측은 작게 시작해 단계적으로 확장, 풀 플랫폼은 마켓플레이스까지 포함. 패키징은 서비스 묶음 + Helm/values 프로파일(UNI-94)로 구현. **티어 상승 = 서비스 추가만**, 인벤토리 권위(club-service)는 모든 티어 불변.
+
+| 서비스 / 티어 | ① ERP-Core | ② ERP+부킹 | ③ 풀 플랫폼 |
+|---|:---:|:---:|:---:|
+| club-service | ● | ● | ● |
+| admin-api | ● | ● | ● |
+| iam-service | ● | ● | ● |
+| notify-service | ● | ● | ● |
+| location·weather·job | ● | ● | ● |
+| desk-booking-service | | ● | ● |
+| saga-service | | ● | ● |
+| payment-service | | ● 현장결제 | ● +온라인PG |
+| booking-service | | | ● |
+| partner-service | | | ● |
+| user-api · platform-api | | | ● |
+| agent · chat · chat-gateway | | | ● |
+| **앱** | admin-dashboard | admin-dashboard | + user-app · platform-dashboard |
+
+- **① ERP-Core**: 운영자가 자체 골프장·인벤토리·정책만 관리. 부킹 엔진 없음. 단독모드(정책 루트=COMPANY).
+- **② ERP+부킹**: ① + desk-booking-service·saga·payment(현장결제) → 전화·데스크·워크인 예약. 마켓 미연동.
+- **③ 풀 플랫폼**: ② + 마켓플레이스 전체(온라인 PG·파트너·AI·채팅·정산). 연동모드(정책 루트=PLATFORM).
+- 공유 코어(iam·notify·payment)·공통 유틸은 티어 공통(payment는 ②부터). 🟦/🟧 클라우드 분리는 ③에서만 의미 — ①②는 매니저 단일 배포.
+
 ## 범위 밖 / 후속 (미설계)
 
 - **결제 · 정산 · 마감**: 매니저 현장결제(현금·카드단말) / 마켓 온라인 PG + 중앙정산·커미션 / 일·월 마감 — **현재 설계·구현 전무**. 파급이 가장 크므로 **별도 이슈로 분리**해 추후 설계·구현. 이 문서는 결제·정산 모델을 확정하지 않는다.
