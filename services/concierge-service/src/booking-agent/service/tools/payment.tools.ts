@@ -8,7 +8,7 @@ const REQUEST_TIMEOUT = 10000;
 export class PaymentTools {
   private readonly logger = new Logger(PaymentTools.name);
 
-  constructor(@Inject('PAYMENT_SERVICE') private readonly paymentClient: ClientProxy) {}
+  constructor(@Inject('BILLING_SERVICE') private readonly paymentClient: ClientProxy) {}
 
   async preparePayment(params: {
     bookingId: number;

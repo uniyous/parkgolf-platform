@@ -38,7 +38,7 @@ export class OutboxProcessorService implements OnModuleInit {
     private readonly drizzle: DrizzleService,
     private readonly pgboss: PgBossService,
     @Inject('NOTIFICATION_SERVICE') private readonly notificationClient: ClientProxy,
-    @Inject('PAYMENT_SERVICE') private readonly paymentServiceClient: ClientProxy,
+    @Inject('BILLING_SERVICE') private readonly paymentServiceClient: ClientProxy,
   ) {}
 
   private get db() {

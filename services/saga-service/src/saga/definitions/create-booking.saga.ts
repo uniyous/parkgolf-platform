@@ -119,7 +119,7 @@ export const CreateBookingSaga: SagaDefinition = {
       action: 'billing.splitPrepare',
       compensate: null,
       timeout: NATS_TIMEOUTS.PAYMENT,
-      targetService: 'PAYMENT_SERVICE',
+      targetService: 'BILLING_SERVICE',
       condition: (payload) =>
         payload.paymentMethod === 'dutchpay' &&
         Array.isArray(payload.participants) &&

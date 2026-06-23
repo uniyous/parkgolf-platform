@@ -21,7 +21,7 @@ export const PaymentFailedSaga: SagaDefinition = {
       action: 'billing.refundPaidSplits',
       compensate: null,
       timeout: NATS_TIMEOUTS.PAYMENT,
-      targetService: 'PAYMENT_SERVICE',
+      targetService: 'BILLING_SERVICE',
       condition: (payload) => payload.paymentMethod === 'dutchpay',
       buildRequest: (payload) => ({
         bookingId: payload.bookingId,

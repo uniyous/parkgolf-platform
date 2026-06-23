@@ -44,7 +44,7 @@ export class ParticipantCancelService {
 
   constructor(
     private readonly drizzle: DrizzleService,
-    @Optional() @Inject('PAYMENT_SERVICE') private readonly paymentClient?: ClientProxy,
+    @Optional() @Inject('BILLING_SERVICE') private readonly paymentClient?: ClientProxy,
     @Optional() @Inject('NOTIFICATION_SERVICE') private readonly notifyClient?: ClientProxy,
   ) {}
 
@@ -85,7 +85,7 @@ export class ParticipantCancelService {
       if (!this.paymentClient) {
         throw new AppException(
           Errors.Booking.INVALID_STATUS,
-          'PAYMENT_SERVICE client not configured',
+          'BILLING_SERVICE client not configured',
         );
       }
 

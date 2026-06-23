@@ -66,7 +66,7 @@ export const CancelBookingSaga: SagaDefinition = {
       action: 'billing.cancelByBookingId',
       compensate: null,
       timeout: NATS_TIMEOUTS.PAYMENT,
-      targetService: 'PAYMENT_SERVICE',
+      targetService: 'BILLING_SERVICE',
       condition: (payload) => {
         const method = payload.paymentMethod as string;
         return !!method && method !== 'onsite';

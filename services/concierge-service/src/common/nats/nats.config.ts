@@ -47,7 +47,7 @@ export const NATS_CLIENT_OPTIONS: ClientsProviderAsyncOptions[] = [
     inject: [ConfigService],
   },
   {
-    name: 'PAYMENT_SERVICE',
+    name: 'BILLING_SERVICE',
     imports: [ConfigModule],
     useFactory: (configService: ConfigService) => ({
       transport: Transport.NATS,
