@@ -533,7 +533,7 @@ temp/
 # Services Folder Exclusions (Monorepo)
 # ========================================
 
-# Node.js services (admin-api, auth-service, club-service, booking-service, notify-service, search-service, user-api)
+# Node.js services (manager-bff, auth-service, club-service, booking-service, notify-service, search-service, consumer-bff)
 services/*/node_modules/
 services/*/dist/
 services/*/build/
@@ -559,7 +559,7 @@ services/*/*.egg-info/
 services/*/.coverage
 services/*/htmlcov/
 
-# React services (admin-dashboard, user-webapp)
+# React services (manager-console, user-webapp)
 services/*/build/
 services/*/dist/
 services/*/.cache/

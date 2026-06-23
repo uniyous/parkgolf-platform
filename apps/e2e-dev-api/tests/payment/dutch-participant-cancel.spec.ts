@@ -12,7 +12,7 @@ import {
 /**
  * 더치페이 시나리오 — 참여자 본인 자리 취소 (빈자리 유지)
  *
- * AGENT_PAY.md §11.4 / BOOKING.md §7.7
+ * agent-pay.md §11.4 / booking.md §7.7
  *
  * 검증 흐름
  *   1) seedDutchTeam(4) — booker + 3명
@@ -28,7 +28,7 @@ import {
  *
  * @write @slow — 4명 user + 1 booking + 4 PaymentSplit 잔존
  */
-test.describe('Dutch Payment — Participant Cancel (AGENT_PAY.md §11.4) @write @slow', () => {
+test.describe('Dutch Payment — Participant Cancel (agent-pay.md §11.4) @write @slow', () => {
   test.setTimeout(240_000);
 
   test('1명 본인 자리 취소 → 환불 + 슬롯 1자리 release / 다른 참여자 영향 없음 / 마지막 취소 시 booking CANCELLED', async ({ request, adminToken }) => {

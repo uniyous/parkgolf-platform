@@ -11,7 +11,7 @@ import { createE2EUser, E2EUser } from '../../fixtures/users';
  *   본 파일 G (ai-agent-context)      turn-N의 입력이 turn-N+1의 컨텍스트
  *                                     (prefetch / slots / 가드)에 어떻게 반영되는지
  *
- * 관련 문서: docs/workflow/AGENT_CONTEXT.md
+ * 관련 문서: docs/workflow/agent-context.md
  *
  * 결정성 전략
  *   - LLM 응답은 비결정적 → 키워드 포함/제외 기반 느슨 단언 + state/계약 확인

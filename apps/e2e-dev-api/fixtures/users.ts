@@ -61,7 +61,7 @@ export async function createE2EUser(
   // 재시도 정책:
   //   - 429 (throttler): x-ratelimit-reset(초) + 2초 버퍼, 최대 65초
   //   - 5xx (502/503/504 일시 장애): 지수 백오프 3s/6s, 최대 3회
-  // user-api throttler = 60s 5req/IP — 충돌 시 최대 ~62s 대기.
+  // consumer-bff throttler = 60s 5req/IP — 충돌 시 최대 ~62s 대기.
   let last: { status: number; body: any } | null = null;
   for (let attempt = 0; attempt < 4; attempt++) {
     const reg = await request.post('/api/user/iam/register', { data });

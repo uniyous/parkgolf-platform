@@ -41,7 +41,7 @@ fun SelectParticipantsCard(
     val pricePerPerson = (data["pricePerPerson"] as? Number)?.toInt() ?: 0
     val numberFormat = NumberFormat.getNumberInstance(Locale.KOREA)
 
-    // 서버(agent-service ui-card.helper.ts)가 카드 데이터에 모든 필요 정보를 내려준다:
+    // 서버(concierge-service ui-card.helper.ts)가 카드 데이터에 모든 필요 정보를 내려준다:
     //   - assignedTeams: 완료된 팀들 (참고용)
     //   - currentTeam:   지금 채우는 팀 (자연어로 사전 추출된 멤버가 미리 채워질 수 있음)
     //   - availableMembers: 채팅방 전체 멤버 중 미배정자

@@ -361,7 +361,7 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  // Subscribe to room message broadcast events from agent-service
+  // Subscribe to room message broadcast events from concierge-service
   async subscribeToRoomMessages(
     handler: (event: RoomMessageEvent) => void,
   ): Promise<() => void> {

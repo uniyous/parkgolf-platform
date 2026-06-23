@@ -71,7 +71,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       this.server?.emit('system:nats_status', { connected });
     });
 
-    // Subscribe to room message broadcasts (agent-service → chat-gateway → Socket.IO)
+    // Subscribe to room message broadcasts (concierge-service → chat-gateway → Socket.IO)
     this.roomMessageSubscription = await this.natsService.subscribeToRoomMessages(
       (event: RoomMessageEvent) => {
         this.deliverRoomMessage(event);

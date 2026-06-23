@@ -5,10 +5,10 @@ import { test, expect, APIRequestContext } from '@playwright/test';
  *
  * 배포된 dev 환경에서 AI 예약 도우미의 전체 시나리오를 API 레벨로 검증.
  * POST /api/user/chat/rooms/:roomId/agent 엔드포인트를 통해
- * agent-service의 도구 + Direct Handler + 그룹 예약 핸들러 검증.
+ * concierge-service의 도구 + Direct Handler + 그룹 예약 핸들러 검증.
  *
  * 사전 조건:
- * - dev 환경(user-api, agent-service, club-service 등)이 배포되어 있어야 함
+ * - dev 환경(consumer-bff, concierge-service, club-service 등)이 배포되어 있어야 함
  * - test@parkgolf.com / test1234 테스트 계정이 존재해야 함
  *
  * 실행:

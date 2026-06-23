@@ -130,7 +130,7 @@ export class SagaNatsController {
     }, 'SYSTEM');
   }
 
-  // ===== Saga 관리 (admin-api → saga-service) =====
+  // ===== Saga 관리 (manager-bff → saga-service) =====
 
   @MessagePattern('saga.list')
   async handleListSagas(@Payload() data: {

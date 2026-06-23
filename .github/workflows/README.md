@@ -96,7 +96,7 @@ K8s (자동 sync):
 ```bash
 Actions > CD Services > Run workflow
   - environment: dev / prod
-  - services:    all / iam-service,admin-api (쉼표 구분)
+  - services:    all / iam-service,manager-bff (쉼표 구분)
 ```
 
 ### 동작
@@ -129,13 +129,13 @@ Actions > CD Services > Run workflow
 ```bash
 Actions > CD Apps > Run workflow
   - environment: dev / prod
-  - apps:        all / admin-dashboard,user-app-web
+  - apps:        all / manager-console,user-app-web
 ```
 
 | App | Firebase Site |
 |------|---------------|
-| admin-dashboard | `parkgolf-admin{-dev}` |
-| platform-dashboard | `parkgolf-platform{-dev}` |
+| manager-console | `parkgolf-manager{-dev}` |
+| marketplace-console | `parkgolf-marketplace{-dev}` |
 | user-app-web | `parkgolf-user{-dev}` |
 
 빌드 환경변수: `VITE_API_URL`, `VITE_CHAT_SOCKET_URL`, `VITE_TOSS_CLIENT_KEY`, `VITE_KAKAO_JS_KEY`.

@@ -26,7 +26,7 @@ export interface CancelParticipantResult {
 }
 
 /**
- * 더치페이 본인 자리 취소 SSOT — AGENT_PAY.md §11.4
+ * 더치페이 본인 자리 취소 SSOT — agent-pay.md §11.4
  *
  * 단일 결제(현장·카드)의 전체 booking 취소는 saga.booking.cancel이 담당.
  * 본 서비스는 더치페이 참여자가 마이페이지에서 본인 자리만 취소할 때 호출된다.
@@ -76,8 +76,8 @@ export class ParticipantCancelService {
       throw new AppException(Errors.Booking.ALREADY_CANCELLED);
     }
 
-    // PAID이면 payment-service에 환불 위임. 실패 시 throw → participant 상태 무변경.
-    // 정책: AGENT_PAY.md §11.5 Phase 1 — 운영 알림 (notify-service emit) 후 에러 전파.
+    // PAID이면 billing-service에 환불 위임. 실패 시 throw → participant 상태 무변경.
+    // 정책: agent-pay.md §11.5 Phase 1 — 운영 알림 (notify-service emit) 후 에러 전파.
     let refundedAmount = 0;
     let nextStatus: ParticipantStatus = ParticipantStatus.CANCELLED;
 

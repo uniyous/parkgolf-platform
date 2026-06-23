@@ -26,7 +26,7 @@ export const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
   const cancelMutation = useCancelBookingMutation();
   const cancelParticipantMutation = useCancelParticipantMutation();
 
-  // AGENT_PAY.md §11.4 — 더치페이는 본인 자리만 취소
+  // agent-pay.md §11.4 — 더치페이는 본인 자리만 취소
   const isDutchpay = booking.paymentMethod === 'dutchpay';
   const activeMutation = isDutchpay ? cancelParticipantMutation : cancelMutation;
 

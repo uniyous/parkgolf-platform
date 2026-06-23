@@ -7,7 +7,7 @@ import { bookings, bookingHistory } from '../../db/schema';
 /**
  * Saga 이벤트 후속 처리 서비스
  *
- * - handlePaymentCanceled: 환불 완료 이력 기록 + 알림 (payment-service → client.send)
+ * - handlePaymentCanceled: 환불 완료 이력 기록 + 알림 (billing-service → client.send)
  */
 @Injectable()
 export class SagaHandlerService {
@@ -24,7 +24,7 @@ export class SagaHandlerService {
 
   /**
    * 결제 취소(환불) 완료 처리
-   * payment-service에서 booking.paymentCanceled 이벤트 수신 시 호출
+   * billing-service에서 booking.paymentCanceled 이벤트 수신 시 호출
    * BookingHistory에 REFUND_COMPLETED 기록 + 환불 알림 발행
    */
   async handlePaymentCanceled(data: {

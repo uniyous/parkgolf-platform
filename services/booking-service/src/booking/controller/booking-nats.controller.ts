@@ -85,7 +85,7 @@ export class BookingNatsController {
     this.logger.debug(`NATS: booking.search data: ${JSON.stringify(data)}`);
     const result = await this.bookingService.searchBookings(data);
     this.logger.log(`NATS: Found ${result.total} bookings`);
-    // user-api expects { bookings, total, page, limit } format
+    // consumer-bff expects { bookings, total, page, limit } format
     return NatsResponse.success({
       bookings: result.bookings,
       total: result.total,
@@ -292,7 +292,7 @@ export class BookingNatsController {
     return NatsResponse.success(result);
   }
 
-  // AGENT_PAY.md §11.4 — 더치페이 본인 자리 취소 (마이페이지)
+  // agent-pay.md §11.4 — 더치페이 본인 자리 취소 (마이페이지)
   @MessagePattern('booking.cancelParticipant')
   async cancelParticipant(@Payload() data: { bookingId: number; userId: number; reason?: string }) {
     this.logger.log(

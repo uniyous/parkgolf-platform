@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 /**
  * Toss webhook 멱등성 검증
  *
- * payment-service의 webhook handler 3종:
+ * billing-service의 webhook handler 3종:
  *   - PAYMENT_STATUS_CHANGED  → 동일 status면 skip
  *   - DEPOSIT_CALLBACK         → 이미 DONE이면 skip
  *   - CANCEL_STATUS_CHANGED    → refund unique 제약

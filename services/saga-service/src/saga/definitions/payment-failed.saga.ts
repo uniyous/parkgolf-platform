@@ -4,7 +4,7 @@ import { NATS_TIMEOUTS } from '../../common/constants/nats.constants';
 /**
  * 결제 실패/취소 Saga
  *
- * 트리거: payment-service의 outbox 이벤트 `booking.paymentFailed`
+ * 트리거: billing-service의 outbox 이벤트 `booking.paymentFailed`
  * 흐름: 예약 FAILED 처리 → 슬롯 복구 → 실패 알림
  *
  * PAYMENT_TIMEOUT과 동일한 정리 단계를 사용하지만 트리거 시점이 다름:

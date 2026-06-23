@@ -315,7 +315,7 @@ export async function confirmAllDutchSplits(
 }
 
 /**
- * 더치페이 본인 자리 취소 — UNI-28 / AGENT_PAY.md §11.4
+ * 더치페이 본인 자리 취소 — UNI-28 / agent-pay.md §11.4
  *
  * JWT(user.accessToken)가 곧 취소 대상 participant.userId.
  * 응답: { bookingId, userId, previousStatus, newStatus, refundedAmount, bookingCancelled, remainingParticipants }
