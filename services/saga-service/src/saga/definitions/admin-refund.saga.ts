@@ -51,7 +51,7 @@ export const AdminRefundSaga: SagaDefinition = {
     },
     {
       name: 'PROCESS_REFUND',
-      action: 'payment.cancelByBookingId',
+      action: 'billing.cancelByBookingId',
       compensate: null,
       timeout: NATS_TIMEOUTS.PAYMENT,
       targetService: 'PAYMENT_SERVICE',

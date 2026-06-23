@@ -318,7 +318,7 @@ export class BookingSagaStepService {
           await tx.insert(bookingOutboxEvents).values({
             aggregateType: 'Booking',
             aggregateId: String(data.bookingId),
-            eventType: 'payment.cancelByBookingId',
+            eventType: 'billing.cancelByBookingId',
             payload: {
               bookingId: data.bookingId,
               cancelReason: 'Auto-refund: payment arrived after booking timeout',

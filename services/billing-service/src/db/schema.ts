@@ -1,5 +1,5 @@
 // ==============================================
-// billing-service / payment_db — Drizzle schema (UNI-86)
+// billing-service / billing_db — Drizzle schema (UNI-86)
 // 금액 전부 Int(원). 컬럼명 기존 DB(@map snake_case) 유지. @updatedAt → $defaultFn.
 // ==============================================
 import { pgTable, pgEnum, serial, integer, text, boolean, jsonb, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';

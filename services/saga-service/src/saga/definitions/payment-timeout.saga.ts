@@ -15,7 +15,7 @@ export const PaymentTimeoutSaga: SagaDefinition = {
   steps: [
     {
       name: 'REFUND_PAID_SPLITS',
-      action: 'payment.refundPaidSplits',
+      action: 'billing.refundPaidSplits',
       compensate: null,
       timeout: NATS_TIMEOUTS.PAYMENT,
       targetService: 'PAYMENT_SERVICE',

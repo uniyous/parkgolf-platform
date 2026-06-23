@@ -237,7 +237,7 @@ export class ChatService {
 
     // 2. concierge-service에 AI 채팅 요청 (60초 타임아웃)
     const agentResponse = await this.natsClient.send<any>(
-      'agent.chat',
+      'concierge.chat',
       {
         userId,
         userName,

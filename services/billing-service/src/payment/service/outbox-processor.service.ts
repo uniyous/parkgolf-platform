@@ -70,16 +70,16 @@ export class OutboxProcessorService implements OnModuleInit {
 
   private getPattern(eventType: string): string {
     const patternMap: Record<string, string> = {
-      'payment.confirmed': 'booking.paymentConfirmed',
-      'payment.canceled': 'booking.paymentCanceled',
-      'payment.deposited': 'booking.paymentDeposited',
-      'payment.failed': 'booking.paymentFailed',
+      'billing.confirmed': 'booking.paymentConfirmed',
+      'billing.canceled': 'booking.paymentCanceled',
+      'billing.deposited': 'booking.paymentDeposited',
+      'billing.failed': 'booking.paymentFailed',
     };
     return patternMap[eventType] || eventType;
   }
 
   private getClient(eventType: string): ClientProxy {
-    if (eventType.startsWith('payment.')) return this.bookingClient;
+    if (eventType.startsWith('billing.')) return this.bookingClient;
     if (eventType.startsWith('notification.')) return this.notificationClient;
     return this.bookingClient;
   }

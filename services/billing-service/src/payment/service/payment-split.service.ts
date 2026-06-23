@@ -109,7 +109,7 @@ export class PaymentSplitService {
     this.logger.log(`Split confirmed: orderId=${dto.orderId}, user=${split.userId}, settled=${markRes?.data?.settled}`);
 
     if (markRes?.success && markRes?.data?.settled === true) {
-      await this.paymentService.createOutboxEvent('payment.confirmed', {
+      await this.paymentService.createOutboxEvent('billing.confirmed', {
         paymentId: null,
         paymentKey: null,
         orderId: null,

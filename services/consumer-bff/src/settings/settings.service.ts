@@ -52,7 +52,7 @@ export class SettingsService {
     frequentTeammatesCount?: number;
   }>> {
     this.logger.log(`Get agent memory: userId=${userId}`);
-    return this.natsClient.send('agent.memory.get', { userId }, NATS_TIMEOUTS.QUICK);
+    return this.natsClient.send('concierge.memory.get', { userId }, NATS_TIMEOUTS.QUICK);
   }
 
   /**
@@ -65,7 +65,7 @@ export class SettingsService {
   ): Promise<ApiResponse<{ userId: number; enabled: boolean }>> {
     this.logger.log(`Set agent memory: userId=${userId} enabled=${enabled}`);
     return this.natsClient.send(
-      'agent.memory.setEnabled',
+      'concierge.memory.setEnabled',
       { userId, enabled },
       NATS_TIMEOUTS.QUICK,
     );

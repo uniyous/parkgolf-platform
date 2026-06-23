@@ -201,7 +201,7 @@ export class OutboxProcessorService implements OnModuleInit {
    * 이벤트 타입에 따른 NATS 클라이언트 선택
    */
   private getClientForEventType(eventType: string): ClientProxy {
-    if (eventType.startsWith('payment.')) {
+    if (eventType.startsWith('billing.')) {
       return this.paymentServiceClient;
     }
     if (eventType.startsWith('booking.') || eventType.startsWith('notification.')) {
@@ -216,7 +216,7 @@ export class OutboxProcessorService implements OnModuleInit {
    */
   private isRequestReplyEvent(eventType: string): boolean {
     const requestReplyEvents = [
-      'payment.cancelByBookingId',
+      'billing.cancelByBookingId',
     ];
     return requestReplyEvents.includes(eventType);
   }

@@ -33,7 +33,7 @@ export class BookingAgentNatsController {
    * 채팅 메시지 처리
    * Pattern: agent.chat
    */
-  @MessagePattern('agent.chat')
+  @MessagePattern('concierge.chat')
   async chat(@Payload() data: ChatRequestDto) {
     this.logger.debug(`Chat request from user: ${data.userId}`);
 
@@ -50,7 +50,7 @@ export class BookingAgentNatsController {
    * 대화 리셋
    * Pattern: agent.reset
    */
-  @MessagePattern('agent.reset')
+  @MessagePattern('concierge.reset')
   async reset(@Payload() data: ResetRequestDto & { conversationId?: string }) {
     this.logger.debug(`Reset conversation for user: ${data.userId}`);
 
@@ -67,7 +67,7 @@ export class BookingAgentNatsController {
    * 대화 상태 조회
    * Pattern: agent.status
    */
-  @MessagePattern('agent.status')
+  @MessagePattern('concierge.status')
   async getStatus(@Payload() data: { userId: number; conversationId: string }) {
     this.logger.debug(`Status request: ${data.conversationId}`);
 
@@ -96,7 +96,7 @@ export class BookingAgentNatsController {
    * 서비스 통계 (헬스체크/디버깅용)
    * Pattern: agent.stats
    */
-  @MessagePattern('agent.stats')
+  @MessagePattern('concierge.stats')
   async getStats() {
     try {
       const stats = await this.conversationService.getStats();
@@ -115,7 +115,7 @@ export class BookingAgentNatsController {
    * 사용자 메모리 조회 (프라이버시 토글 상태 + 요약)
    * Pattern: agent.memory.get
    */
-  @MessagePattern('agent.memory.get')
+  @MessagePattern('concierge.memory.get')
   async getMemory(@Payload() data: { userId: number }) {
     try {
       const snapshot = await this.userMemoryService.get(data.userId);
@@ -148,7 +148,7 @@ export class BookingAgentNatsController {
    * Pattern: agent.memory.setEnabled
    * 기본값 ON (사용자가 명시적으로 OFF로 변경 가능)
    */
-  @MessagePattern('agent.memory.setEnabled')
+  @MessagePattern('concierge.memory.setEnabled')
   async setMemoryEnabled(@Payload() data: { userId: number; enabled: boolean }) {
     try {
       await this.userMemoryService.setEnabled(data.userId, !!data.enabled);
@@ -164,7 +164,7 @@ export class BookingAgentNatsController {
    * 사용자 메모리 전체 삭제 (계정 삭제 정책 연계)
    * Pattern: agent.memory.deleteByUser
    */
-  @MessagePattern('agent.memory.deleteByUser')
+  @MessagePattern('concierge.memory.deleteByUser')
   async deleteMemoryByUser(@Payload() data: { userId: number }) {
     try {
       await this.userMemoryService.deleteByUser(data.userId);

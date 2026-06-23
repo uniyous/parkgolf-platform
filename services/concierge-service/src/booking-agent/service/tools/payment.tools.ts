@@ -19,7 +19,7 @@ export class PaymentTools {
     try {
       const response = await firstValueFrom(
         this.paymentClient
-          .send('payment.prepare', {
+          .send('billing.prepare', {
             bookingId: params.bookingId,
             amount: params.amount,
             orderName: params.orderName,
@@ -38,7 +38,7 @@ export class PaymentTools {
         return { orderId: response.data.orderId, paymentId: response.data.id };
       }
 
-      this.logger.warn('payment.prepare returned unsuccessful response');
+      this.logger.warn('billing.prepare returned unsuccessful response');
       return null;
     } catch (error) {
       this.logger.error('preparePayment unexpected error', error);
@@ -58,7 +58,7 @@ export class PaymentTools {
   }): Promise<any> {
     try {
       const response = await firstValueFrom(
-        this.paymentClient.send('payment.splitPrepare', params).pipe(
+        this.paymentClient.send('billing.splitPrepare', params).pipe(
           timeout(REQUEST_TIMEOUT),
           catchError((err) => {
             this.logger.error(`payment.splitPrepare failed: ${err.message}`);
@@ -76,7 +76,7 @@ export class PaymentTools {
   async getSplitStatus(bookingId: number): Promise<any> {
     try {
       const response = await firstValueFrom(
-        this.paymentClient.send('payment.splitGet', { bookingId }).pipe(
+        this.paymentClient.send('billing.splitGet', { bookingId }).pipe(
           timeout(REQUEST_TIMEOUT),
           catchError((err) => {
             this.logger.error(`payment.splitGet failed: ${err.message}`);
@@ -94,7 +94,7 @@ export class PaymentTools {
   async getSplitStatusByOrderId(orderId: string): Promise<any> {
     try {
       const response = await firstValueFrom(
-        this.paymentClient.send('payment.splitGet', { orderId }).pipe(
+        this.paymentClient.send('billing.splitGet', { orderId }).pipe(
           timeout(REQUEST_TIMEOUT),
           catchError((err) => {
             this.logger.error(`payment.splitGet (orderId) failed: ${err.message}`);

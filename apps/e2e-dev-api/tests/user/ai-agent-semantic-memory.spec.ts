@@ -11,7 +11,7 @@ import { createE2EUser } from '../../fixtures/users';
  *   3.2 user_memory.enabled=false → prefill skip
  *   3.3 user_memory에 favoriteClubs seed → LLM 응답에 club 이름 인용 (결정적 검증)
  *
- * 3.3은 kubectl exec를 통해 agent_db에 직접 데이터 seed.
+ * 3.3은 kubectl exec를 통해 concierge_db에 직접 데이터 seed.
  * E2E_KUBECTL_NS 환경변수로 namespace 지정 (default: parkgolf-dev).
  * kubectl 권한 없으면 자동 skip.
  *
@@ -43,12 +43,12 @@ function seedUserMemory(
       preferences = EXCLUDED.preferences,
       enabled = EXCLUDED.enabled,
       updated_at = CURRENT_TIMESTAMP;`;
-  execSync(`kubectl exec -n ${NS} postgres-0 -- psql -U parkgolf -d agent_db -c "${sql.replace(/"/g, '\\"').replace(/\n/g, ' ')}"`, { stdio: 'pipe' });
+  execSync(`kubectl exec -n ${NS} postgres-0 -- psql -U parkgolf -d concierge_db -c "${sql.replace(/"/g, '\\"').replace(/\n/g, ' ')}"`, { stdio: 'pipe' });
 }
 
 function deleteUserMemory(userId: number): void {
   try {
-    execSync(`kubectl exec -n ${NS} postgres-0 -- psql -U parkgolf -d agent_db -c "DELETE FROM user_memory WHERE user_id = ${userId};"`, { stdio: 'pipe' });
+    execSync(`kubectl exec -n ${NS} postgres-0 -- psql -U parkgolf -d concierge_db -c "DELETE FROM user_memory WHERE user_id = ${userId};"`, { stdio: 'pipe' });
   } catch { /* best-effort */ }
 }
 

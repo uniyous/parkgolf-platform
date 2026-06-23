@@ -29,7 +29,7 @@ export class PaymentNatsController {
    * 결제 준비
    * 클라이언트에서 결제 위젯 초기화 전 호출
    */
-  @MessagePattern('payment.prepare')
+  @MessagePattern('billing.prepare')
   async preparePayment(@Payload() data: PreparePaymentDto) {
     this.logger.log(`Preparing payment for user ${data.userId}`);
     const result = await this.paymentService.preparePayment(data);
@@ -40,7 +40,7 @@ export class PaymentNatsController {
    * 결제 승인
    * 토스페이먼츠 결제 위젯에서 리다이렉트 후 호출
    */
-  @MessagePattern('payment.confirm')
+  @MessagePattern('billing.confirm')
   async confirmPayment(@Payload() data: ConfirmPaymentDto) {
     this.logger.log(`Confirming payment: ${data.orderId}`);
     const result = await this.paymentService.confirmPayment(data);
@@ -50,7 +50,7 @@ export class PaymentNatsController {
   /**
    * 결제 취소
    */
-  @MessagePattern('payment.cancel')
+  @MessagePattern('billing.cancel')
   async cancelPayment(@Payload() data: CancelPaymentDto) {
     this.logger.log(`Canceling payment: ${data.paymentKey}`);
     const result = await this.paymentService.cancelPayment(data);
@@ -60,7 +60,7 @@ export class PaymentNatsController {
   /**
    * bookingId 기반 결제 취소 (예약 취소 시 자동 환불)
    */
-  @MessagePattern('payment.cancelByBookingId')
+  @MessagePattern('billing.cancelByBookingId')
   async cancelPaymentByBookingId(@Payload() data: { bookingId: number; cancelReason: string }) {
     this.logger.log(`Canceling payment for bookingId: ${data.bookingId}`);
     const result = await this.paymentService.cancelPaymentByBookingId(data);
@@ -71,7 +71,7 @@ export class PaymentNatsController {
    * 결제 중단 (실패/취소) - orderId 기반
    * 클라이언트가 결제창 실패/취소 시 호출. payment.status=ABORTED + outbox booking.paymentFailed 발행
    */
-  @MessagePattern('payment.markAborted')
+  @MessagePattern('billing.markAborted')
   async markPaymentAborted(
     @Payload()
     data: {
@@ -89,7 +89,7 @@ export class PaymentNatsController {
   /**
    * 결제 조회 (paymentKey)
    */
-  @MessagePattern('payment.get')
+  @MessagePattern('billing.get')
   async getPayment(@Payload() data: { paymentKey: string }) {
     this.logger.log(`Getting payment: ${data.paymentKey}`);
     const result = await this.paymentService.getPayment(data.paymentKey);
@@ -99,7 +99,7 @@ export class PaymentNatsController {
   /**
    * 결제 조회 (orderId)
    */
-  @MessagePattern('payment.getByOrderId')
+  @MessagePattern('billing.getByOrderId')
   async getPaymentByOrderId(@Payload() data: { orderId: string }) {
     this.logger.log(`Getting payment by orderId: ${data.orderId}`);
     const result = await this.paymentService.getPaymentByOrderId(data.orderId);
@@ -109,7 +109,7 @@ export class PaymentNatsController {
   /**
    * 결제 목록 조회
    */
-  @MessagePattern('payment.list')
+  @MessagePattern('billing.list')
   async getPayments(@Payload() data: GetPaymentsFilterDto) {
     this.logger.log(`Listing payments with filters`);
     const result = await this.paymentService.getPayments(data);
@@ -164,7 +164,7 @@ export class PaymentNatsController {
    * 분할결제 준비
    * 참여자별 개별 orderId 생성
    */
-  @MessagePattern('payment.splitPrepare')
+  @MessagePattern('billing.splitPrepare')
   async prepareSplit(@Payload() data: SplitPrepareDto) {
     this.logger.log(`Preparing split payment for booking ${data.bookingId}`);
     const result = await this.splitService.prepareSplit(data);
@@ -174,7 +174,7 @@ export class PaymentNatsController {
   /**
    * 개별 분할결제 승인
    */
-  @MessagePattern('payment.splitConfirm')
+  @MessagePattern('billing.splitConfirm')
   async confirmSplit(@Payload() data: SplitConfirmDto) {
     this.logger.log(`Confirming split payment: ${data.orderId}`);
     const result = await this.splitService.confirmSplit(data);
@@ -186,7 +186,7 @@ export class PaymentNatsController {
    * - PAID split을 모두 Toss 환불 → status=REFUNDED
    * - PENDING split은 EXPIRED로 일괄 변경
    */
-  @MessagePattern('payment.refundPaidSplits')
+  @MessagePattern('billing.refundPaidSplits')
   async refundPaidSplits(@Payload() data: { bookingId: number; reason?: string }) {
     this.logger.log(`Refunding paid splits for booking ${data.bookingId}`);
     const result = await this.splitService.refundPaidSplitsByBooking(data);
@@ -198,7 +198,7 @@ export class PaymentNatsController {
    * booking-service `booking.cancelParticipant`가 PAID split에 대해 호출.
    * policy.refund.resolve로 환불률 결정 후 Toss 부분 환불.
    */
-  @MessagePattern('payment.refundSplit')
+  @MessagePattern('billing.refundSplit')
   async refundSplit(@Payload() data: {
     bookingId: number;
     userId: number;
@@ -218,7 +218,7 @@ export class PaymentNatsController {
   /**
    * 분할결제 상태 조회 (그룹 / 예약 / orderId)
    */
-  @MessagePattern('payment.splitGet')
+  @MessagePattern('billing.splitGet')
   async getSplits(@Payload() data: { bookingGroupId?: number; bookingId?: number; orderId?: string }) {
     if (data.bookingGroupId) {
       const result = await this.splitService.getSplitsByBookingGroup(data.bookingGroupId);
@@ -268,7 +268,7 @@ export class PaymentNatsController {
   /**
    * 미결제/환불 진행중 확인 (계정 삭제 제한 조건)
    */
-  @MessagePattern('payment.userActiveCheck')
+  @MessagePattern('billing.userActiveCheck')
   async checkUserActivePayments(@Payload() data: { userId: number }) {
     this.logger.log(`Checking active payments for user ${data.userId}`);
     const result = await this.paymentService.checkUserActivePayments(data.userId);

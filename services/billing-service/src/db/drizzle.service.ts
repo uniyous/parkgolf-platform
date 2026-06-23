@@ -10,7 +10,7 @@ export type DrizzleTx = Parameters<Parameters<DrizzleDb['transaction']>[0]>[0];
 
 /**
  * Drizzle + postgres-js DB 제공자 (UNI-86).
- * payment_db는 마이그레이션 보유 → 연결만.
+ * billing_db는 마이그레이션 보유 → 연결만.
  */
 @Injectable()
 export class DrizzleService implements OnModuleInit, OnModuleDestroy {
@@ -27,7 +27,7 @@ export class DrizzleService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit(): Promise<void> {
     await this.client`SELECT 1`;
-    this.logger.log('payment_db connected (drizzle/postgres-js)');
+    this.logger.log('billing_db connected (drizzle/postgres-js)');
   }
 
   async onModuleDestroy(): Promise<void> {

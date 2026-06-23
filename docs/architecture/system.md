@@ -310,7 +310,7 @@ Connected Services (via NATS):
 | **club-service** | 8080 | club_db | 골프장/코스/게임 관리, 타임슬롯 자동 생성, 근처 검색 (Haversine), Optimistic Locking |
 | **booking-service** | 8080 | booking_db | 예약 CRUD, Saga Step Handler, 계층형 정책 Resolve (Club→Company→Platform), 더치페이 정산, 환불/노쇼 |
 | **saga-service** | 8080 | saga_db | 분산 트랜잭션 Orchestrator, 선언적 Saga 정의, 보상 자동 역순 실행, Outbox |
-| **billing-service** | 8086 | payment_db | Toss Payments 결제위젯, 빌링키, 부분/전액 환불, 더치페이 분할결제, Webhook |
+| **billing-service** | 8086 | billing_db | Toss Payments 결제위젯, 빌링키, 부분/전액 환불, 더치페이 분할결제, Webhook |
 | **partner-service** | 8080 | partner_db | 외부 ERP 연동 (OpenAPI 동적 호출), 슬롯/예약 양방향 동기화, 서킷 브레이커 |
 | **notify-service** | 8080 | notify_db | Multi-channel 알림 (Email/SMS/Push), 템플릿, 재시도 |
 
@@ -502,7 +502,7 @@ graph TB
     COURSE_DB[("club_db<br/>Companies, Clubs, Courses<br/>Games, TimeSlots, Schedules")]:::db
     BOOKING_DB[("booking_db<br/>Bookings, Refunds, NoShowRecords<br/>Policies: Cancel/Refund/NoShow/Operating")]:::db
     SAGA_DB[("saga_db<br/>SagaExecutions, SagaSteps<br/>OutboxEvents")]:::db
-    PAYMENT_DB[("payment_db<br/>Payments, BillingKeys, Refunds")]:::db
+    PAYMENT_DB[("billing_db<br/>Payments, BillingKeys, Refunds")]:::db
     PARTNER_DB[("partner_db<br/>PartnerConfigs, GameMappings<br/>SlotMappings, BookingMappings, SyncLogs")]:::db
     NOTIFY_DB[("notify_db<br/>Templates, Logs")]:::db
     CHAT_DB[("chat_db<br/>Rooms, Messages")]:::db

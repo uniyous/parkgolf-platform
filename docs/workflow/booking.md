@@ -36,7 +36,7 @@
 | **club-service** | 타임슬롯 관리, 슬롯 예약/해제 | club_db |
 | **iam-service** | 인증/사용자/CompanyMember 관리 | iam_db |
 | **consumer-bff** | BFF, 클라이언트 요청 처리 | - |
-| **billing-service** | 결제 준비/승인/취소, 더치페이 분할결제 | payment_db |
+| **billing-service** | 결제 준비/승인/취소, 더치페이 분할결제 | billing_db |
 | **notify-service** | 알림 발송 | notify_db |
 | **concierge-service** | AI 예약 에이전트 | - (in-memory) |
 
@@ -89,7 +89,7 @@ flowchart TB
     subgraph "Databases"
         F[(booking_db)]
         G[(club_db)]
-        H[(payment_db)]
+        H[(billing_db)]
         I[(iam_db)]
     end
 

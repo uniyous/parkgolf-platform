@@ -15,7 +15,7 @@ export class NotificationTools {
     participants: Array<{ userId: number; userName: string; amount: number }>;
   }): void {
     try {
-      this.notifyClient.emit('payment.splitRequested', data);
+      this.notifyClient.emit('billing.splitRequested', data);
     } catch (error) {
       this.logger.error('emitSplitPaymentNotification failed', error);
     }

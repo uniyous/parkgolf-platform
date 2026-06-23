@@ -35,7 +35,7 @@ export class PaymentService {
 
   async preparePayment(userId: number, dto: PreparePaymentDto): Promise<ApiResponse<PreparePaymentResponse>> {
     this.logger.log(`Preparing payment for user ${userId}, amount: ${dto.amount}`);
-    return this.natsClient.send('payment.prepare', {
+    return this.natsClient.send('billing.prepare', {
       userId,
       amount: dto.amount,
       orderName: dto.orderName,
@@ -45,7 +45,7 @@ export class PaymentService {
 
   async confirmPayment(dto: ConfirmPaymentDto): Promise<ApiResponse<ConfirmPaymentResponse>> {
     this.logger.log(`Confirming payment orderId: ${dto.orderId}`);
-    return this.natsClient.send('payment.confirm', {
+    return this.natsClient.send('billing.confirm', {
       paymentKey: dto.paymentKey,
       orderId: dto.orderId,
       amount: dto.amount,
@@ -54,7 +54,7 @@ export class PaymentService {
 
   async confirmSplitPayment(userId: number, dto: ConfirmSplitPaymentDto): Promise<ApiResponse<ConfirmPaymentResponse>> {
     this.logger.log(`Confirming split payment for user ${userId}, orderId: ${dto.orderId}`);
-    return this.natsClient.send('payment.splitConfirm', {
+    return this.natsClient.send('billing.splitConfirm', {
       userId,
       paymentKey: dto.paymentKey,
       orderId: dto.orderId,
@@ -64,7 +64,7 @@ export class PaymentService {
 
   async getPaymentByOrderId(orderId: string): Promise<ApiResponse<PaymentStatusResponse>> {
     this.logger.log(`Getting payment by orderId: ${orderId}`);
-    return this.natsClient.send('payment.getByOrderId', { orderId });
+    return this.natsClient.send('billing.getByOrderId', { orderId });
   }
 
   /**
@@ -74,7 +74,7 @@ export class PaymentService {
    */
   async abandonPayment(orderId: string, dto: AbandonPaymentDto): Promise<ApiResponse<PaymentStatusResponse>> {
     this.logger.log(`Abandoning payment: orderId=${orderId} reason=${dto.reason}`);
-    return this.natsClient.send('payment.markAborted', {
+    return this.natsClient.send('billing.markAborted', {
       orderId,
       reason: dto.reason,
       errorCode: dto.errorCode,

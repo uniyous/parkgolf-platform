@@ -53,7 +53,7 @@ flowchart TB
     end
 
     subgraph L3["👤 Layer 3. Semantic Memory (사용자 프로파일)"]
-        AgentDB["concierge-service.agent_db<br/>user_memory 테이블<br/>JSONB: preferences/favorites/teammates"]
+        AgentDB["concierge-service.concierge_db<br/>user_memory 테이블<br/>JSONB: preferences/favorites/teammates"]
     end
 
     subgraph L4["⚙️ Layer 4. Procedural Memory (스킬)"]
@@ -95,7 +95,7 @@ flowchart TB
 |:-----:|------|--------|:---:|:--------:|------|
 | 1 | Working Memory | Redis | 30분 | **Phase 1** | multi-pod 필수 |
 | 2 | Episodic Memory | `chat_db` (기존) | 영구 | **Phase 2** | 인프라 추가 0 |
-| 3 | Semantic Memory | `agent_db` (신규) | 영구 | **Phase 3** | 개인화 핵심 |
+| 3 | Semantic Memory | `concierge_db` (신규) | 영구 | **Phase 3** | 개인화 핵심 |
 | 4 | Procedural Memory | Git (`skills/*.yaml`) | 영구 | 미적용 (future) | 반복 사용자 ROI |
 | 5 | Tool Registry | 코드 (decorator) | — | 미적용 (future) | 유지보수성 |
 
@@ -515,7 +515,7 @@ messages.unshift({
 
 매 대화/부킹에서 추출된 **개인화된 사실**. Episodic가 raw 데이터라면 Semantic은 요약/추출된 의미.
 
-### 5.2 저장소 — `agent_db.user_memory` (신규)
+### 5.2 저장소 — `concierge_db.user_memory` (신규)
 
 ```prisma
 // services/concierge-service/prisma/schema.prisma (신규)
@@ -543,7 +543,7 @@ flowchart LR
     C -->|없음| E["신규 row 생성"]
     D --> F["LLM 호출 (선택)<br/>recentSummary 1줄 갱신"]
     E --> F
-    F --> G["agent_db.user_memory upsert"]
+    F --> G["concierge_db.user_memory upsert"]
 
     classDef job fill:#EF6C00,color:#fff,stroke:#BF360C
     classDef llm fill:#6A1B9A,color:#fff,stroke:#4A148C
@@ -721,7 +721,7 @@ gantt
     chat.history.list 활용         :p2a, after p1d, 2d
     LLM 컨텍스트 prefill           :p2b, after p2a, 1d
     section Phase 3 (Semantic)
-    agent_db + user_memory schema  :p3a, after p2b, 1d
+    concierge_db + user_memory schema  :p3a, after p2b, 1d
     pg-boss update-user-memory job :p3b, after p3a, 2d
     system prompt 동적 주입        :p3c, after p3b, 1d
     검증 + 데모                    :p3d, after p3c, 2d
@@ -733,7 +733,7 @@ gantt
 |-------|------|--------|:----:|
 | **1. Multi-pod 기반** | Redis 도입 + ConversationService 리팩 + lock + replicas | helm chart `redis.yaml`, `ConversationService.ts` 전면 개정, HPA manifest | 낮음 |
 | **2. Episodic** | chat-service 조회 + LLM prefill | `tool-executor.getUserRecentBookings`, `llm-orchestrator` 추가 | 낮음 |
-| **3. Semantic** | agent_db 신설 + user_memory 추출 + system prompt | `prisma/schema.prisma`, `user-memory.service.ts`, pg-boss worker | 중 (LLM 추출 정확도) |
+| **3. Semantic** | concierge_db 신설 + user_memory 추출 + system prompt | `prisma/schema.prisma`, `user-memory.service.ts`, pg-boss worker | 중 (LLM 추출 정확도) |
 | 4. Procedural (future) | skills/*.yaml 인프라 + fingerprint 매칭 | `services/concierge-service/skills/`, `skill-matcher.service.ts` | 중 |
 | 5. Tool Registry (future) | tool-executor 분해 + @AgentTool 데코레이터 | `tools/*.tool.ts` 10+개 | 낮음 |
 
@@ -770,7 +770,7 @@ gantt
 | `docs/workflow/agent.md` | 워크플로우 본문 — 본 문서는 그 메모리 메커니즘 |
 | `docs/workflow/saga.md` | 부킹 saga 패턴 — Layer B(Saga) 참조 |
 | `docs/workflow/partner-integration.md` §16 | PartnerAdapterSkill — Layer 4의 형제 패턴 |
-| `docs/policy/account-deletion.md` | 사용자 삭제 시 agent_db.user_memory 정리 정책 |
+| `docs/policy/account-deletion.md` | 사용자 삭제 시 concierge_db.user_memory 정리 정책 |
 | `docs/architecture/observability.md` | Redis / concierge-service 모니터링 |
 
 ---

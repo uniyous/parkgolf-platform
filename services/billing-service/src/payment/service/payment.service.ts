@@ -70,7 +70,7 @@ export class PaymentService {
     try {
       const tossResponse = await this.tossApi.confirmPayment(dto.paymentKey, dto.orderId, dto.amount);
       const updatedPayment = await this.updatePaymentFromToss(payment.id, tossResponse);
-      await this.createOutboxEvent('payment.confirmed', {
+      await this.createOutboxEvent('billing.confirmed', {
         paymentId: updatedPayment.id,
         paymentKey: dto.paymentKey,
         orderId: dto.orderId,
@@ -126,7 +126,7 @@ export class PaymentService {
     switch (tossPayment.status) {
       case 'DONE': {
         await this.updatePaymentFromToss(payment.id, tossPayment);
-        await this.createOutboxEvent('payment.confirmed', {
+        await this.createOutboxEvent('billing.confirmed', {
           paymentId: payment.id, paymentKey: payment.paymentKey, orderId: payment.orderId, amount: payment.amount, bookingId: payment.bookingId, userId: payment.userId,
         });
         return { handled: 'reconciled_done' };
@@ -189,7 +189,7 @@ export class PaymentService {
 
     const { outboxEventId } = await this.db.transaction(async (tx) => {
       await tx.update(paymentSplits).set({ status: SplitStatus.CANCELLED }).where(eq(paymentSplits.id, split.id));
-      const event = await this.insertOutboxEvent(tx, 'payment.failed', {
+      const event = await this.insertOutboxEvent(tx, 'billing.failed', {
         bookingId: split.bookingId, orderId: split.orderId, userId: split.userId,
         reason: meta.reason, errorCode: meta.errorCode, errorMessage: meta.errorMessage, paymentMethod: 'dutchpay',
       });
@@ -208,7 +208,7 @@ export class PaymentService {
         this.logger.warn(`Payment ABORTED without bookingId: ${updated.orderId}`);
         return { payment: updated, outboxEventId: undefined as number | undefined };
       }
-      const event = await this.insertOutboxEvent(tx, 'payment.failed', {
+      const event = await this.insertOutboxEvent(tx, 'billing.failed', {
         paymentId: updated.id, bookingId: updated.bookingId, orderId: updated.orderId, userId: updated.userId,
         reason: meta.reason, errorCode: meta.errorCode, errorMessage: meta.errorMessage,
       });
@@ -254,7 +254,7 @@ export class PaymentService {
     const newStatus = dto.cancelAmount ? PaymentStatus.PARTIAL_CANCELED : PaymentStatus.CANCELED;
     const [updatedPayment] = await this.db.update(payments).set({ status: newStatus }).where(eq(payments.id, payment.id)).returning();
 
-    await this.createOutboxEvent('payment.canceled', {
+    await this.createOutboxEvent('billing.canceled', {
       paymentId: payment.id, paymentKey: dto.paymentKey, cancelAmount: dto.cancelAmount || payment.amount, bookingId: payment.bookingId, userId: payment.userId,
     });
     this.logger.log(`Payment canceled: ${dto.paymentKey}`);
@@ -319,7 +319,7 @@ export class PaymentService {
     try {
       const tossResponse = await this.tossApi.billingPayment(dto.billingKey, dto.amount, dto.orderName, orderId, dto.customerKey);
       const updatedPayment = await this.updatePaymentFromToss(payment.id, tossResponse);
-      await this.createOutboxEvent('payment.confirmed', {
+      await this.createOutboxEvent('billing.confirmed', {
         paymentId: updatedPayment.id, paymentKey: tossResponse.paymentKey, orderId, amount: dto.amount, bookingId: dto.bookingId, userId: dto.userId, isBilling: true,
       });
       this.logger.log(`Billing payment completed: ${orderId}`);

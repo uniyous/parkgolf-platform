@@ -116,7 +116,7 @@ export const CreateBookingSaga: SagaDefinition = {
       // SLOT_RESERVED 이후, NOTIFY_EXTERNAL 이전 단계.
       // condition: 더치페이 + 2명 이상 참여자
       name: 'PREPARE_SPLIT',
-      action: 'payment.splitPrepare',
+      action: 'billing.splitPrepare',
       compensate: null,
       timeout: NATS_TIMEOUTS.PAYMENT,
       targetService: 'PAYMENT_SERVICE',

@@ -23,7 +23,7 @@ export class DrizzleService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit(): Promise<void> {
     await this.ensureSchema();
-    this.logger.log('agent_db connected (drizzle/postgres-js)');
+    this.logger.log('concierge_db connected (drizzle/postgres-js)');
   }
 
   async onModuleDestroy(): Promise<void> {

@@ -1,5 +1,5 @@
 // ==============================================
-// concierge-service / agent_db — Drizzle schema
+// concierge-service / concierge_db — Drizzle schema
 // Hermes 5-Layer Memory — Layer 3 (Semantic Memory)
 // 설계: docs/workflow/agent-memory.md §5
 // (UNI-82: Drizzle 전환 파일럿)

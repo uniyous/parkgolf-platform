@@ -136,7 +136,7 @@ flowchart LR
 saga 처리에는 세 DB의 테이블이 관여합니다:
 
 - **`saga_db`** (saga-service 소유): `SagaExecution`, `SagaStep` — saga 실행/이력
-- **`payment_db`** (billing-service 소유): `payment_outbox_events` — 결제 이벤트 트리거 소스 (자주 사용)
+- **`billing_db`** (billing-service 소유): `payment_outbox_events` — 결제 이벤트 트리거 소스 (자주 사용)
 - **`booking_db`** (booking-service 소유): `booking_outbox_events` — booking 도메인 이벤트 트리거 소스 (그룹 취소 등 희귀 케이스)
 
 직접적인 FK 관계는 없으며, 각 outbox가 NATS로 이벤트를 publish하면 saga-service가 수신하여 새로운 `SagaExecution` 레코드를 생성하는 간접 연결입니다.
@@ -184,7 +184,7 @@ erDiagram
     }
 
     PaymentOutboxEvent {
-        int id PK "payment_db.payment_outbox_events"
+        int id PK "billing_db.payment_outbox_events"
         string aggregate_type "Payment"
         string aggregate_id "payment.id"
         string event_type "payment.confirmed / payment.failed / payment.canceled / payment.deposited"
@@ -240,7 +240,7 @@ erDiagram
 | `COMPENSATED` | 보상 완료 |
 | `SKIPPED` | `condition` 미충족으로 건너뜀 |
 
-**OutboxStatus** (payment_db)
+**OutboxStatus** (billing_db)
 
 | 값 | 의미 |
 |----|------|
@@ -256,7 +256,7 @@ erDiagram
 | 만료 saga FAILED 처리 | saga-scheduler | 매분 | STARTED/STEP_EXECUTING 5분 초과 → FAILED | saga_db |
 | 오래된 saga 삭제 | saga-scheduler | 매일 자정 | COMPLETED/FAILED + 30일 경과 행 DELETE | saga_db |
 | SLOT_RESERVED 만료 | saga-scheduler | 매분 | 5분 초과 booking에 PAYMENT_TIMEOUT Saga 시작 | booking_db (조회) |
-| Outbox 이벤트 발행 | billing-service OutboxProcessor | 5초 | PENDING 이벤트 NATS publish, 최대 5회 재시도 | payment_db |
+| Outbox 이벤트 발행 | billing-service OutboxProcessor | 5초 | PENDING 이벤트 NATS publish, 최대 5회 재시도 | billing_db |
 
 **설정 위치**:
 - `services/saga-service/src/common/constants/nats.constants.ts` — `SAGA_CONFIG.SAGA_TIMEOUT_MS` (5분), `RETENTION_DAYS` (30일)

@@ -103,7 +103,7 @@ graph TB
 | club_db | club-service | Companies, Clubs, Courses, Games, TimeSlots, Schedules |
 | booking_db | booking-service | Bookings, Refunds, NoShowRecords, Policies |
 | saga_db | saga-service | SagaExecutions, SagaSteps, OutboxEvents |
-| payment_db | billing-service | Payments, BillingKeys, Refunds, WebhookLogs |
+| billing_db | billing-service | Payments, BillingKeys, Refunds, WebhookLogs |
 | partner_db | partner-service | PartnerConfigs, GameMappings, SlotMappings, BookingMappings, SyncLogs |
 | chat_db | chat-service | ChatRooms, Messages |
 | notify_db | notify-service | Notifications, Templates |

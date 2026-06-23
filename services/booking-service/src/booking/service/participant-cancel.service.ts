@@ -91,7 +91,7 @@ export class ParticipantCancelService {
 
       const refundResult = await firstValueFrom(
         this.paymentClient
-          .send('payment.refundSplit', {
+          .send('billing.refundSplit', {
             bookingId,
             userId,
             reason,

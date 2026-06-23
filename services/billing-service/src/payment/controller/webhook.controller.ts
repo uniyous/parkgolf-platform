@@ -135,7 +135,7 @@ export class WebhookController {
 
     await this.db.update(payments).set({ status: PaymentStatus.DONE, approvedAt: new Date() }).where(eq(payments.id, payment.id));
 
-    await this.paymentService.createOutboxEvent('payment.deposited', {
+    await this.paymentService.createOutboxEvent('billing.deposited', {
       paymentId: payment.id, paymentKey: data.paymentKey, orderId: data.orderId, bookingId: payment.bookingId, userId: payment.userId,
     });
     this.logger.log(`Virtual account deposit confirmed: ${data.orderId}`);
@@ -171,7 +171,7 @@ export class WebhookController {
     if (payment.status !== newStatus && (newStatus === PaymentStatus.CANCELED || newStatus === PaymentStatus.PARTIAL_CANCELED)) {
       await this.db.update(payments).set({ status: newStatus }).where(eq(payments.id, payment.id));
       const totalCancelAmount = (data.cancels ?? []).reduce((s, c) => s + c.cancelAmount, 0);
-      await this.paymentService.createOutboxEvent('payment.canceled', {
+      await this.paymentService.createOutboxEvent('billing.canceled', {
         paymentId: payment.id, paymentKey: data.paymentKey, cancelAmount: totalCancelAmount, bookingId: payment.bookingId, userId: payment.userId,
       });
     }

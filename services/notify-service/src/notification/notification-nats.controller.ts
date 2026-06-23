@@ -450,7 +450,7 @@ export class NotificationNatsController {
     }
   }
 
-  @EventPattern('payment.splitRequested')
+  @EventPattern('billing.splitRequested')
   async handleSplitPaymentRequested(@Payload() data: {
     bookerId: number;
     bookerName: string;

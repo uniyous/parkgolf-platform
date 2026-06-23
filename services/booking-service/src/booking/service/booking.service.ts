@@ -149,7 +149,7 @@ export class BookingService {
 
     if (existing.paymentMethod === 'card' || existing.paymentMethod === 'dutchpay') {
       await tx.insert(bookingOutboxEvents).values({
-        aggregateType: 'Booking', aggregateId: String(existing.id), eventType: 'payment.cancelByBookingId',
+        aggregateType: 'Booking', aggregateId: String(existing.id), eventType: 'billing.cancelByBookingId',
         payload: { bookingId: existing.id, cancelReason: reason }, status: 'PENDING',
       });
     }

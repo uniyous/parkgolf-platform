@@ -50,7 +50,7 @@ services:
     db: booking_db
     replicas: 2
   - name: billing-service
-    db: payment_db
+    db: billing_db
     replicas: 2
     extraEnv:
       - { name: TOSS_SECRET_KEY,   secretRef: { name: parkgolf-secrets, key: TOSS_SECRET_KEY } }

@@ -322,7 +322,7 @@ export class AccountDeletionService {
   private async checkPaymentConstraints(userId: number) {
     try {
       const result = await firstValueFrom(
-        this.paymentClient.send('payment.userActiveCheck', { userId }).pipe(timeout(NATS_TIMEOUT_MS)),
+        this.paymentClient.send('billing.userActiveCheck', { userId }).pipe(timeout(NATS_TIMEOUT_MS)),
       );
 
       if (result?.hasPendingPayment) {

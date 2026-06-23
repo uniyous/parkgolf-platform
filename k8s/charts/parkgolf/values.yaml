@@ -58,12 +58,12 @@ postgres:
     - iam_db
     - club_db
     - booking_db
-    - payment_db
+    - billing_db
     - saga_db
     - chat_db
     - notify_db
     - partner_db
-    - agent_db
+    - concierge_db
 
 # In-cluster NATS
 nats:
@@ -120,7 +120,7 @@ services:
   - name: booking-service
     db: booking_db
   - name: billing-service
-    db: payment_db
+    db: billing_db
     extraEnv:
       - { name: TOSS_SECRET_KEY,   secretRef: { name: parkgolf-secrets, key: TOSS_SECRET_KEY } }
       - { name: TOSS_SECURITY_KEY, secretRef: { name: parkgolf-secrets, key: TOSS_SECURITY_KEY } }
@@ -163,7 +163,7 @@ services:
     # multi-pod 운영 — Redis Working Memory + per-conversation lock으로 동시성 안전
     # 설계: docs/workflow/AGENT_MEMORY.md §3.5, §8
     replicas: 2
-    db: agent_db
+    db: concierge_db
     hpa:
       enabled: true
       min: 2
