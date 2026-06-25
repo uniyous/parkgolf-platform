@@ -83,10 +83,10 @@ kubectl --context parkgolf-dev exec -it postgres-0 -n parkgolf-dev -- \
 
 ## 5. 접속 방법 B — port-forward (로컬 GUI: DBeaver·TablePlus 등)
 
-로컬 포트를 pod의 5432로 터널링.
+로컬 **15432** 포트를 pod의 5432로 터널링(로컬 기본 PostgreSQL 5432와 충돌 방지).
 
 ```bash
-kubectl --context parkgolf-dev port-forward -n parkgolf-dev postgres-0 5432:5432
+kubectl --context parkgolf-dev port-forward -n parkgolf-dev postgres-0 15432:5432
 # → 터미널 유지. 종료는 Ctrl+C
 ```
 
@@ -95,7 +95,7 @@ GUI/로컬 psql 접속 정보:
 | 항목 | 값 |
 |---|---|
 | Host | `localhost` |
-| Port | `5432` |
+| Port | `15432` |
 | User | `parkgolf` |
 | Password | 아래 6.1에서 조회 |
 | Database | `booking_db` 등 (3장 목록) |
@@ -114,7 +114,7 @@ kubectl --context parkgolf-dev get secret booking-service-db-secret -n parkgolf-
   -o jsonpath='{.data.DATABASE_URL}' | base64 -d; echo
 ```
 
-> 로컬에서 5432가 이미 쓰이면 `port-forward ... 15432:5432` 로 바꾸고 GUI Port를 15432로.
+> 로컬 접속 포트는 **15432**로 통일(로컬 기본 PostgreSQL 5432와 충돌 회피). 15432마저 점유됐으면 임의 포트(예: `25432:5432`)로 바꾸고 GUI Port를 맞춘다.
 
 ## 6. 운영: 신규 DB 생성
 
