@@ -4,7 +4,7 @@ import { NATS_TIMEOUTS } from '../../common/constants/nats.constants';
 /**
  * 결제 실패/취소 Saga
  *
- * 트리거: payment-service의 outbox 이벤트 `booking.paymentFailed`
+ * 트리거: billing-service의 outbox 이벤트 `booking.paymentFailed`
  * 흐름: 예약 FAILED 처리 → 슬롯 복구 → 실패 알림
  *
  * PAYMENT_TIMEOUT과 동일한 정리 단계를 사용하지만 트리거 시점이 다름:
@@ -18,10 +18,10 @@ export const PaymentFailedSaga: SagaDefinition = {
       // 더치페이일 때만: 이미 PAID인 다른 split → Toss 환불, PENDING → EXPIRED
       // PAYMENT_TIMEOUT saga의 동일 step과 같은 핸들러 공유.
       name: 'REFUND_PAID_SPLITS',
-      action: 'payment.refundPaidSplits',
+      action: 'billing.refundPaidSplits',
       compensate: null,
       timeout: NATS_TIMEOUTS.PAYMENT,
-      targetService: 'PAYMENT_SERVICE',
+      targetService: 'BILLING_SERVICE',
       condition: (payload) => payload.paymentMethod === 'dutchpay',
       buildRequest: (payload) => ({
         bookingId: payload.bookingId,

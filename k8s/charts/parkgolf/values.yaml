@@ -11,7 +11,7 @@ global:
 # 서비스별 image tag override.
 # cd-services workflow가 빌드된 service의 항목만 갱신.
 # 비어있거나 특정 service가 누락되면 global.image.tag로 fallback.
-# 예: { agent-service: <sha>, chat-service: <sha>, ... }
+# 예: { concierge-service: <sha>, chat-service: <sha>, ... }
 serviceImageTags: {}
 
 # 공통 ConfigMap (parkgolf-config) — 모든 서비스가 envFrom로 사용 가능
@@ -58,12 +58,12 @@ postgres:
     - iam_db
     - club_db
     - booking_db
-    - payment_db
+    - billing_db
     - saga_db
     - chat_db
     - notify_db
     - partner_db
-    - agent_db
+    - concierge_db
 
 # In-cluster NATS
 nats:
@@ -74,7 +74,7 @@ nats:
     limits:   { cpu: 250m, memory: 256Mi }
 
 # In-cluster Redis (StatefulSet)
-# 용도: agent-service Working Memory (ConversationContext, per-conv distributed lock)
+# 용도: concierge-service Working Memory (ConversationContext, per-conv distributed lock)
 # 키 패턴: agent:conv:{userId}:{convId} (TTL 30분), lock:conv:{userId}:{convId} (TTL 8초)
 # 자세한 설계: docs/workflow/AGENT_MEMORY.md §3
 redis:
@@ -119,8 +119,8 @@ services:
     db: club_db
   - name: booking-service
     db: booking_db
-  - name: payment-service
-    db: payment_db
+  - name: billing-service
+    db: billing_db
     extraEnv:
       - { name: TOSS_SECRET_KEY,   secretRef: { name: parkgolf-secrets, key: TOSS_SECRET_KEY } }
       - { name: TOSS_SECURITY_KEY, secretRef: { name: parkgolf-secrets, key: TOSS_SECURITY_KEY } }
@@ -159,11 +159,11 @@ services:
   - name: location-service
     extraEnv:
       - { name: KAKAO_API_KEY, secretRef: { name: parkgolf-secrets, key: KAKAO_API_KEY } }
-  - name: agent-service
+  - name: concierge-service
     # multi-pod 운영 — Redis Working Memory + per-conversation lock으로 동시성 안전
     # 설계: docs/workflow/AGENT_MEMORY.md §3.5, §8
     replicas: 2
-    db: agent_db
+    db: concierge_db
     hpa:
       enabled: true
       min: 2
@@ -177,9 +177,9 @@ services:
       - { name: CONVERSATION_TTL,    configRef: { name: parkgolf-config,  key: CONVERSATION_TTL } }
       - { name: MAX_HISTORY_TURNS,   configRef: { name: parkgolf-config,  key: MAX_HISTORY_TURNS } }
       - { name: REDIS_URL,           configRef: { name: parkgolf-config,  key: REDIS_URL } }
-  - name: admin-api
-  - name: user-api
-    backendConfig: user-api
+  - name: manager-bff
+  - name: consumer-bff
+    backendConfig: consumer-bff
 
 # Ingress (GKE managed cert + global static IP)
 ingress:
@@ -187,12 +187,12 @@ ingress:
   staticIpName: parkgolf-parkgolf-dev-cluster-ip
   managedCert: parkgolf-cert
   rules:
-    - { path: /api/admin,    service: admin-api }
-    - { path: /api/user,     service: user-api }
+    - { path: /api/admin,    service: manager-bff }
+    - { path: /api/user,     service: consumer-bff }
     - { path: /socket.io,    service: chat-gateway }
     - { path: /chat,         service: chat-gateway }
     - { path: /notification, service: chat-gateway }
-    - { path: /webhook,      service: payment-service }
+    - { path: /webhook,      service: billing-service }
 
 # BackendConfig 정의
 backendConfigs:
@@ -203,7 +203,7 @@ backendConfigs:
       affinityCookieTtlSec: 3600
     connectionDraining:
       drainingTimeoutSec: 60
-  user-api:
+  consumer-bff:
     timeoutSec: 120
     connectionDraining:
       drainingTimeoutSec: 30

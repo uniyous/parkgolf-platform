@@ -17,10 +17,10 @@ import { createE2EUser, E2EUser } from '../../fixtures/users';
  *   7. booking.status = CONFIRMED 검증
  *
  * 현재 상태
- *   ─ 토스 confirm 우회: payment-service에 TOSS_TEST_BYPASS 분기 적용 ✅
+ *   ─ 토스 confirm 우회: billing-service에 TOSS_TEST_BYPASS 분기 적용 ✅
  *     (tests/payment/single-confirm.spec.ts에서 단건 검증)
- *   ─ 더치 트리거(step 3): agent-service의 LLM 응답 기반이라 비결정적
- *     → user-api에 dev-only splitPrepare 노출 엔드포인트 추가 필요 (미구현)
+ *   ─ 더치 트리거(step 3): concierge-service의 LLM 응답 기반이라 비결정적
+ *     → consumer-bff에 dev-only splitPrepare 노출 엔드포인트 추가 필요 (미구현)
  *
  * 본 spec은 step 5의 confirm 자체는 검증 가능하지만, splitPrepare 트리거 경로
  * (agent 또는 dev 전용 엔드포인트) 미정으로 전체는 skip 유지.
@@ -66,7 +66,7 @@ test.describe('Dutch Payment (group of 4) @write @slow', () => {
 
   test.skip('2. AI 에이전트 → 더치페이 트리거 (splitPrepare)', async ({ request }) => {
     // TODO: 위 채팅방 ID를 이전 step에서 전달 — beforeAll에서 셋업 또는 별도 store
-    // 1) user-api/chat/rooms/:roomId/agent 호출 ("내일 강남 4명 더치페이로 예약")
+    // 1) consumer-bff/chat/rooms/:roomId/agent 호출 ("내일 강남 4명 더치페이로 예약")
     // 2) 응답에서 CONFIRM_BOOKING action 추출 → confirmBooking + paymentMethod=dutchpay 재호출
     // 3) splits 응답 검증 (4 orderId)
     // 4) chat-gateway WebSocket로 settlement 카드 broadcast 수신 확인

@@ -1,5 +1,5 @@
 /**
- * API Module - BFF (user-api) 통합 클라이언트
+ * API Module - BFF (consumer-bff) 통합 클라이언트
  *
  * 모든 API 호출은 BFF를 통해 이루어집니다.
  * 직접 서비스 연결은 금지됩니다.

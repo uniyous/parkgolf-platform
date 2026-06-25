@@ -19,7 +19,7 @@ export class AccountDeletionService {
     private readonly drizzle: DrizzleService,
     @Inject('NOTIFICATION_SERVICE') private readonly notificationClient: ClientProxy,
     @Inject('BOOKING_SERVICE') private readonly bookingClient: ClientProxy,
-    @Inject('PAYMENT_SERVICE') private readonly paymentClient: ClientProxy,
+    @Inject('BILLING_SERVICE') private readonly paymentClient: ClientProxy,
   ) {}
 
   private get db() {
@@ -322,7 +322,7 @@ export class AccountDeletionService {
   private async checkPaymentConstraints(userId: number) {
     try {
       const result = await firstValueFrom(
-        this.paymentClient.send('payment.userActiveCheck', { userId }).pipe(timeout(NATS_TIMEOUT_MS)),
+        this.paymentClient.send('billing.userActiveCheck', { userId }).pipe(timeout(NATS_TIMEOUT_MS)),
       );
 
       if (result?.hasPendingPayment) {

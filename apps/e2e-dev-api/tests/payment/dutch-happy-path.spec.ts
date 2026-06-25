@@ -25,7 +25,7 @@ import {
  *   6) 각 user가 split/confirm (paymentKey=e2e_test_*)
  *      ─ TOSS_TEST_BYPASS 분기로 토스 API 호출 회피
  *   7) 4번째 confirm 후 booking-service: markParticipantPaid(send) → allPaid
- *      → payment-service: payment.confirmed outbox → PAYMENT_CONFIRMED saga
+ *      → billing-service: payment.confirmed outbox → PAYMENT_CONFIRMED saga
  *      → booking.status = CONFIRMED
  *   8) booker가 booking 상태 폴링 → CONFIRMED
  *

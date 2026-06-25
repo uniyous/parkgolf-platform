@@ -81,7 +81,7 @@ interface ReserveResult {
 ## 배포 의존성
 
 - saga 흐름(step 내부) 변경 → **saga-service · booking-service 동시 배포**. club-service·partner-service 어댑터 정렬도 같은 세트.
-- saga **응답 shape 불변** → BFF(user-api/admin-api) 선배포 불요.
+- saga **응답 shape 불변** → BFF(consumer-bff/manager-bff) 선배포 불요.
 - **club-service 단독 부팅 유지**(회귀 가드).
 - 공유 패키지화(계약 타입 추출)는 **UNI-112(모노레포 워크스페이스) 선결** → 이번엔 booking-service 내부에 인터페이스 두고, 패키지 추출은 112 이후.
 

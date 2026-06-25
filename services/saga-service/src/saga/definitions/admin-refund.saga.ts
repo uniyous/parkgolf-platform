@@ -51,10 +51,10 @@ export const AdminRefundSaga: SagaDefinition = {
     },
     {
       name: 'PROCESS_REFUND',
-      action: 'payment.cancelByBookingId',
+      action: 'billing.cancelByBookingId',
       compensate: null,
       timeout: NATS_TIMEOUTS.PAYMENT,
-      targetService: 'PAYMENT_SERVICE',
+      targetService: 'BILLING_SERVICE',
       buildRequest: (payload) => ({
         bookingId: payload.bookingId,
         cancelReason: payload.cancelReason || '관리자 환불',

@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
  * - AI가 사용자 부킹 패턴/선호도를 기억하고 추천에 활용할지 ON/OFF
  * - OFF 시 user_memory.enabled=false → LLM prefill 미적용 (일반 흐름)
  *
- * 백엔드: agent_db.user_memory.enabled (Phase 3 — Semantic Memory)
+ * 백엔드: concierge_db.user_memory.enabled (Phase 3 — Semantic Memory)
  */
 export function AgentMemorySettingsPage() {
   const { data, isLoading, isError } = useAgentMemoryQuery();

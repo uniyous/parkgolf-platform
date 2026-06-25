@@ -70,7 +70,7 @@ pr:
 - `apps/...`
 
 ## 배포 의존성
-- saga 응답 변경 여부 → 변경 시 `saga-service` 선배포 → `user-api`·`admin-api`·`agent-service`
+- saga 응답 변경 여부 → 변경 시 `saga-service` 선배포 → `consumer-bff`·`manager-bff`·`concierge-service`
 ```
 
 ParkGolfMate 계약 작성 시 반영할 규칙(CLAUDE.md):

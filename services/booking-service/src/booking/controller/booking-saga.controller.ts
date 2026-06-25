@@ -9,7 +9,7 @@ import { NatsResponse } from '../../common/types/response.types';
  * Saga 이벤트 핸들러 컨트롤러
  *
  * saga-service 범위 외의 비동기 이벤트 처리:
- * - booking.paymentCanceled: 환불 완료 이력 기록 (payment-service → client.send)
+ * - booking.paymentCanceled: 환불 완료 이력 기록 (billing-service → client.send)
  * - user.deleted: 계정 삭제 시 예약 익명화 (iam-service → client.emit)
  */
 @Controller()
@@ -23,7 +23,7 @@ export class BookingSagaController {
 
   /**
    * 결제 취소(환불) 완료 핸들러
-   * payment-service가 client.send()로 호출 → @MessagePattern 필수
+   * billing-service가 client.send()로 호출 → @MessagePattern 필수
    * BookingHistory에 REFUND_COMPLETED 기록 + 환불 알림 발행
    */
   @MessagePattern('booking.paymentCanceled')

@@ -171,7 +171,7 @@ export class SearchBookingDto {
   timeFilter?: 'upcoming' | 'past' | 'all';
 
   @ApiProperty({
-    description: '참여자(BookingParticipant)로 포함된 예약도 함께 조회 — userId 필터와 함께 사용. 마이페이지 예약 내역(더치페이 참여자 노출)에 사용. AGENT_PAY.md §11.3',
+    description: '참여자(BookingParticipant)로 포함된 예약도 함께 조회 — userId 필터와 함께 사용. 마이페이지 예약 내역(더치페이 참여자 노출)에 사용. agent-pay.md §11.3',
     required: false,
     default: false,
   })
@@ -393,7 +393,7 @@ export class BookingResponseDto {
   @ApiProperty({ description: '예약 취소 가능 여부' })
   canCancel?: boolean;
 
-  // currentUserId 기준 파생 필드 — AGENT_PAY.md §11.3
+  // currentUserId 기준 파생 필드 — agent-pay.md §11.3
   @ApiProperty({ description: '현재 사용자의 역할 (BOOKER=예약자, MEMBER=더치페이 참여자)', required: false })
   myRole?: 'BOOKER' | 'MEMBER';
 
@@ -475,7 +475,7 @@ export class BookingResponseDto {
       dto.canCancel = BookingResponseDto.calculateCanCancel(entity.bookingDate, entity.status);
     }
 
-    // 현재 사용자 기준 파생 필드 — AGENT_PAY.md §11.3
+    // 현재 사용자 기준 파생 필드 — agent-pay.md §11.3
     if (currentUserId !== undefined) {
       if (entity.userId === currentUserId) {
         dto.myRole = 'BOOKER';
@@ -579,7 +579,7 @@ export interface SlotReserveFailedEvent {
   failedAt: string;
 }
 
-// payment-service → booking-service: 결제 완료
+// billing-service → booking-service: 결제 완료
 export interface PaymentConfirmedEvent {
   paymentId: number;
   paymentKey: string;
@@ -589,7 +589,7 @@ export interface PaymentConfirmedEvent {
   userId: number;
 }
 
-// payment-service → booking-service: 결제 취소(환불) 완료
+// billing-service → booking-service: 결제 취소(환불) 완료
 export interface PaymentCanceledEvent {
   paymentId: number;
   paymentKey: string;

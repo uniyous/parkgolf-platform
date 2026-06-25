@@ -13,17 +13,17 @@ externalSecrets:
 ingress:
   staticIpName: parkgolf-parkgolf-dev-cluster-ip
 serviceImageTags:
-  agent-service: e335d18d6c03b4a3bb6d236e47d16b4597fda5a4
+  concierge-service: e335d18d6c03b4a3bb6d236e47d16b4597fda5a4
   iam-service: e335d18d6c03b4a3bb6d236e47d16b4597fda5a4
   club-service: e335d18d6c03b4a3bb6d236e47d16b4597fda5a4
   booking-service: e335d18d6c03b4a3bb6d236e47d16b4597fda5a4
-  payment-service: e335d18d6c03b4a3bb6d236e47d16b4597fda5a4
+  billing-service: e335d18d6c03b4a3bb6d236e47d16b4597fda5a4
   chat-service: e335d18d6c03b4a3bb6d236e47d16b4597fda5a4
   notify-service: e335d18d6c03b4a3bb6d236e47d16b4597fda5a4
   saga-service: e335d18d6c03b4a3bb6d236e47d16b4597fda5a4
   partner-service: e335d18d6c03b4a3bb6d236e47d16b4597fda5a4
-  admin-api: e335d18d6c03b4a3bb6d236e47d16b4597fda5a4
-  user-api: e335d18d6c03b4a3bb6d236e47d16b4597fda5a4
+  manager-bff: e335d18d6c03b4a3bb6d236e47d16b4597fda5a4
+  consumer-bff: e335d18d6c03b4a3bb6d236e47d16b4597fda5a4
   chat-gateway: e335d18d6c03b4a3bb6d236e47d16b4597fda5a4
   weather-service: e335d18d6c03b4a3bb6d236e47d16b4597fda5a4
   location-service: e335d18d6c03b4a3bb6d236e47d16b4597fda5a4

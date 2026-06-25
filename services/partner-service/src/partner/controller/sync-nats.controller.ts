@@ -50,8 +50,8 @@ export class SyncNatsController {
 
   /**
    * 수동 동기화
-   * - platform-dashboard: partnerId(config ID) 전달
-   * - admin-dashboard: clubId 전달
+   * - marketplace-console: partnerId(config ID) 전달
+   * - manager-console: clubId 전달
    */
   @MessagePattern('partner.sync.manual')
   async manualSync(@Payload() data: { partnerId?: number; clubId?: number }) {

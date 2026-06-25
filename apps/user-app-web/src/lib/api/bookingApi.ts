@@ -98,14 +98,14 @@ export interface BookingResponse {
   participants?: unknown[];
   histories: unknown[];
   canCancel?: boolean;
-  // AGENT_PAY.md §11.3 — 마이페이지 노출용 파생 필드 (BFF가 currentUser 기준으로 계산)
+  // agent-pay.md §11.3 — 마이페이지 노출용 파생 필드 (BFF가 currentUser 기준으로 계산)
   myRole?: 'BOOKER' | 'MEMBER';
   myParticipantStatus?: 'PENDING' | 'PAID' | 'CANCELLED' | 'REFUNDED';
   createdAt: string;
   updatedAt: string;
 }
 
-/** AGENT_PAY.md §11.4 — 더치페이 본인 자리 취소 응답 */
+/** agent-pay.md §11.4 — 더치페이 본인 자리 취소 응답 */
 export interface CancelParticipantResponse {
   bookingId: number;
   userId: number;
@@ -243,7 +243,7 @@ export const bookingApi = {
   },
 
   /**
-   * 더치페이 본인 자리 취소 — AGENT_PAY.md §11.4
+   * 더치페이 본인 자리 취소 — agent-pay.md §11.4
    * JWT userId가 곧 취소 대상 participant.userId
    */
   cancelParticipant: async (id: number, reason?: string): Promise<CancelParticipantResponse> => {

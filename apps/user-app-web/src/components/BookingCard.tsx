@@ -47,7 +47,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({ booking, onCancelClick
             )}>
               {status.label}
             </span>
-            {/* AGENT_PAY.md §11.7 — 더치페이 참여자 배지 */}
+            {/* agent-pay.md §11.7 — 더치페이 참여자 배지 */}
             {booking.myRole === 'MEMBER' && (
               <span className="text-xs font-medium px-2 py-0.5 rounded-full border bg-purple-500/20 text-purple-300 border-purple-500/30">
                 참여
@@ -105,7 +105,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({ booking, onCancelClick
             {formatPrice(booking.totalPrice)}원
           </p>
         </div>
-        {/* AGENT_PAY.md §11.7 — 결제방식별 취소 분기 */}
+        {/* agent-pay.md §11.7 — 결제방식별 취소 분기 */}
         {booking.canCancel
           && booking.status === 'CONFIRMED'
           && booking.myParticipantStatus !== 'CANCELLED'

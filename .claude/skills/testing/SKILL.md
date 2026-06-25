@@ -40,7 +40,7 @@ Park Golf Platform 테스트 전략 및 실행 가이드
 
 ```bash
 # Consumer 테스트 (Pact 파일 생성)
-cd services/user-api
+cd services/consumer-bff
 npm run test:contract:consumer
 
 # Provider 검증
@@ -61,7 +61,7 @@ npm run test:nats-contract
 
 ### 작성 규칙
 
-- Consumer 테스트는 BFF 서비스(`user-api`, `admin-api`)에 작성
+- Consumer 테스트는 BFF 서비스(`consumer-bff`, `manager-bff`)에 작성
 - Provider 테스트는 대상 Microservice에 작성
 - NATS 메시지 스키마는 `test/contract/` 폴더에 JSON Schema로 정의
 
@@ -114,8 +114,8 @@ npx ts-node test/integration/nats-test.ts
 ### 실행
 
 ```bash
-# admin-dashboard
-cd apps/admin-dashboard
+# manager-console
+cd apps/manager-console
 npm run test:e2e        # Headless
 npm run test:e2e:ui     # UI 모드
 npm run test:e2e:debug  # 디버그
@@ -134,7 +134,7 @@ npx playwright test booking-flow.spec.ts
 
 | 앱 | 주요 테스트 |
 |----|------------|
-| admin-dashboard | login, company, club, booking, user, admin, role |
+| manager-console | login, company, club, booking, user, admin, role |
 | user-app-web | login, booking-flow, my-bookings |
 
 ### 테스트 계정
@@ -191,7 +191,7 @@ npx playwright test booking-flow.spec.ts
 # 배포 후 E2E Test
 - name: Run E2E Tests
   run: npm run test:e2e
-  working-directory: apps/admin-dashboard
+  working-directory: apps/manager-console
 ```
 
 ---

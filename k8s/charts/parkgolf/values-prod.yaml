@@ -49,8 +49,8 @@ services:
   - name: booking-service
     db: booking_db
     replicas: 2
-  - name: payment-service
-    db: payment_db
+  - name: billing-service
+    db: billing_db
     replicas: 2
     extraEnv:
       - { name: TOSS_SECRET_KEY,   secretRef: { name: parkgolf-secrets, key: TOSS_SECRET_KEY } }
@@ -96,7 +96,7 @@ services:
     replicas: 2
     extraEnv:
       - { name: KAKAO_API_KEY, secretRef: { name: parkgolf-secrets, key: KAKAO_API_KEY } }
-  - name: agent-service
+  - name: concierge-service
     replicas: 2
     extraEnv:
       - { name: DEEPSEEK_API_KEY,  secretRef: { name: parkgolf-secrets, key: DEEPSEEK_API_KEY } }
@@ -104,11 +104,11 @@ services:
       - { name: DEEPSEEK_MODEL,    configRef: { name: parkgolf-config,  key: DEEPSEEK_MODEL } }
       - { name: CONVERSATION_TTL,  configRef: { name: parkgolf-config,  key: CONVERSATION_TTL } }
       - { name: MAX_HISTORY_TURNS, configRef: { name: parkgolf-config,  key: MAX_HISTORY_TURNS } }
-  - name: admin-api
+  - name: manager-bff
     replicas: 2
-  - name: user-api
+  - name: consumer-bff
     replicas: 3
-    backendConfig: user-api
+    backendConfig: consumer-bff
 
 ingress:
   staticIpName: parkgolf-parkgolf-prod-cluster-ip

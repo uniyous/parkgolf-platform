@@ -10,11 +10,11 @@ import { makeE2ePaymentKey } from '../../fixtures/toss';
  *   1. user 생성
  *   2. POST /api/user/payments/prepare { amount, orderName } → orderId
  *   3. POST /api/user/payments/confirm { paymentKey:"e2e_test_*", orderId, amount }
- *      → payment-service에서 토스 API 호출 건너뛰고 합성 응답
+ *      → billing-service에서 토스 API 호출 건너뛰고 합성 응답
  *   4. GET /api/user/payments/order/:orderId → status가 READY 이상으로 진행됨
  *
  * 사전조건
- *   ─ payment-service에 TOSS_TEST_BYPASS=true 적용 및 새 이미지 배포 완료
+ *   ─ billing-service에 TOSS_TEST_BYPASS=true 적용 및 새 이미지 배포 완료
  *
  * @write — payment row 1건 생성
  */
