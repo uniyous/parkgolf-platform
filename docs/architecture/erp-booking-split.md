@@ -11,6 +11,10 @@
   - **PG 전략**: Toss PG는 서비스 분리하지 않고 `billing-service` 내부 **`PgProvider` 어댑터**로 격리. **골프장별 PG 선택** 지원 — `PgConfigResolver`(정책 resolve 재사용) + Secret Manager + FE 서버주도.
   - **배포**: dev = 단일 클러스터 공존(비용), prod = 매니저/마켓 클러스터 분리. 대형·공공은 전용 격리(L2/L3).
   - **concierge 전략**: `concierge-service`(구 agent-service)를 부킹 전문화 + 내부 **booking-core(MCP-ready) 절단면** 도입, 검증 후 `booking-mcp` 서비스로 추출. `agent`의 또 다른 의미(파트너 연동 자동화)는 `partner-sync-service`(async)로 분리.
+- **2026-06-25** 폴더/레포 전략 + 매니저 saga 확정:
+  - **폴더/레포**: 모노레포 워크스페이스 **폐기**(팀 분리 운영에 부적합) → 단일레포 유지하되 **미래 3레포**(parkgolf-shared·marketplace·manager)를 폴더 경계로 미리 그림. 공유 코어(iam·notify·location·weather·job)는 4번째 묶음 `platform/`.
+  - **매니저 saga**: `manager-saga-service` 신규(데스크·키오스크 saga). saga 엔진은 `shared/packages/saga-engine`으로 공유(복제 금지). 마켓 `saga-service`→`marketplace-saga-service` 리네임은 나중.
+  - **키오스크**: frontdesk-service에 키오스크 체크인·수납 채널 추가(추후).
 
 ---
 
@@ -26,12 +30,15 @@
 ## 서비스 분류 (리네임 반영)
 
 ```
-🟦 매니저       manager-console · manager-bff · club-service · frontdesk-service · payment-service(수납)
+🟦 매니저       manager-console · manager-bff · club-service · frontdesk-service · manager-saga-service〔신규〕 · payment-service(수납)
 🟧 마켓플레이스  user-app-web/ios/android · marketplace-console · consumer-bff · marketplace-bff
-               booking-service · billing-service(청구) · partner-service · concierge-service · chat-service · chat-gateway · partner-sync-service〔신규·async〕
-🟨 공유 코어    saga-service · iam-service · notify-service
+               booking-service · saga-service · billing-service(청구) · partner-service · concierge-service · chat-service · chat-gateway · partner-sync-service〔신규·async〕
+🟨 공유 코어    iam-service · notify-service
+🟨 공유 패키지  shared/packages: saga-engine · contracts · nats-common  (배포X·import)
 ⬜ 공통 유틸    location-service · weather-service · job-service
 ```
+
+> saga는 **엔진(`shared/packages/saga-engine`)만 공유**, 서비스는 제품별(`saga-service`=마켓 / `manager-saga-service`=매니저)로 분리. "공유 코어"에서 saga·payment 빠짐(payment는 수납/청구로 제품별 소유).
 
 ### 리네임 매핑 + 영향 축
 
@@ -62,7 +69,8 @@ flowchart TB
         direction TB
         MCON["manager-console"]
         MBFF["manager-bff · BFF"]
-        FRONT["frontdesk-service 〔신규〕<br/>전화·데스크·워크인 예약"]
+        FRONT["frontdesk-service 〔신규〕<br/>전화·데스크·워크인·키오스크"]
+        MSAGA["manager-saga-service 〔신규〕<br/>CREATE_DESK_BOOKING·KIOSK · manager_saga_db"]
         CLUB["club-service<br/>🔑 인벤토리 단일 권위 · club_db"]
         PAYM["payment-service · 수납 〔신규〕<br/>현장결제 현금·카드단말VAN · payment_db"]
     end
@@ -74,6 +82,7 @@ flowchart TB
         CBFF["consumer-bff · BFF"]
         MKBFF["marketplace-bff · BFF 〔신규〕"]
         BOOK["booking-service · booking_db"]
+        MSG["saga-service<br/>CREATE_BOOKING · saga_db"]
         PART["partner-service · partner_db"]
         AG["concierge-service<br/>부킹 전문 · booking-core(MCP-ready)"]
         CH["chat-service · chat-gateway"]
@@ -91,9 +100,14 @@ flowchart TB
         end
     end
 
+    subgraph SHARED["🟨 공유 패키지 · shared/packages (배포X · import)"]
+        direction LR
+        ENGINE["saga-engine<br/>제네릭 엔진·StepExecutor 포트"]
+        CONTRACTS["contracts · nats-common"]
+    end
+
     subgraph CORE["🟨 공유 코어  (prod: 양 클러스터 사본)"]
         direction LR
-        SAGA["saga-service<br/>엔진 공유·정의 분리"]
         IAM["iam-service<br/>JWKS 연합"]
         NOTI["notify-service"]
     end
@@ -105,13 +119,20 @@ flowchart TB
         JOB["job-service"]
     end
 
+    subgraph INFRA["⬛ 전역 인프라 · infra/ (레포 무관)"]
+        direction LR
+        NATS["NATS<br/>모든 서비스 통신"]
+        TF["terraform<br/>VPC·GKE·Artifact Registry·WIF"]
+        ARGO["argocd<br/>app-of-apps"]
+    end
+
     %% 매니저 흐름
     MCON --> MBFF
     MBFF --> FRONT
     MBFF --> CLUB
-    FRONT -->|"saga.deskbooking.create"| SAGA
-    SAGA -->|"CREATE_DESK_BOOKING"| FRONT
-    SAGA -->|"수납 기록"| PAYM
+    FRONT -->|"saga.deskbooking.create·saga.kiosk.*"| MSAGA
+    MSAGA -->|"CREATE_DESK_BOOKING"| FRONT
+    MSAGA -->|"수납 기록"| PAYM
     FRONT -->|"slot.reserve 🔑"| CLUB
 
     %% 마켓 흐름
@@ -122,31 +143,39 @@ flowchart TB
     PART --> BOOK
     AG --> CBFF
     CH --> CBFF
-    BOOK -->|"saga.booking.create"| SAGA
-    SAGA -->|"CREATE_BOOKING"| BOOK
-    SAGA -->|"청구"| BILL
+    BOOK -->|"saga.booking.create"| MSG
+    MSG -->|"CREATE_BOOKING"| BOOK
+    MSG -->|"청구"| BILL
     BOOK -->|"slot.reserve 🔑 동일 경로"| CLUB
     TOSS -. "위젯·API·취소·부분환불·정산" .-> PGEXT[("클럽별 PG<br/>Toss·KakaoPay·Nice")]
+
+    %% 공유 패키지 import (양 saga가 같은 엔진)
+    MSAGA -. "import" .-> ENGINE
+    MSG -. "import" .-> ENGINE
 
     %% 인증·알림
     MBFF -. "JWKS" .-> IAM
     CBFF -. "JWKS" .-> IAM
     MKBFF -. "JWKS" .-> IAM
-    SAGA -.-> NOTI
+    MSG -.-> NOTI
+    MSAGA -.-> NOTI
 
     classDef mgr fill:#dbeafe,stroke:#2563eb,color:#1e3a5f;
     classDef mkt fill:#ffedd5,stroke:#ea580c,color:#7c2d12;
     classDef core fill:#fef9c3,stroke:#ca8a04,color:#713f12;
     classDef util fill:#f3f4f6,stroke:#9ca3af,color:#374151;
-    class MCON,MBFF,FRONT,CLUB,PAYM mgr;
-    class UAPP,MKCON,CBFF,MKBFF,BOOK,PART,AG,CH,BILL,BDOM,BRES,TOSS,KAKAO,NICE mkt;
-    class SAGA,IAM,NOTI core;
+    classDef infra fill:#e5e7eb,stroke:#4b5563,color:#1f2937;
+    class MCON,MBFF,FRONT,MSAGA,CLUB,PAYM mgr;
+    class UAPP,MKCON,CBFF,MKBFF,BOOK,MSG,PART,AG,CH,BILL,BDOM,BRES,TOSS,KAKAO,NICE mkt;
+    class ENGINE,CONTRACTS,IAM,NOTI core;
     class LOC,WEA,JOB util;
+    class NATS,TF,ARGO infra;
 ```
 
 **범례**
-- 🟦 매니저 / 🟧 마켓플레이스 = prod 각각 독립 클러스터. 🟨 공유 코어 = 양 클러스터 사본. ⬜ 공통 유틸 = 무상태·각 클러스터 직접 호출.
-- 실선 = 동기 NATS request/reply, 점선 = 비동기/이벤트·검증. **모든 서비스 간 통신은 NATS** — 크로스-DB 접근 0.
+- 🟦 매니저 / 🟧 마켓플레이스 = prod 각각 독립 클러스터. 🟨 공유 코어 = 양 클러스터 사본 · 🟨 공유 패키지 = `shared/packages`(배포X, 양 saga가 `saga-engine` import). ⬜ 공통 유틸 = 무상태. ⬛ 전역 인프라 = `infra/`(NATS·terraform·argocd, 레포 무관).
+- 실선 = 동기 NATS request/reply, 점선 = 비동기/이벤트·검증·import. **모든 서비스 간 통신은 NATS** — 크로스-DB 접근 0.
+- ⚙️ **saga 엔진 공유·서비스 분리**: `manager-saga-service`(매니저)·`saga-service`(마켓)가 같은 `saga-engine`(shared) import, 정의·DB·진입 subject는 분리.
 - 🔑 **인벤토리 단일 권위**: `frontdesk-service`(데스크)·`booking-service`(마켓) 어느 채널이든 `club-service` 동일 `slot.reserve` 경로 → 중복예약 구조적 차단. 클러스터가 갈려도 `InventoryProvider` 계약([UNI-92](https://linear.app/uniyous/issue/UNI-92))으로 유지.
 - 💰 **결제 제품별 소유**: 매니저 `payment-service(수납)` / 마켓 `billing-service(청구)` 분리 → 공유 stateful 결제 DB 없음 → 클러스터 분리 깔끔.
 
@@ -329,17 +358,23 @@ erDiagram
 
 ---
 
-## saga 처리 — 엔진 공유 · 정의 분리
+## saga 처리 — 엔진 공유 · 서비스 분리
 
-`saga-service`는 🟨 공유 코어. **제네릭 엔진**(`startSaga(name, payload)` → 레지스트리 정의 조회 → step 실행/보상)이 핵심이고, 부킹 흐름은 **이름별 정의**로 등록된다.
+**제네릭 엔진**(`startSaga(name, payload)` → 레지스트리 정의 조회 → step 실행/보상)이 핵심이고, 부킹 흐름은 **이름별 정의**로 등록된다. 엔진은 제품 무관 → 복제 금지하고 **`shared/packages/saga-engine`으로 공유**, saga **서비스는 제품별 2개**로 분리.
 
-| 층 | 처리 | 근거 |
+| 층 | 처리 | 위치 |
 |---|---|---|
-| 엔진·레지스트리·보상·step-executor | **단일 공유** | 제네릭. "트랜잭션 코어 공유(복제 금지)" |
-| 진입 NATS 패턴 + saga 정의 | **분리** | `saga.booking.create`/`CREATE_BOOKING`(마켓) vs `saga.deskbooking.create`/`CREATE_DESK_BOOKING`(매니저) |
+| 엔진·레지스트리·보상·step-executor | **공유 패키지** | `shared/packages/saga-engine` (양 서비스 import, 복제 금지) |
+| saga 서비스(배포 단위) | **분리** | 🟧 `saga-service`(마켓) / 🟦 `manager-saga-service`(매니저·신규) |
+| 진입 NATS 패턴 + 정의 | **분리** | `saga.booking.create`/`CREATE_BOOKING`(마켓) vs `saga.deskbooking.create`·`saga.kiosk.*`/`CREATE_DESK_BOOKING`(매니저) |
+| saga DB | **분리** | `saga_db`(마켓) / `manager_saga_db`(매니저) |
 | 공통 step(`slot.reserve`/`slot.release`) | **step 조각 공유** | 양 정의가 동일 RESERVE_SLOT 재사용 — 인벤토리 단일 권위 |
 
-> **분리 이유**: 온라인은 파트너 검증·PG 청구·더치페이·외부통보가 붙고, 데스크는 그게 전부 없고 현장 수납·워크인·직원 행위자가 붙는다. 한 정의에 `condition`으로 합치면 분기 폭발 → 정의는 나누고 엔진만 공유.
+> **서비스 분리 이유**: 온라인은 파트너 검증·PG 청구·더치페이·외부통보가 붙고, 데스크·키오스크는 그게 없고 현장 수납·워크인·직원 행위자가 붙는다. 정의를 한 서비스에 `condition`으로 합치면 분기 폭발 + 팀 분리(마켓·매니저) 운영도 막힘 → **엔진만 공유, 서비스·정의·DB는 분리**.
+>
+> **엔진 순수성**: `saga-engine`은 NATS·DB를 직접 들지 않음 — `StepExecutor` 인터페이스(포트)만 정의하고 각 saga 서비스가 NATS 구현을 주입. 그래야 엔진이 특정 서비스에 의존하지 않고 공유된다.
+>
+> **리네임 보류**: 마켓 `saga-service` → `marketplace-saga-service` 대칭 리네임은 나중(blast 회피). 지금은 매니저만 신규.
 
 ### 온라인 부킹 — CREATE_BOOKING (마켓)
 
@@ -538,6 +573,46 @@ flowchart TB
 
 - 이관: 구 `admin-api`의 마켓 성격 라우트(`partners`, 플랫폼 전역 관리 등) → `marketplace-bff`. 매니저 성격(운영자·회사·정책·데스크 예약)은 `manager-bff` 잔류.
 - 세 BFF 모두 단일 iam 연합 사용(JWKS stateless).
+
+---
+
+## 폴더 / 레포 전략
+
+> **결정**: 모노레포 워크스페이스(pnpm/npm) **폐기** — 팀 분리(마켓·매니저 각 2명)를 독립 운영하려면 단일 lock·CI·CODEOWNERS 충돌이 큼. 대신 **단일레포 유지하되 미래 3레포 경계를 폴더로 미리 그린다**. 미래 분리 = 폴더를 `git filter-repo`로 떼면 무손실.
+
+### 미래 3레포 ↔ 현재 폴더
+
+| 폴더 | 미래 레포 | 소속 | 내용 |
+|---|---|---|---|
+| `shared/packages/` | `parkgolf-shared` | 🟨 공유 | saga-engine · contracts · nats-common (배포 안 됨·라이브러리) |
+| `marketplace/` | `parkgolf-marketplace` | 🟧 마켓팀 | apps(marketplace-console·user-app-*) · services(saga·booking·billing·consumer-bff·concierge·chat·partner) · infra/k8s |
+| `manager/` | `parkgolf-manager` | 🟦 매니저팀 | apps(manager-console) · services(manager-bff·club·frontdesk·manager-saga·payment수납) · infra/k8s |
+| `platform/` | (양 레포 공유 패키지 or 별도) | 🟨 공유 코어 | services(iam·notify·location·weather·job) · infra/k8s |
+| `infra/` | (전역) | — | terraform(VPC·GKE·Artifact Registry·WIF) · argocd(app-of-apps 루트) |
+
+```
+parkgolf/
+├── shared/packages/   saga-engine · contracts · nats-common      → parkgolf-shared
+├── marketplace/       apps · services · infra/k8s                → parkgolf-marketplace 🟧
+├── manager/           apps · services · infra/k8s                → parkgolf-manager 🟦
+├── platform/          services(공유코어) · infra/k8s             공유
+├── infra/             terraform · argocd                         전역
+└── docs/ scripts/
+```
+
+### 공유 코드 방식 (단일레포 → 미래 레포)
+
+| 시점 | 방식 |
+|---|---|
+| 지금 (단일레포) | `shared/packages/*`를 tsconfig path alias로 참조 — publish 불필요 |
+| 미래 (3레포 분리) | `@uniyous/saga-engine` 등 GitHub Packages publish → 각 레포 `npm install` (버전 고정) |
+
+### 핵심 규칙
+
+- `shared/packages/*` = 배포 안 됨(라이브러리), 앱·서비스에 번들. 의존 방향 **services → packages** (역방향 금지).
+- saga 엔진은 **순수**해야 공유 가능: NATS·DB 직접 import 금지 → `StepExecutor` 인터페이스(포트)만, 구현은 각 서비스가 주입(InventoryProvider·PgProvider와 동일 포트/어댑터).
+- `infra/k8s`는 **제품별 분산**(marketplace/manager/platform), **전역 infra**(terraform·argocd)만 루트.
+- 이행 순서: 서비스 리네임(PR #47) 머지 → `shared/` 골격 + saga-engine·contracts 추출 → services를 제품 폴더로 이동(CI·Dockerfile·path 갱신) → k8s 분할. 대형 변경이라 기능변경 0 청크로.
 
 ---
 
