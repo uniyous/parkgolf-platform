@@ -207,7 +207,7 @@ export class OutboxProcessorService implements OnModuleInit {
     if (eventType.startsWith('booking.') || eventType.startsWith('notification.')) {
       return this.notificationClient;
     }
-    // slot.*/gameTimeSlots.* (인벤토리)는 saga-service가 club-service로 직접 호출 — outbox 경유 안 함 (UNI-92)
+    // slot.*/gameTimeSlots.* (인벤토리)는 marketplace-saga-service가 club-service로 직접 호출 — outbox 경유 안 함 (UNI-92)
     throw new Error(`Outbox: no NATS client for event type '${eventType}'`);
   }
 

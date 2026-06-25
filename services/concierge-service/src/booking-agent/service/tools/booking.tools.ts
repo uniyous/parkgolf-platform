@@ -135,7 +135,7 @@ export class BookingTools {
       this.bookingClient
         .send('saga.booking.create', {
           // 결정적 멱등키 — 동일 (사용자·슬롯·인원·결제수단) 재시도는 같은 키로 묶여
-          // saga-service가 중복 제거. (이전 randomUUID는 재시도마다 새 키 → 이중 예약 위험)
+          // marketplace-saga-service가 중복 제거. (이전 randomUUID는 재시도마다 새 키 → 이중 예약 위험)
           // 동일 타임슬롯을 같은 인원·결제수단으로 2번 예약하는 것은 비정상 케이스이므로 dedup 허용.
           idempotencyKey: this.buildIdempotencyKey(slotIdNum, userId, playerCount, paymentMethod),
           userId,
@@ -204,7 +204,7 @@ export class BookingTools {
 
   /**
    * 결정적 멱등키 — 같은 예약 의도(슬롯·사용자·인원·결제수단)는 항상 같은 키.
-   * 네트워크 재시도/중복 호출이 saga-service에서 dedup 되도록.
+   * 네트워크 재시도/중복 호출이 marketplace-saga-service에서 dedup 되도록.
    */
   private buildIdempotencyKey(
     slotId: number,

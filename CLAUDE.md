@@ -16,7 +16,7 @@ services/
 ├── iam-service/            # 인증/사용자/친구 (Prisma)
 ├── course-service/         # 골프장/코스/게임 (Prisma)
 ├── booking-service/        # 예약 (Prisma)
-├── saga-service/           # Saga 오케스트레이터 (Prisma)
+├── marketplace-saga-service/           # Saga 오케스트레이터 (Prisma)
 ├── billing-service/        # 결제 (Prisma)
 ├── chat-service/           # 채팅 (Prisma)
 ├── notify-service/         # 알림 (Prisma)
@@ -53,7 +53,7 @@ Frontend → BFF (REST) → NATS → Microservice (Prisma)
 - **Terraform**: `infra/` (environments / modules / providers)
 - **CI/CD**: GitHub Actions 수동 트리거 — `ci.yml` / `cd-infra.yml` / `cd-services.yml` / `cd-apps.yml`
 - **최초 배포**: `cd-infra(network-apply → gke-setup)` → `cd-services` → `cd-apps`
-- **배포 의존성**: saga 응답 변경 시 `saga-service` 선배포 → `consumer-bff`·`manager-bff`·`concierge-service`
+- **배포 의존성**: saga 응답 변경 시 `marketplace-saga-service` 선배포 → `consumer-bff`·`manager-bff`·`concierge-service`
 
 ### 브랜치 / PR
 
@@ -67,12 +67,13 @@ Frontend → BFF (REST) → NATS → Microservice (Prisma)
 
 - **worktree 레이아웃** (형제 폴더, `.git` 공유):
   - `parkgolf` = `develop` 브랜치 — 통합 baseline, `git fetch`로 최신 유지, 직접 작업 X
-  - `parkgolf-uni-<N>` = Linear 부모 이슈별 작업 worktree
+  - `parkgolf-uni-<N>` = **하위(주제) 이슈별** 작업 worktree (부모=에픽이라 너무 큼 → 주제 단위로 격리). 폴더명은 **이슈 ID까지만**(요약은 Linear에서 식별)
   - `main`(릴리스 baseline)은 별도 worktree 없이 릴리스 절차로만 반영
+- **하위 이슈별 worktree**: 부모(에픽)는 worktree를 갖지 않는다 — 하위(주제) 이슈마다 worktree 1개. Claude apps 병렬 작업·이슈별 격리에 유리. 끝나면 `git worktree remove`
 - **브랜치**: `feat/UNI-<N>-<chunk>` (origin/develop 기준), PR base=develop, **청크마다 PR** (거대 단일 PR 금지)
-- **서브이슈는 부모 worktree 내 커밋** — 서브별 worktree/브랜치 X. **Linear 계층은 에픽 기준 3단 이내**(에픽→주제→컴포넌트, "Linear 이슈 / 라벨 규칙" 참조)
+- **컴포넌트(주제의 하위)는 그 주제 worktree 내 커밋** — 컴포넌트별 worktree/브랜치 X. **Linear 계층은 에픽 기준 3단 이내**(에픽→주제→컴포넌트, "Linear 이슈 / 라벨 규칙" 참조)
 - **부모 설계/에픽 이슈는 살아있는 레퍼런스** — 변경은 `## 결정 YYYY-MM-DD` 스탬프, 추가 요건은 신규 하위 이슈
-- 신규 worktree: `git worktree add ../parkgolf-uni-<N> -b feat/UNI-<N>-<chunk> origin/develop`
+- 신규 worktree: `git worktree add ../parkgolf-uni-<N> -b feat/UNI-<N>-<chunk> origin/develop` (형제 폴더, 폴더명=이슈 ID)
 
 ---
 
@@ -119,7 +120,7 @@ Team        제품군 경계 (제품마다 Team 분리 — 라벨이 Team 스코
 ```
 [domain]  booking · payment · saga · iam · club · chat · notify · agent · partner · location · weather   (bounded context, 정책은 club)
 [app]     manager-console · marketplace-console · user-app-web · user-app-ios · user-app-android           (= apps/·services/ 폴더 = 배포 단위)
-          consumer-bff · manager-bff · iam-service · club-service · booking-service · saga-service · billing-service
+          consumer-bff · manager-bff · iam-service · club-service · booking-service · marketplace-saga-service · billing-service
           chat-service · chat-gateway · notify-service · concierge-service · partner-service · job-service · location-service · weather-service
 [layer]   contract · persist · service · bff · ui · async                                                 (아키텍처 역할)
 ```

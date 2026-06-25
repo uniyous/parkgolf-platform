@@ -27,7 +27,7 @@ import { INVENTORY_PROVIDER } from './inventory/inventory-provider.interface';
     OutboxProcessorService,
     ParticipantCancelService,
     InternalClubProvider,
-    // 결정 B: booking-service는 1st-party(InternalClub)만 사용. partner는 saga-service가 선택.
+    // 결정 B: booking-service는 1st-party(InternalClub)만 사용. partner는 marketplace-saga-service가 선택.
     { provide: INVENTORY_PROVIDER, useExisting: InternalClubProvider },
   ],
 })

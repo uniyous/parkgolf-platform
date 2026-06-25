@@ -59,7 +59,7 @@ postgres:
     - club_db
     - booking_db
     - billing_db
-    - saga_db
+    - marketplace_saga_db
     - chat_db
     - notify_db
     - partner_db
@@ -128,8 +128,8 @@ services:
       # e2e용 토스 API 우회 (paymentKey "e2e_test_*"만 해당)
       # 서비스 내부에서 NODE_ENV=production이면 자동 무력화 — 이중 안전장치
       - { name: TOSS_TEST_BYPASS,  value: "true" }
-  - name: saga-service
-    db: saga_db
+  - name: marketplace-saga-service
+    db: marketplace_saga_db
   - name: chat-service
     db: chat_db
   - name: notify-service

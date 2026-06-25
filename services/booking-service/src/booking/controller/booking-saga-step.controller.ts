@@ -6,7 +6,7 @@ import { NatsResponse } from '../../common/types/response.types';
 /**
  * Saga Step 핸들러 컨트롤러
  *
- * saga-service에서 호출하는 개별 Step 처리:
+ * marketplace-saga-service에서 호출하는 개별 Step 처리:
  * - booking.saga.create: 예약 레코드 생성 (PENDING)
  * - booking.saga.slotReserved: 슬롯 예약 성공 후 상태 업데이트
  * - booking.saga.confirmPayment: 결제 완료 후 예약 확정

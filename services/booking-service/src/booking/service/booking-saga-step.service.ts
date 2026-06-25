@@ -13,9 +13,9 @@ import { Errors } from '../../common/exceptions/catalog/error-catalog';
 /**
  * Saga Step 원자 연산 서비스
  *
- * saga-service가 호출하는 개별 Step을 처리한다.
+ * marketplace-saga-service가 호출하는 개별 Step을 처리한다.
  * 각 메서드는 booking DB만 변경하고, 다른 서비스 호출이나 이벤트 발행을 하지 않는다.
- * (알림/슬롯/결제 등의 연쇄 호출은 saga-service가 오케스트레이션)
+ * (알림/슬롯/결제 등의 연쇄 호출은 marketplace-saga-service가 오케스트레이션)
  *
  * 예외: 캐시 미스 시 club-service에서 슬롯/게임 정보를 조회하여 캐시를 자동 채움
  */
@@ -34,7 +34,7 @@ export class BookingSagaStepService {
 
   /**
    * 예약 레코드 생성 (PENDING 상태)
-   * Outbox 이벤트를 생성하지 않음 — 슬롯 예약은 saga-service가 직접 호출
+   * Outbox 이벤트를 생성하지 않음 — 슬롯 예약은 marketplace-saga-service가 직접 호출
    */
   async createBookingRecord(bookingData: Record<string, unknown>) {
     const dto = bookingData as {
@@ -168,7 +168,7 @@ export class BookingSagaStepService {
           gameName: slotCache.gameName,
           gameTimeSlotId: dto.gameTimeSlotId,
           idempotencyKey: dto.idempotencyKey,
-          orchestrator: 'saga-service',
+          orchestrator: 'marketplace-saga-service',
         },
       });
 
@@ -192,7 +192,7 @@ export class BookingSagaStepService {
       return newBooking;
     });
 
-    this.logger.log(`Booking ${booking.bookingNumber} created (PENDING) via saga-service`);
+    this.logger.log(`Booking ${booking.bookingNumber} created (PENDING) via marketplace-saga-service`);
 
     // 더치페이일 때 participants/chatRoomId 응답에 포함 → saga의 PREPARE_SPLIT step에서 사용
     const baseResponse = this.toSagaResponse(booking);
@@ -276,7 +276,7 @@ export class BookingSagaStepService {
       }).where(eq(gameTimeSlotCache.gameTimeSlotId, data.gameTimeSlotId));
     });
 
-    this.logger.log(`Booking ${data.bookingId} → ${newStatus} via saga-service`);
+    this.logger.log(`Booking ${data.bookingId} → ${newStatus} via marketplace-saga-service`);
     return { status: newStatus, bookingId: booking.id };
   }
 
@@ -379,7 +379,7 @@ export class BookingSagaStepService {
       }
     });
 
-    this.logger.log(`Booking ${data.bookingId} CONFIRMED (payment) via saga-service`);
+    this.logger.log(`Booking ${data.bookingId} CONFIRMED (payment) via marketplace-saga-service`);
     return {
       bookingId: booking.id,
       bookingNumber: booking.bookingNumber,
@@ -395,7 +395,7 @@ export class BookingSagaStepService {
 
   /**
    * 예약 취소 (CANCELLED)
-   * 슬롯 해제/결제 취소는 saga-service가 별도 Step으로 처리
+   * 슬롯 해제/결제 취소는 marketplace-saga-service가 별도 Step으로 처리
    */
   async cancelBooking(data: {
     bookingId: number;
@@ -442,7 +442,7 @@ export class BookingSagaStepService {
       }
     });
 
-    this.logger.log(`Booking ${data.bookingId} CANCELLED (${previousStatus} → CANCELLED) via saga-service`);
+    this.logger.log(`Booking ${data.bookingId} CANCELLED (${previousStatus} → CANCELLED) via marketplace-saga-service`);
     return {
       previousStatus,
       gameTimeSlotId: booking.gameTimeSlotId,
@@ -500,7 +500,7 @@ export class BookingSagaStepService {
       }
     });
 
-    this.logger.log(`Booking ${data.bookingId} CANCELLED by admin via saga-service`);
+    this.logger.log(`Booking ${data.bookingId} CANCELLED by admin via marketplace-saga-service`);
     return {
       previousStatus,
       gameTimeSlotId: booking.gameTimeSlotId,
@@ -530,11 +530,11 @@ export class BookingSagaStepService {
         finalizedAt: new Date().toISOString(),
         cancelAmount: data.cancelAmount,
         adminId: data.adminId,
-        orchestrator: 'saga-service',
+        orchestrator: 'marketplace-saga-service',
       },
     });
 
-    this.logger.log(`Booking ${data.bookingId} refund finalized via saga-service`);
+    this.logger.log(`Booking ${data.bookingId} refund finalized via marketplace-saga-service`);
     return { bookingId: data.bookingId, status: 'CANCELLED' };
   }
 
@@ -567,12 +567,12 @@ export class BookingSagaStepService {
         details: {
           reason: 'Compensation rollback',
           failedAt: new Date().toISOString(),
-          orchestrator: 'saga-service',
+          orchestrator: 'marketplace-saga-service',
         },
       });
     });
 
-    this.logger.log(`Booking ${bookingId} marked FAILED (compensation) via saga-service`);
+    this.logger.log(`Booking ${bookingId} marked FAILED (compensation) via marketplace-saga-service`);
     return { bookingId, status: 'FAILED' };
   }
 
@@ -608,12 +608,12 @@ export class BookingSagaStepService {
           restoredTo: restoreStatus,
           reason: 'Saga compensation rollback',
           restoredAt: new Date().toISOString(),
-          orchestrator: 'saga-service',
+          orchestrator: 'marketplace-saga-service',
         },
       });
     });
 
-    this.logger.log(`Booking ${data.bookingId} restored to ${restoreStatus} (compensation) via saga-service`);
+    this.logger.log(`Booking ${data.bookingId} restored to ${restoreStatus} (compensation) via marketplace-saga-service`);
     return { bookingId: data.bookingId, status: restoreStatus };
   }
 
@@ -644,7 +644,7 @@ export class BookingSagaStepService {
         details: {
           reason: data.reason,
           timeoutAt: new Date().toISOString(),
-          orchestrator: 'saga-service',
+          orchestrator: 'marketplace-saga-service',
         },
       });
 
@@ -660,7 +660,7 @@ export class BookingSagaStepService {
       }
     });
 
-    this.logger.log(`Booking ${data.bookingId} FAILED (payment timeout) via saga-service`);
+    this.logger.log(`Booking ${data.bookingId} FAILED (payment timeout) via marketplace-saga-service`);
     return {
       gameTimeSlotId: booking.gameTimeSlotId,
       playerCount: booking.playerCount,

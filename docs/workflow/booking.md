@@ -25,14 +25,14 @@
 파크골프 예약 시스템의 booking-service 도메인 워크플로우 문서입니다.
 
 > **Saga 트랜잭션 워크플로우**(예약 생성/취소/환불 Saga, 보상, 모니터링)는 [saga.md](./saga.md)를 참조하세요.
-> booking-service는 saga-service의 Step 핸들러(`booking.saga.*` 패턴)로 동작합니다.
+> booking-service는 marketplace-saga-service의 Step 핸들러(`booking.saga.*` 패턴)로 동작합니다.
 
 ### 1.1 주요 구성 요소
 
 | 서비스 | 역할 | 데이터베이스 |
 |--------|------|-------------|
 | **booking-service** | 예약 도메인, 팀 선정, 그룹 예약, Saga Step 핸들러 | booking_db |
-| **saga-service** | Saga 오케스트레이션 (예약 생성/취소/환불) | saga_db |
+| **marketplace-saga-service** | Saga 오케스트레이션 (예약 생성/취소/환불) | marketplace_saga_db |
 | **club-service** | 타임슬롯 관리, 슬롯 예약/해제 | club_db |
 | **iam-service** | 인증/사용자/CompanyMember 관리 | iam_db |
 | **consumer-bff** | BFF, 클라이언트 요청 처리 | - |
@@ -73,7 +73,7 @@ flowchart TB
     end
 
     subgraph "Microservices"
-        SAGA[saga-service]
+        SAGA[marketplace-saga-service]
         C[booking-service]
         D[club-service]
         P[billing-service]
@@ -114,7 +114,7 @@ flowchart TB
     IAM --- I
 ```
 
-> **Saga 오케스트레이션**: saga-service가 중앙 오케스트레이터로 예약 생성/취소/환불 Saga를 관리합니다.
+> **Saga 오케스트레이션**: marketplace-saga-service가 중앙 오케스트레이터로 예약 생성/취소/환불 Saga를 관리합니다.
 > booking-service는 `booking.saga.*` Step 핸들러를 노출합니다. 상세는 [saga.md](./saga.md) 참조.
 
 ---
@@ -597,7 +597,7 @@ sequenceDiagram
 
 ### 7.4 결제 타임아웃 처리
 
-결제 타임아웃은 saga-service의 `PAYMENT_TIMEOUT` Saga로 처리됩니다. [saga.md](./saga.md) 섹션 4.6, 5.4 참조.
+결제 타임아웃은 marketplace-saga-service의 `PAYMENT_TIMEOUT` Saga로 처리됩니다. [saga.md](./saga.md) 섹션 4.6, 5.4 참조.
 
 ### 7.5 슬롯 해제 (Compensation)
 
@@ -733,7 +733,7 @@ SYSTEM           // 시스템 취소 (Saga 실패 등)
 
 ## 8. 모니터링 및 디버깅
 
-> **Saga 모니터링** (Saga 상태 조회, 수동 개입, saga-service 로그)은 [saga.md](./saga.md) 섹션 8을 참조하세요.
+> **Saga 모니터링** (Saga 상태 조회, 수동 개입, marketplace-saga-service 로그)은 [saga.md](./saga.md) 섹션 8을 참조하세요.
 
 ### 8.1 로그 태그
 
@@ -909,7 +909,7 @@ sequenceDiagram
         BS->>DB: INSERT OutboxEvent (slot.reserve)
         BS-->>Agent: booking (PENDING)
 
-        Note over BS: CREATE_BOOKING Saga (saga-service)
+        Note over BS: CREATE_BOOKING Saga (marketplace-saga-service)
         BS->>NATS: slot.reserve → slot.reserved → CONFIRMED
         BS->>DB: BookingParticipant 자동 생성
     end
@@ -1120,7 +1120,7 @@ async expirePendingSplits() {
 
 | 버전 | 날짜 | 변경 내용 |
 |------|------|----------|
-| 6.0 | 2026-03-09 | **Saga 분리**: saga-service 독립 마이크로서비스 분리에 따라 Saga 트랜잭션 내용을 [saga.md](./saga.md)로 이관, booking-service는 Saga Step 핸들러 역할로 재정의, 섹션 재번호 매김 |
+| 6.0 | 2026-03-09 | **Saga 분리**: marketplace-saga-service 독립 마이크로서비스 분리에 따라 Saga 트랜잭션 내용을 [saga.md](./saga.md)로 이관, booking-service는 Saga Step 핸들러 역할로 재정의, 섹션 재번호 매김 |
 | 5.2 | 2026-03-04 | **Saga 아키텍처 변경**: club-service fire-and-forget emit(`slot.reserved`/`slot.reserve.failed`/`slot.released`) 제거 → OutboxProcessor Request-Reply 응답 수신 후 SagaHandler 직접 호출, `booking.settlementStatus` NATS 패턴 추가 (allPaid SSOT), 정산 allPaid 공식 통일 |
 | 5.1 | 2026-03-03 | **문서 현행화**: action: CREATED→SAGA_STARTED 수정, Saga 분기 코드 실제 구현 반영(isOnsitePayment 패턴), 취소 프로세스 Outbox→Direct Emit 수정(slot.release는 직접 emit), Section 8.4 파일 참조 saga-handler.service.ts로 수정, 로그 예시 실제 형식 반영, TeamSelectionService 컴포넌트 다이어그램 추가 |
 | 5.0 | 2026-03-03 | **그룹 예약 리팩토링**: BookingGroup 테이블 제거 → TeamSelection/TeamSelectionMember로 팀 선정 분리, Booking에 groupId/teamSelectionId 흡수, 정산 상태 파생(조회 시 계산), 3-Phase 구조(팀 선정 → 부킹 → 결제) |

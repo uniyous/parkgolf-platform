@@ -27,7 +27,7 @@ graph TB
                 IAM["iam-service"]
                 COURSE["club-service"]
                 BOOKING["booking-service"]
-                SAGA["saga-service"]
+                SAGA["marketplace-saga-service"]
                 PAY["billing-service"]
                 PARTNER["partner-service"]
                 NOTIFY["notify-service"]
@@ -102,7 +102,7 @@ graph TB
 | iam_db | iam-service | Users, Admins, Roles, Friends, CompanyMembers, Menus |
 | club_db | club-service | Companies, Clubs, Courses, Games, TimeSlots, Schedules |
 | booking_db | booking-service | Bookings, Refunds, NoShowRecords, Policies |
-| saga_db | saga-service | SagaExecutions, SagaSteps, OutboxEvents |
+| marketplace_saga_db | marketplace-saga-service | SagaExecutions, SagaSteps, OutboxEvents |
 | billing_db | billing-service | Payments, BillingKeys, Refunds, WebhookLogs |
 | partner_db | partner-service | PartnerConfigs, GameMappings, SlotMappings, BookingMappings, SyncLogs |
 | chat_db | chat-service | ChatRooms, Messages |
@@ -222,7 +222,7 @@ services: all
 services: iam-service,consumer-bff,concierge-service
 ```
 
-15개 서비스: manager-bff, consumer-bff, chat-gateway, iam-service, club-service, booking-service, saga-service, billing-service, partner-service, chat-service, notify-service, concierge-service, weather-service, location-service, job-service
+15개 서비스: manager-bff, consumer-bff, chat-gateway, iam-service, club-service, booking-service, marketplace-saga-service, billing-service, partner-service, chat-service, notify-service, concierge-service, weather-service, location-service, job-service
 
 ### cd-apps.yml
 

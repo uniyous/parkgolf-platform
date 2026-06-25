@@ -12,7 +12,7 @@ import {
  * 자체 운영 골프장(club-service)을 InventoryProvider 계약으로 래핑.
  * booking-service의 club-service/iam 직접 결합을 이 어댑터 뒤로 은닉한다.
  *
- * 결정 B: `reserve`는 saga-service가 club-service로 직접 호출하므로(단일 경계 횡단),
+ * 결정 B: `reserve`는 marketplace-saga-service가 club-service로 직접 호출하므로(단일 경계 횡단),
  * 이 어댑터의 reserve/cancel/confirm은 계약 완결성·비-saga 경로용. booking-service가
  * 실제로 쓰는 것은 getAvailability(캐시미스 가용성 조회).
  */

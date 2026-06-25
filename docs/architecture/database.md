@@ -10,7 +10,7 @@ Park Golf 플랫폼은 8개의 독립 마이크로서비스 데이터베이스�
 | iam-service | iam_db | 인증, 사용자, 관리자, 역할/권한, 친구, 메뉴, 계정삭제 이력 |
 | club-service | club_db | 골프장, 코스, 홀, 게임, 타임슬롯 |
 | booking-service | booking_db | 예약, 결제, 정책, 환불/노쇼, 팀선정/더치페이 |
-| saga-service | saga_db | Saga 오케스트레이션, Step 실행 이력, Outbox |
+| marketplace-saga-service | marketplace_saga_db | Saga 오케스트레이션, Step 실행 이력, Outbox |
 | billing-service | billing_db | 결제(토스페이먼츠), 환불, 빌링키, 분할결제, 웹훅 |
 | partner-service | partner_db | 파트너 연동 설정, 코스/슬롯/예약 매핑, 동기화 이력 |
 | chat-service | chat_db | 채팅방, 멤버, 메시지 |
@@ -1348,7 +1348,7 @@ webhook.WebhookLog -> core.Payment: "paymentId"
 
 ---
 
-## 5. Saga Service (saga_db)
+## 5. Saga Service (marketplace_saga_db)
 
 ```d2
 classes: {
@@ -1368,7 +1368,7 @@ classes: {
   }
 }
 
-header: "Saga Service (saga_db)" {
+header: "Saga Service (marketplace_saga_db)" {
   class: db-title
   style.fill: "#FCE4EC"
   style.stroke: "#EC407A"
@@ -1434,7 +1434,7 @@ saga: "Saga 오케스트레이션" {
 
 ### 상세
 
-> **설명**: saga-service는 분산 트랜잭션의 중앙 오케스트레이터입니다. SagaExecution이 전체 Saga 흐름을 추적하고, SagaStep이 개별 Step의 실행/보상 이력을 기록합니다. 실패 시 보상(compensation)이 자동 역순 실행되며, 보상 실패 시 `REQUIRES_MANUAL` 상태로 전이됩니다.
+> **설명**: marketplace-saga-service는 분산 트랜잭션의 중앙 오케스트레이터입니다. SagaExecution이 전체 Saga 흐름을 추적하고, SagaStep이 개별 Step의 실행/보상 이력을 기록합니다. 실패 시 보상(compensation)이 자동 역순 실행되며, 보상 실패 시 `REQUIRES_MANUAL` 상태로 전이됩니다.
 
 ---
 
@@ -1889,7 +1889,7 @@ mapping.BookingMapping -> config.PartnerConfig: "partnerId" {style.stroke-dash: 
 | iam_db | 19 | Company, Admin, User, RoleMaster, MenuMaster, CompanyMember, UserHistory |
 | club_db | 8 | Club, Course, Hole, TeeBox, Game, GameTimeSlot |
 | booking_db | 18 | Booking, TeamSelection, TeamSelectionMember, BookingParticipant, Refund, CancellationPolicy, OutboxEvent |
-| saga_db | 3 | SagaExecution, SagaStep, OutboxEvent |
+| marketplace_saga_db | 3 | SagaExecution, SagaStep, OutboxEvent |
 | billing_db | 6 | Payment, PaymentSplit, Refund, BillingKey, WebhookLog, PaymentOutboxEvent |
 | partner_db | 5 | PartnerConfig, GameMapping, SlotMapping, BookingMapping, SyncLog |
 | chat_db | 4 | ChatRoom, ChatRoomMember, ChatMessage, MessageRead |
