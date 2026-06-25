@@ -67,12 +67,13 @@ Frontend → BFF (REST) → NATS → Microservice (Prisma)
 
 - **worktree 레이아웃** (형제 폴더, `.git` 공유):
   - `parkgolf` = `develop` 브랜치 — 통합 baseline, `git fetch`로 최신 유지, 직접 작업 X
-  - `parkgolf-uni-<N>` = Linear 부모 이슈별 작업 worktree
+  - `parkgolf-uni-<N>` = **하위(주제) 이슈별** 작업 worktree (부모=에픽이라 너무 큼 → 주제 단위로 격리). 폴더명은 **이슈 ID까지만**(요약은 Linear에서 식별)
   - `main`(릴리스 baseline)은 별도 worktree 없이 릴리스 절차로만 반영
+- **하위 이슈별 worktree**: 부모(에픽)는 worktree를 갖지 않는다 — 하위(주제) 이슈마다 worktree 1개. Claude apps 병렬 작업·이슈별 격리에 유리. 끝나면 `git worktree remove`
 - **브랜치**: `feat/UNI-<N>-<chunk>` (origin/develop 기준), PR base=develop, **청크마다 PR** (거대 단일 PR 금지)
-- **서브이슈는 부모 worktree 내 커밋** — 서브별 worktree/브랜치 X. **Linear 계층은 에픽 기준 3단 이내**(에픽→주제→컴포넌트, "Linear 이슈 / 라벨 규칙" 참조)
+- **컴포넌트(주제의 하위)는 그 주제 worktree 내 커밋** — 컴포넌트별 worktree/브랜치 X. **Linear 계층은 에픽 기준 3단 이내**(에픽→주제→컴포넌트, "Linear 이슈 / 라벨 규칙" 참조)
 - **부모 설계/에픽 이슈는 살아있는 레퍼런스** — 변경은 `## 결정 YYYY-MM-DD` 스탬프, 추가 요건은 신규 하위 이슈
-- 신규 worktree: `git worktree add ../parkgolf-uni-<N> -b feat/UNI-<N>-<chunk> origin/develop`
+- 신규 worktree: `git worktree add ../parkgolf-uni-<N> -b feat/UNI-<N>-<chunk> origin/develop` (형제 폴더, 폴더명=이슈 ID)
 
 ---
 
