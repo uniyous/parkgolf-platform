@@ -41,7 +41,7 @@ kubectl config current-context   # gke_parkgolf-uniyous_asia-northeast3-a_parkgo
 | club-service | `club_db` | ERP 도메인(클럽·코스·게임·정책) |
 | booking-service | `booking_db` | |
 | billing-service | `billing_db` | 구 `payment_db` (리네임) |
-| saga-service | `saga_db` | |
+| marketplace-saga-service | `saga_db` | 구 `saga-service` (리네임, DB명 유지) |
 | chat-service | `chat_db` | |
 | notify-service | `notify_db` | |
 | partner-service | `partner_db` | |
