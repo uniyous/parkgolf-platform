@@ -59,7 +59,7 @@ services:
       # prod에서는 절대 활성화 금지 (서비스 내부에서도 NODE_ENV=production 가드)
       - { name: TOSS_TEST_BYPASS,  value: "false" }
   - name: marketplace-saga-service
-    db: saga_db
+    db: marketplace_saga_db
     replicas: 2
   - name: chat-service
     db: chat_db

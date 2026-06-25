@@ -16,7 +16,8 @@
   - **매니저 saga**: `manager-saga-service` 신규(데스크·키오스크 saga). saga 엔진은 `shared/packages/saga-engine`으로 공유(복제 금지). 마켓 `saga-service`→`marketplace-saga-service` 대칭 리네임 동반(UNI-127).
   - **키오스크**: frontdesk-service에 키오스크 체크인·수납 채널 추가(추후).
 - **2026-06-25** 마켓 saga 리네임 실행(UNI-127, 청크 `feat/UNI-127-marketplace-saga-rename`):
-  - **리네임**: `saga-service`→`marketplace-saga-service`. **정체성만**(폴더·패키지·k8s·Helm·CI·라벨·로그/메타 태그) 변경. 진입 subject `saga.booking.*`·DB `saga_db`는 **유지**(blast 최소, 호출자 무변경). 보류(나중)→당겨서 매니저 saga 신설과 동일 에픽에서 처리.
+  - **리네임**: `saga-service`→`marketplace-saga-service`(정체성: 폴더·패키지·k8s·Helm·CI·라벨·로그/메타 태그) + **DB `saga_db`→`marketplace_saga_db`**(제품별 DB 대칭, 매니저는 `manager_saga_db`). 진입 subject `saga.booking.*`만 **유지**(호출자 무변경). 보류(나중)→당겨서 매니저 saga 신설과 동일 에픽에서 처리.
+  - **DB 결정 변경**: 최초 "`saga_db` 유지(blast 최소)"에서 **DB도 리네임**으로 전환 — 제품별 대칭 명명 우선. 부팅 시 마이그레이션 미실행이라 **배포 전 `ALTER DATABASE saga_db RENAME TO marketplace_saga_db` 1회 필요**(또는 dev는 신규 DB+`db:migrate`).
 
 ---
 
@@ -84,7 +85,7 @@ flowchart TB
         CBFF["consumer-bff · BFF"]
         MKBFF["marketplace-bff · BFF 〔신규〕"]
         BOOK["booking-service · booking_db"]
-        MSG["marketplace-saga-service<br/>CREATE_BOOKING · saga_db"]
+        MSG["marketplace-saga-service<br/>CREATE_BOOKING · marketplace_saga_db"]
         PART["partner-service · partner_db"]
         AG["concierge-service<br/>부킹 전문 · booking-core(MCP-ready)"]
         CH["chat-service · chat-gateway"]
@@ -369,14 +370,14 @@ erDiagram
 | 엔진·레지스트리·보상·step-executor | **공유 패키지** | `shared/packages/saga-engine` (양 서비스 import, 복제 금지) |
 | saga 서비스(배포 단위) | **분리** | 🟧 `marketplace-saga-service`(마켓) / 🟦 `manager-saga-service`(매니저·신규) |
 | 진입 NATS 패턴 + 정의 | **분리** | `saga.booking.create`/`CREATE_BOOKING`(마켓) vs `saga.deskbooking.create`·`saga.kiosk.*`/`CREATE_DESK_BOOKING`(매니저) |
-| saga DB | **분리** | `saga_db`(마켓) / `manager_saga_db`(매니저) |
+| saga DB | **분리** | `marketplace_saga_db`(마켓) / `manager_saga_db`(매니저) |
 | 공통 step(`slot.reserve`/`slot.release`) | **step 조각 공유** | 양 정의가 동일 RESERVE_SLOT 재사용 — 인벤토리 단일 권위 |
 
 > **서비스 분리 이유**: 온라인은 파트너 검증·PG 청구·더치페이·외부통보가 붙고, 데스크·키오스크는 그게 없고 현장 수납·워크인·직원 행위자가 붙는다. 정의를 한 서비스에 `condition`으로 합치면 분기 폭발 + 팀 분리(마켓·매니저) 운영도 막힘 → **엔진만 공유, 서비스·정의·DB는 분리**.
 >
 > **엔진 순수성**: `saga-engine`은 NATS·DB를 직접 들지 않음 — `StepExecutor` 인터페이스(포트)만 정의하고 각 saga 서비스가 NATS 구현을 주입. 그래야 엔진이 특정 서비스에 의존하지 않고 공유된다.
 >
-> **리네임 완료(UNI-127)**: 마켓 `saga-service` → `marketplace-saga-service` 대칭 리네임 — 정체성(폴더·패키지·k8s·CI·라벨)만 변경, 진입 subject `saga.booking.*`·DB `saga_db`는 유지(blast 최소).
+> **리네임 완료(UNI-127)**: 마켓 `saga-service` → `marketplace-saga-service` + DB `saga_db` → `marketplace_saga_db` 대칭 리네임. 진입 subject `saga.booking.*`만 유지(호출자 무변경). DB는 배포 전 `ALTER DATABASE` 1회 이행 필요.
 
 ### 온라인 부킹 — CREATE_BOOKING (마켓)
 

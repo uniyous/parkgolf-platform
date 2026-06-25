@@ -59,7 +59,7 @@ flowchart TB
         CTRL["SagaNatsController"]
         ENGINE["SagaEngineService"]
         DEFS["Saga Definitions<br/>CREATE/CANCEL/ADMIN_REFUND<br/>PAYMENT_CONFIRMED/FAILED/TIMEOUT"]
-        DB_S[("🗄️ saga_db")]
+        DB_S[("🗄️ marketplace_saga_db")]
     end
 
     NATS{{"🌐 NATS"}}
@@ -135,7 +135,7 @@ flowchart LR
 
 saga 처리에는 세 DB의 테이블이 관여합니다:
 
-- **`saga_db`** (marketplace-saga-service 소유): `SagaExecution`, `SagaStep` — saga 실행/이력
+- **`marketplace_saga_db`** (marketplace-saga-service 소유): `SagaExecution`, `SagaStep` — saga 실행/이력
 - **`billing_db`** (billing-service 소유): `payment_outbox_events` — 결제 이벤트 트리거 소스 (자주 사용)
 - **`booking_db`** (booking-service 소유): `booking_outbox_events` — booking 도메인 이벤트 트리거 소스 (그룹 취소 등 희귀 케이스)
 
@@ -151,7 +151,7 @@ erDiagram
     BookingOutboxEvent ||..o{ SagaExecution : "triggers via NATS<br/>(payment.cancelByBookingId 등)"
 
     SagaExecution {
-        int id PK "saga_db.saga_executions"
+        int id PK "marketplace_saga_db.saga_executions"
         string saga_type "CREATE_BOOKING / CANCEL_BOOKING / ADMIN_REFUND / PAYMENT_CONFIRMED / PAYMENT_FAILED / PAYMENT_TIMEOUT"
         string correlation_id UK "예: booking:123"
         SagaStatus status "STARTED → STEP_EXECUTING → COMPLETED / FAILED ..."
@@ -167,7 +167,7 @@ erDiagram
     }
 
     SagaStep {
-        int id PK "saga_db.saga_steps"
+        int id PK "marketplace_saga_db.saga_steps"
         int saga_execution_id FK
         int step_index
         string step_name "RESERVE_SLOT 등"
@@ -253,8 +253,8 @@ erDiagram
 
 | 작업 | 주체 | 주기 | 동작 | DB |
 |------|------|------|------|----|
-| 만료 saga FAILED 처리 | saga-scheduler | 매분 | STARTED/STEP_EXECUTING 5분 초과 → FAILED | saga_db |
-| 오래된 saga 삭제 | saga-scheduler | 매일 자정 | COMPLETED/FAILED + 30일 경과 행 DELETE | saga_db |
+| 만료 saga FAILED 처리 | saga-scheduler | 매분 | STARTED/STEP_EXECUTING 5분 초과 → FAILED | marketplace_saga_db |
+| 오래된 saga 삭제 | saga-scheduler | 매일 자정 | COMPLETED/FAILED + 30일 경과 행 DELETE | marketplace_saga_db |
 | SLOT_RESERVED 만료 | saga-scheduler | 매분 | 5분 초과 booking에 PAYMENT_TIMEOUT Saga 시작 | booking_db (조회) |
 | Outbox 이벤트 발행 | billing-service OutboxProcessor | 5초 | PENDING 이벤트 NATS publish, 최대 5회 재시도 | billing_db |
 

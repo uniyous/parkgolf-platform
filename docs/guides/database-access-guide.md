@@ -41,7 +41,7 @@ kubectl config current-context   # gke_parkgolf-uniyous_asia-northeast3-a_parkgo
 | club-service | `club_db` | ERP 도메인(클럽·코스·게임·정책) |
 | booking-service | `booking_db` | |
 | billing-service | `billing_db` | 구 `payment_db` (리네임) |
-| marketplace-saga-service | `saga_db` | 구 `saga-service` (리네임, DB명 유지) |
+| marketplace-saga-service | `marketplace_saga_db` | 구 `saga-service`/`saga_db` (리네임) |
 | chat-service | `chat_db` | |
 | notify-service | `notify_db` | |
 | partner-service | `partner_db` | |
@@ -130,6 +130,21 @@ kubectl --context parkgolf-dev exec -it postgres-0 -n parkgolf-dev -- \
 
 - `CREATE`는 기존 DB·pod를 건드리지 않아 안전(활성 커넥션 충돌 없음).
 - 데이터 보존이 필요한 리네임이면 `CREATE` 대신 `ALTER DATABASE old RENAME TO new` — 단 **해당 DB에 활성 커넥션이 없어야** 하므로 옛 서비스를 먼저 scale 0.
+
+DB 리네임 예시 — `saga_db` → `marketplace_saga_db` (UNI-127, 데이터 보존):
+
+```bash
+# 1) 옛 서비스 scale 0 (활성 커넥션 제거) — 리네임 전 구 Deployment 이름 기준
+kubectl --context parkgolf-dev scale deploy/saga-service -n parkgolf-dev --replicas=0
+
+# 2) DB 리네임 (데이터·테이블 보존)
+kubectl --context parkgolf-dev exec -it postgres-0 -n parkgolf-dev -- \
+  psql -U parkgolf -c "ALTER DATABASE saga_db RENAME TO marketplace_saga_db;"
+
+# 3) Helm 머지 → 신 marketplace-saga-service가 marketplace_saga_db로 기동
+```
+
+> marketplace-saga-service는 부팅 시 마이그레이션을 돌리지 않고 **연결만** 한다 → 빈 DB로 시작하면 테이블이 없어 실패. 반드시 ALTER RENAME(보존) 또는 신규 DB + `db:migrate`(dev 초기화)를 **배포 전**에 수행.
 
 ## 7. 주의
 

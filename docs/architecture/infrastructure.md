@@ -102,7 +102,7 @@ graph TB
 | iam_db | iam-service | Users, Admins, Roles, Friends, CompanyMembers, Menus |
 | club_db | club-service | Companies, Clubs, Courses, Games, TimeSlots, Schedules |
 | booking_db | booking-service | Bookings, Refunds, NoShowRecords, Policies |
-| saga_db | marketplace-saga-service | SagaExecutions, SagaSteps, OutboxEvents |
+| marketplace_saga_db | marketplace-saga-service | SagaExecutions, SagaSteps, OutboxEvents |
 | billing_db | billing-service | Payments, BillingKeys, Refunds, WebhookLogs |
 | partner_db | partner-service | PartnerConfigs, GameMappings, SlotMappings, BookingMappings, SyncLogs |
 | chat_db | chat-service | ChatRooms, Messages |

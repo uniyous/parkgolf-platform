@@ -59,7 +59,7 @@ postgres:
     - club_db
     - booking_db
     - billing_db
-    - saga_db
+    - marketplace_saga_db
     - chat_db
     - notify_db
     - partner_db
@@ -129,7 +129,7 @@ services:
       # 서비스 내부에서 NODE_ENV=production이면 자동 무력화 — 이중 안전장치
       - { name: TOSS_TEST_BYPASS,  value: "true" }
   - name: marketplace-saga-service
-    db: saga_db
+    db: marketplace_saga_db
   - name: chat-service
     db: chat_db
   - name: notify-service

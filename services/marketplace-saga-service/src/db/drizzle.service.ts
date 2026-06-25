@@ -6,7 +6,7 @@ import * as schema from './schema';
 
 /**
  * Drizzle + postgres-js DB 제공자 (UNI-84).
- * saga_db는 마이그레이션 보유 → ensureSchema 없이 연결만.
+ * marketplace_saga_db는 마이그레이션 보유 → ensureSchema 없이 연결만.
  */
 @Injectable()
 export class DrizzleService implements OnModuleInit, OnModuleDestroy {
@@ -23,7 +23,7 @@ export class DrizzleService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit(): Promise<void> {
     await this.client`SELECT 1`;
-    this.logger.log('saga_db connected (drizzle/postgres-js)');
+    this.logger.log('marketplace_saga_db connected (drizzle/postgres-js)');
   }
 
   async onModuleDestroy(): Promise<void> {

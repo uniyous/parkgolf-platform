@@ -32,7 +32,7 @@
 | 서비스 | 역할 | 데이터베이스 |
 |--------|------|-------------|
 | **booking-service** | 예약 도메인, 팀 선정, 그룹 예약, Saga Step 핸들러 | booking_db |
-| **marketplace-saga-service** | Saga 오케스트레이션 (예약 생성/취소/환불) | saga_db |
+| **marketplace-saga-service** | Saga 오케스트레이션 (예약 생성/취소/환불) | marketplace_saga_db |
 | **club-service** | 타임슬롯 관리, 슬롯 예약/해제 | club_db |
 | **iam-service** | 인증/사용자/CompanyMember 관리 | iam_db |
 | **consumer-bff** | BFF, 클라이언트 요청 처리 | - |
