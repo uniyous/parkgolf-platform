@@ -309,7 +309,7 @@ Connected Services (via NATS):
 | **iam-service** | 8080 | iam_db | JWT 인증 (Access 15min + Refresh 7d), RBAC (40+ 권한), 가맹점 회원, 동적 메뉴, 친구 관리 |
 | **club-service** | 8080 | club_db | 골프장/코스/게임 관리, 타임슬롯 자동 생성, 근처 검색 (Haversine), Optimistic Locking |
 | **booking-service** | 8080 | booking_db | 예약 CRUD, Saga Step Handler, 계층형 정책 Resolve (Club→Company→Platform), 더치페이 정산, 환불/노쇼 |
-| **saga-service** | 8080 | saga_db | 분산 트랜잭션 Orchestrator, 선언적 Saga 정의, 보상 자동 역순 실행, Outbox |
+| **marketplace-saga-service** | 8080 | saga_db | 분산 트랜잭션 Orchestrator, 선언적 Saga 정의, 보상 자동 역순 실행, Outbox |
 | **billing-service** | 8086 | billing_db | Toss Payments 결제위젯, 빌링키, 부분/전액 환불, 더치페이 분할결제, Webhook |
 | **partner-service** | 8080 | partner_db | 외부 ERP 연동 (OpenAPI 동적 호출), 슬롯/예약 양방향 동기화, 서킷 브레이커 |
 | **notify-service** | 8080 | notify_db | Multi-channel 알림 (Email/SMS/Push), 템플릿, 재시도 |
@@ -413,11 +413,11 @@ graph TB
 
 ## Saga Pattern (Distributed Transactions)
 
-### Saga Orchestrator (saga-service)
+### Saga Orchestrator (marketplace-saga-service)
 
-saga-service가 분산 트랜잭션의 중앙 오케스트레이터 역할을 합니다.
-BFF(consumer-bff/manager-bff)가 `saga.booking.*` 패턴으로 saga-service를 호출하면,
-saga-service가 각 서비스(booking/course/payment/notify)에 Step을 순차 실행합니다.
+marketplace-saga-service가 분산 트랜잭션의 중앙 오케스트레이터 역할을 합니다.
+BFF(consumer-bff/manager-bff)가 `saga.booking.*` 패턴으로 marketplace-saga-service를 호출하면,
+marketplace-saga-service가 각 서비스(booking/course/payment/notify)에 Step을 순차 실행합니다.
 
 ### Booking Saga Flow
 ```mermaid
@@ -547,7 +547,7 @@ graph TB
       IAM["iam-service<br/>Deployment"]:::service
       COURSE["club-service<br/>Deployment"]:::service
       BOOK["booking-service<br/>Deployment"]:::service
-      SAGA["saga-service<br/>Deployment"]:::service
+      SAGA["marketplace-saga-service<br/>Deployment"]:::service
       PAY["billing-service<br/>Deployment"]:::service
       NOTIFY["notify-service<br/>Deployment"]:::service
       CHAT["chat-service<br/>Deployment"]:::service
@@ -579,7 +579,7 @@ graph TB
 | iam-service | 8080 | Authentication |
 | club-service | 8080 | Golf Course |
 | booking-service | 8080 | Booking |
-| saga-service | 8080 | Saga Orchestrator |
+| marketplace-saga-service | 8080 | Saga Orchestrator |
 | notify-service | 8080 | Notification |
 | chat-service | 8080 | Chat |
 | partner-service | 8080 | Partner Integration |

@@ -16,7 +16,7 @@ services/
 ├── iam-service/            # 인증/사용자/친구 (Prisma)
 ├── course-service/         # 골프장/코스/게임 (Prisma)
 ├── booking-service/        # 예약 (Prisma)
-├── saga-service/           # Saga 오케스트레이터 (Prisma)
+├── marketplace-saga-service/           # Saga 오케스트레이터 (Prisma)
 ├── billing-service/        # 결제 (Prisma)
 ├── chat-service/           # 채팅 (Prisma)
 ├── notify-service/         # 알림 (Prisma)
@@ -53,7 +53,7 @@ Frontend → BFF (REST) → NATS → Microservice (Prisma)
 - **Terraform**: `infra/` (environments / modules / providers)
 - **CI/CD**: GitHub Actions 수동 트리거 — `ci.yml` / `cd-infra.yml` / `cd-services.yml` / `cd-apps.yml`
 - **최초 배포**: `cd-infra(network-apply → gke-setup)` → `cd-services` → `cd-apps`
-- **배포 의존성**: saga 응답 변경 시 `saga-service` 선배포 → `consumer-bff`·`manager-bff`·`concierge-service`
+- **배포 의존성**: saga 응답 변경 시 `marketplace-saga-service` 선배포 → `consumer-bff`·`manager-bff`·`concierge-service`
 
 ### 브랜치 / PR
 
@@ -119,7 +119,7 @@ Team        제품군 경계 (제품마다 Team 분리 — 라벨이 Team 스코
 ```
 [domain]  booking · payment · saga · iam · club · chat · notify · agent · partner · location · weather   (bounded context, 정책은 club)
 [app]     manager-console · marketplace-console · user-app-web · user-app-ios · user-app-android           (= apps/·services/ 폴더 = 배포 단위)
-          consumer-bff · manager-bff · iam-service · club-service · booking-service · saga-service · billing-service
+          consumer-bff · manager-bff · iam-service · club-service · booking-service · marketplace-saga-service · billing-service
           chat-service · chat-gateway · notify-service · concierge-service · partner-service · job-service · location-service · weather-service
 [layer]   contract · persist · service · bff · ui · async                                                 (아키텍처 역할)
 ```

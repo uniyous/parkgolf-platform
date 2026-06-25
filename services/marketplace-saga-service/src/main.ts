@@ -11,7 +11,7 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
   try {
-    logger.log('Starting Saga Service...');
+    logger.log('Starting Marketplace Saga Service...');
 
     const app = await NestFactory.create(AppModule);
 
@@ -31,7 +31,7 @@ async function bootstrap() {
     app.enableCors();
 
     const config = new DocumentBuilder()
-      .setTitle('Parkgolf Saga Service API')
+      .setTitle('Parkgolf Marketplace Saga Service API')
       .setDescription('Saga Orchestrator - distributed transaction management')
       .setVersion('1.0')
       .build();
@@ -46,13 +46,13 @@ async function bootstrap() {
     logger.log(`Environment: NODE_ENV=${process.env.NODE_ENV}, PORT=${process.env.PORT}`);
     await app.listen(port, '0.0.0.0');
 
-    logger.log(`Saga Service is running on port ${port}`);
+    logger.log(`Marketplace Saga Service is running on port ${port}`);
     logger.log(`Health check: http://localhost:${port}/health`);
     logger.log(`Swagger docs: http://localhost:${port}/api-docs`);
 
     // NATS 마이크로서비스 연결 (백그라운드 재시도)
     if (process.env.NATS_URL) {
-      connectNatsWithRetry(app, process.env.NATS_URL, 'saga-service', logger).catch(() => {});
+      connectNatsWithRetry(app, process.env.NATS_URL, 'marketplace-saga-service', logger).catch(() => {});
     } else {
       logger.warn('NATS_URL not provided, running in HTTP-only mode');
     }
@@ -68,7 +68,7 @@ async function bootstrap() {
     logger.log('  [Event]   booking.paymentConfirmed');
     logger.log('  [Admin]   saga.list / saga.get / saga.retry / saga.resolve / saga.stats');
   } catch (error) {
-    logger.error('Failed to start Saga Service', error);
+    logger.error('Failed to start Marketplace Saga Service', error);
     process.exit(1);
   }
 }

@@ -476,7 +476,7 @@ AI_ASSISTANT 메시지의 `metadata` 필드에 JSON 문자열로 저장:
 | `games.search` | CLUB_SERVICE | club-service | 슬롯 검색 |
 | `clubs.get` | CLUB_SERVICE | club-service | 골프장 상세 |
 | `club.findNearby` | CLUB_SERVICE | club-service | 근처 골프장 |
-| `booking.create` | BOOKING_SERVICE | booking-service | 예약 생성 → [saga-service](./saga.md) 트리거 |
+| `booking.create` | BOOKING_SERVICE | booking-service | 예약 생성 → [marketplace-saga-service](./saga.md) 트리거 |
 | `booking.findById` | BOOKING_SERVICE | booking-service | Saga 폴링 |
 | `booking.settlementStatus` | BOOKING_SERVICE | booking-service | 정산 상태 조회 (allPaid SSOT) |
 | `policy.*.resolve` | BOOKING_SERVICE | booking-service | 예약 정책 조회 |
@@ -708,7 +708,7 @@ flowchart TD
 
 > **현행 → 목표**: 현재는 `commitBooking` 1스텝만 저널링한다. 카드/더치 흐름의 prepare·split·broadcast·finalize까지 step-runner로 일반화하는 작업은 UNI-42 `[4]`에서 진행한다(본 표가 목표 설계).
 
-- **결정적 멱등키 (P1)**: `commitBooking`은 `idempotencyKey = sha256(userId, slotId, playerCount, paymentMethod)`. 재시도는 같은 키로 saga-service가 dedup → 이중 예약 방지.
+- **결정적 멱등키 (P1)**: `commitBooking`은 `idempotencyKey = sha256(userId, slotId, playerCount, paymentMethod)`. 재시도는 같은 키로 marketplace-saga-service가 dedup → 이중 예약 방지.
 - saga 폴링 실패/타임아웃은 silent swallow하지 않고 로깅한다. 타임아웃 시 `PENDING` 반환 → 호출부가 "처리 중" graceful 안내.
 
 ### 14.3 Turn Journal (turn-journal.service.ts)

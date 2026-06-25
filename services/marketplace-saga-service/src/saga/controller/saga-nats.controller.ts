@@ -8,7 +8,7 @@ export class SagaNatsController {
 
   constructor(private readonly sagaEngine: SagaEngineService) {}
 
-  // ===== Saga 트리거 (BFF → saga-service) =====
+  // ===== Saga 트리거 (BFF → marketplace-saga-service) =====
 
   @MessagePattern('saga.booking.create')
   async handleCreateBooking(@Payload() data: Record<string, unknown>) {
@@ -130,7 +130,7 @@ export class SagaNatsController {
     }, 'SYSTEM');
   }
 
-  // ===== Saga 관리 (manager-bff → saga-service) =====
+  // ===== Saga 관리 (manager-bff → marketplace-saga-service) =====
 
   @MessagePattern('saga.list')
   async handleListSagas(@Payload() data: {

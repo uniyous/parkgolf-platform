@@ -14,7 +14,7 @@ import { REDIS_CLIENT } from '../../common/redis/redis.module';
  *
  * 용도(Tier 1): create_booking 같은 비가역 작업만 기록.
  *   - COMMITTED: 결과 캐시 → 재진입 시 saga 재호출 없이 캐시 반환
- *   - PENDING  : 진입했으나 미완 → 같은 idemKey로 재시도(saga-service가 dedup)
+ *   - PENDING  : 진입했으나 미완 → 같은 idemKey로 재시도(marketplace-saga-service가 dedup)
  *
  * read-only(query) 스텝은 기록하지 않는다(재실행 안전).
  */

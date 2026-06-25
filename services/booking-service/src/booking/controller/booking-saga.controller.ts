@@ -8,7 +8,7 @@ import { NatsResponse } from '../../common/types/response.types';
 /**
  * Saga 이벤트 핸들러 컨트롤러
  *
- * saga-service 범위 외의 비동기 이벤트 처리:
+ * marketplace-saga-service 범위 외의 비동기 이벤트 처리:
  * - booking.paymentCanceled: 환불 완료 이력 기록 (billing-service → client.send)
  * - user.deleted: 계정 삭제 시 예약 익명화 (iam-service → client.emit)
  */

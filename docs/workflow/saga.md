@@ -27,11 +27,11 @@
 
 ## 1. 개요
 
-`saga-service`가 중앙 오케스트레이터로 분산 트랜잭션을 처리하고, 각 마이크로서비스는 Saga Step 핸들러만 노출합니다.
+`marketplace-saga-service`가 중앙 오케스트레이터로 분산 트랜잭션을 처리하고, 각 마이크로서비스는 Saga Step 핸들러만 노출합니다.
 
 | 서비스 | 역할 |
 |--------|------|
-| saga-service | Saga 오케스트레이션 / Step 실행 / 보상 / 이력 |
+| marketplace-saga-service | Saga 오케스트레이션 / Step 실행 / 보상 / 이력 |
 | booking-service | `booking.saga.*` Step 핸들러 |
 | club-service | `slot.reserve` / `slot.release` |
 | billing-service | `payment.cancelByBookingId` / `payment.markAborted` / outbox 발행 |
@@ -55,7 +55,7 @@ flowchart TB
         SCHED["⏱️ saga-scheduler<br/>(매분, SLOT_RESERVED 정리)"]
     end
 
-    subgraph Orchestrator["🧠 saga-service"]
+    subgraph Orchestrator["🧠 marketplace-saga-service"]
         CTRL["SagaNatsController"]
         ENGINE["SagaEngineService"]
         DEFS["Saga Definitions<br/>CREATE/CANCEL/ADMIN_REFUND<br/>PAYMENT_CONFIRMED/FAILED/TIMEOUT"]
@@ -135,11 +135,11 @@ flowchart LR
 
 saga 처리에는 세 DB의 테이블이 관여합니다:
 
-- **`saga_db`** (saga-service 소유): `SagaExecution`, `SagaStep` — saga 실행/이력
+- **`saga_db`** (marketplace-saga-service 소유): `SagaExecution`, `SagaStep` — saga 실행/이력
 - **`billing_db`** (billing-service 소유): `payment_outbox_events` — 결제 이벤트 트리거 소스 (자주 사용)
 - **`booking_db`** (booking-service 소유): `booking_outbox_events` — booking 도메인 이벤트 트리거 소스 (그룹 취소 등 희귀 케이스)
 
-직접적인 FK 관계는 없으며, 각 outbox가 NATS로 이벤트를 publish하면 saga-service가 수신하여 새로운 `SagaExecution` 레코드를 생성하는 간접 연결입니다.
+직접적인 FK 관계는 없으며, 각 outbox가 NATS로 이벤트를 publish하면 marketplace-saga-service가 수신하여 새로운 `SagaExecution` 레코드를 생성하는 간접 연결입니다.
 
 ### 3.1 ERD
 
@@ -210,7 +210,7 @@ erDiagram
     }
 ```
 
-> 점선 관계(`||..o{`)는 직접 FK가 아닌 **NATS 메시지 경유 트리거**를 의미합니다. billing-service의 outbox processor가 5초 주기로 PENDING 이벤트를 NATS publish → saga-service가 수신 → 새 SagaExecution 생성.
+> 점선 관계(`||..o{`)는 직접 FK가 아닌 **NATS 메시지 경유 트리거**를 의미합니다. billing-service의 outbox processor가 5초 주기로 PENDING 이벤트를 NATS publish → marketplace-saga-service가 수신 → 새 SagaExecution 생성.
 
 ### 3.2 Enums
 
@@ -259,11 +259,11 @@ erDiagram
 | Outbox 이벤트 발행 | billing-service OutboxProcessor | 5초 | PENDING 이벤트 NATS publish, 최대 5회 재시도 | billing_db |
 
 **설정 위치**:
-- `services/saga-service/src/common/constants/nats.constants.ts` — `SAGA_CONFIG.SAGA_TIMEOUT_MS` (5분), `RETENTION_DAYS` (30일)
+- `services/marketplace-saga-service/src/common/constants/nats.constants.ts` — `SAGA_CONFIG.SAGA_TIMEOUT_MS` (5분), `RETENTION_DAYS` (30일)
 - `services/billing-service/src/payment/service/outbox-processor.service.ts` — `maxRetries=5`, `batchSize=10`, `sendTimeoutMs=10000`
 
 **원본 스키마**:
-- saga 측: `services/saga-service/prisma/schema.prisma`
+- saga 측: `services/marketplace-saga-service/prisma/schema.prisma`
 - payment outbox: `services/billing-service/prisma/schema.prisma` (`PaymentOutboxEvent` 모델 → `payment_outbox_events`)
 - booking outbox: `services/booking-service/prisma/schema.prisma` (`OutboxEvent` 모델 → `booking_outbox_events`)
 
@@ -427,7 +427,7 @@ billing-service (단일 트랜잭션)
   ↓ 응답 200 OK
 outbox processor (billing-service worker)
   ↓ NATS publish: booking.paymentFailed
-saga-service
+marketplace-saga-service
   ↓ PAYMENT_FAILED Saga
 booking-service: booking.saga.paymentTimeout → status=FAILED
 club-service:  slot.release
@@ -686,7 +686,7 @@ flowchart TD
 
 | 서비스 | 이전 구조 | 현재 구조 |
 |---|---|---|
-| saga-service | `saga-scheduler` (1분 주기 cron) | pg-boss worker — saga timeout / payment timeout 자동 보상 |
+| marketplace-saga-service | `saga-scheduler` (1분 주기 cron) | pg-boss worker — saga timeout / payment timeout 자동 보상 |
 | booking-service | `saga-scheduler` (1분 주기 cron) | pg-boss worker — outbox 즉시 트리거 |
 | billing-service | cron 없음 (outbox processor만) | pg-boss worker — outbox 즉시 트리거 + reconcile |
 
@@ -843,15 +843,15 @@ flowchart TB
 | `billing-service/src/payment/controller/webhook.controller.ts` | 3개 핸들러 멱등 가드 추가. handleCancelStatusChanged에 outbox 발행 추가. handleDepositCallback `createOutboxEvent` 통일. `isTerminalStatus` 헬퍼 |
 | `billing-service/src/common/pgboss/pgboss.service.ts` | 신규 — pg-boss 통합. send/work/createQueue/cancel |
 | `billing-service/src/payment/payment.module.ts` | `PaymentReconcileService` provider 등록 |
-| `saga-service/src/saga/scheduler/saga-pgboss-worker.service.ts` | 신규 — saga timeout / payment timeout pg-boss worker (cron 대체) |
-| `saga-service/src/saga/scheduler/saga-scheduler.service.ts` | 삭제 |
+| `marketplace-saga-service/src/saga/scheduler/saga-pgboss-worker.service.ts` | 신규 — saga timeout / payment timeout pg-boss worker (cron 대체) |
+| `marketplace-saga-service/src/saga/scheduler/saga-scheduler.service.ts` | 삭제 |
 | `booking-service/src/booking/service/saga-scheduler.service.ts` | 삭제 |
 
 ---
 
 ## 7. NATS 패턴
 
-### 7.1 Saga 트리거 (saga-service Inbound)
+### 7.1 Saga 트리거 (marketplace-saga-service Inbound)
 
 | 패턴 | 발신 | 비고 |
 |------|------|------|
@@ -869,7 +869,7 @@ flowchart TB
 |------|------|------|
 | `payment.markAborted` | consumer-bff → billing-service | payment.status=ABORTED + outbox INSERT |
 
-### 7.3 Step 핸들러 (saga-service Outbound)
+### 7.3 Step 핸들러 (marketplace-saga-service Outbound)
 
 | 패턴 | 대상 |
 |------|------|
@@ -952,7 +952,7 @@ BFF가 saga를 경유한 API 응답은 표준 도메인 shape에 `saga` 메타�
 | Step | 영역 | 내용 | 상태 |
 |------|------|------|------|
 | 1 | billing-service | `payment.markAborted` 추가 (트랜잭션 + outbox INSERT), confirmPayment catch에서도 outbox 발행, outbox processor 매핑 추가 | ✅ 완료 (2026-04-26) |
-| 2 | saga-service | PAYMENT_FAILED Saga 정의, registry 등록, `booking.paymentFailed` 트리거 | ✅ 완료 |
+| 2 | marketplace-saga-service | PAYMENT_FAILED Saga 정의, registry 등록, `booking.paymentFailed` 트리거 | ✅ 완료 |
 | 3 | consumer-bff | `POST /api/user/payments/:orderId/abandon` 엔드포인트 + NATS publish | ✅ 완료 |
 | 4 | notify-service | `notification.booking.paymentFailed` 핸들러 (MessagePattern) | ✅ 완료 |
 | 5 | Web | `paymentApi.abandon()` + BookingCompletePage Scenario 2 호출 | ✅ 완료 |

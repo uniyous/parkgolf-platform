@@ -15,7 +15,7 @@ export class HealthController {
     return {
       status: 'ok',
       timestamp: new Date().toISOString(),
-      service: 'parkgolf-saga-service',
+      service: 'parkgolf-marketplace-saga-service',
       version: '0.0.1',
       environment: this.configService.get('NODE_ENV'),
     };

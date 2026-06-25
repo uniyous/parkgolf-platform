@@ -294,7 +294,7 @@ process.on('SIGTERM', () => sdk.shutdown());
 [Cloud Trace UI]
   Trace List > splitPaymentComplete 검색
     └─ 단일 trace 클릭 → Waterfall 표시
-       consumer-bff ──▶ saga-service ──▶ billing-service
+       consumer-bff ──▶ marketplace-saga-service ──▶ billing-service
                                   ──▶ booking-service
                                   ──▶ notify-service
        각 hop의 latency / 에러 즉시 확인

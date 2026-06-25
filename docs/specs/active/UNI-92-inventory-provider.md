@@ -59,12 +59,12 @@ interface ReserveResult {
 
 ### provider 호출 위치 — 결정 B (단일 경계 횡단)
 
-`slot.reserve`는 saga-service step이 club-service로 **직접** 호출(create-booking.saga `RESERVE_SLOT`). booking-service의 직접 결합은 캐시미스 조회·`club.findOne`·`iam`·outbox 보상뿐.
+`slot.reserve`는 marketplace-saga-service step이 club-service로 **직접** 호출(create-booking.saga `RESERVE_SLOT`). booking-service의 직접 결합은 캐시미스 조회·`club.findOne`·`iam`·outbox 보상뿐.
 
-- **B 채택**: saga-service가 provider **선택**(InternalClub=`slot.*` / ExternalPartner=`partner.slot.*`)하여 대상 서비스를 **직접** 호출 → 경계 횡단 **1회**. (A=saga→booking→club은 2회 횡단이라 분리 목적과 충돌, 비채택)
+- **B 채택**: marketplace-saga-service가 provider **선택**(InternalClub=`slot.*` / ExternalPartner=`partner.slot.*`)하여 대상 서비스를 **직접** 호출 → 경계 횡단 **1회**. (A=saga→booking→club은 2회 횡단이라 분리 목적과 충돌, 비채택)
 - booking-service의 `IInventoryProvider`/`InternalClubProvider`는 booking 자체 결합(캐시미스 가용성 조회 등)에 사용. partner 어댑터(UNI-98)는 partner-service 계약 정렬 + saga 선택으로 구현(booking-service에 partner 클라 추가 안 함).
 
-### saga-service 변경
+### marketplace-saga-service 변경
 
 - `create-booking.saga.ts`: `CHECK_PARTNER`/`VERIFY_EXTERNAL`/`NOTIFY_EXTERNAL` 조건 분기(`isPartnerClub`) → providerType 키 **선택**으로 대체(분기 제거). `RESERVE_SLOT`은 providerType별 subject 선택(`slot.reserve` vs `partner.slot.reserve`).
 - saga 응답 shape `{success, data, saga}` **불변** (BFF 정규화 영향 없음).
@@ -76,11 +76,11 @@ interface ReserveResult {
   - NATS 클라 주입: `common/nats/nats.config.ts`(CLUB_SERVICE/IAM_SERVICE/PARTNER_SERVICE) → provider 내부로 은닉
 - `services/club-service/src/` — 1st-party 어댑터 정렬(slot.* / game 캐시 동기화를 계약 메서드 뒤로). 내부 패턴(club.* / games.*)은 유지
 - `services/partner-service/src/` — 3rd-party 어댑터 표준화(외부 shape → 계약 shape 변환)
-- `services/saga-service/src/saga/definitions/create-booking.saga.ts` — partner 분기 → provider 선택
+- `services/marketplace-saga-service/src/saga/definitions/create-booking.saga.ts` — partner 분기 → provider 선택
 
 ## 배포 의존성
 
-- saga 흐름(step 내부) 변경 → **saga-service · booking-service 동시 배포**. club-service·partner-service 어댑터 정렬도 같은 세트.
+- saga 흐름(step 내부) 변경 → **marketplace-saga-service · booking-service 동시 배포**. club-service·partner-service 어댑터 정렬도 같은 세트.
 - saga **응답 shape 불변** → BFF(consumer-bff/manager-bff) 선배포 불요.
 - **club-service 단독 부팅 유지**(회귀 가드).
 - 공유 패키지화(계약 타입 추출)는 **UNI-112(모노레포 워크스페이스) 선결** → 이번엔 booking-service 내부에 인터페이스 두고, 패키지 추출은 112 이후.

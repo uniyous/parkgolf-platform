@@ -5,7 +5,7 @@ import { BookingTools } from './booking.tools';
 /**
  * UNI-32 (P1) — 결정적 멱등키 회귀 검증.
  * 동일 예약 의도(슬롯·사용자·인원·결제수단)는 재시도 시 같은 idempotencyKey여야
- * saga-service가 중복 제거 → 이중 예약 방지.
+ * marketplace-saga-service가 중복 제거 → 이중 예약 방지.
  */
 describe('BookingTools — deterministic idempotencyKey (UNI-32)', () => {
   let tools: BookingTools;

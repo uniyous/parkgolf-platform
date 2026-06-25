@@ -96,7 +96,7 @@ export class BookingService {
   /**
    * 예약 생성 (Saga Orchestrator)
    *
-   * saga-service로 트랜잭션 위임 후, 성공 시 bookingId로 재조회하여 표준 BookingResponseDto shape로 반환.
+   * marketplace-saga-service로 트랜잭션 위임 후, 성공 시 bookingId로 재조회하여 표준 BookingResponseDto shape로 반환.
    * 응답 구조: { success, data: BookingResponseDto, saga: SagaMeta }
    * 실패 시 BadRequestException → 표준 4xx 에러 응답.
    */

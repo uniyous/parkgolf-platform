@@ -688,7 +688,7 @@ NestJS `@MessagePattern('agent.chat')` 기본 queue group 동작 → 라운드�
 ```
 Layer A. Redis Distributed Lock     (per-conversation, 본 §3.3)
        ↓
-Layer B. Saga Orchestration         (booking flow — saga-service)
+Layer B. Saga Orchestration         (booking flow — marketplace-saga-service)
        ↓
 Layer C. DB Atomic Update           (Prisma { increment }, version, UNIQUE)
 ```
@@ -783,7 +783,7 @@ gantt
 | `services/concierge-service/src/booking-agent/service/llm-orchestrator.service.ts` | Phase 2/3 prefill 주입 위치 |
 | `services/concierge-service/src/booking-agent/service/tool-executor.service.ts` | Phase 5 분해 대상 (1236 lines) |
 | `services/chat-service/src/chat/chat.service.ts` | Phase 2 `chat.history.list` 활용 |
-| `services/saga-service/src/saga/engine/saga-engine.service.ts` | 동시성 패턴 reference (이미 multi-pod 안전) |
+| `services/marketplace-saga-service/src/saga/engine/saga-engine.service.ts` | 동시성 패턴 reference (이미 multi-pod 안전) |
 | `services/booking-service/src/booking/service/booking-saga-step.service.ts` | Layer C(DB Atomic) reference (`{ increment }`) |
 
 ---

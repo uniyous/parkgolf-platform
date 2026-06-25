@@ -120,7 +120,7 @@ flowchart TD
 
 ## 7. SAGA 처리 부분
 
-saga-service는 **예약 생성 트랜잭션과 결제 확정/실패 보상**을 담당한다.
+marketplace-saga-service는 **예약 생성 트랜잭션과 결제 확정/실패 보상**을 담당한다.
 
 - **CREATE_BOOKING**: 슬롯 점유 → `PAYMENT_PENDING` 도달 → [saga.md §4.2](./saga.md)
 - **PAYMENT_CONFIRMED / FAILED / TIMEOUT**: 전원 결제 후 확정, 실패·타임아웃 시 보상(슬롯 release) → [saga.md §4.5, §4.6](./saga.md)

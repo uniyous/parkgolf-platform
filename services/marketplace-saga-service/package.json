@@ -1,7 +1,7 @@
 {
-  "name": "parkgolf-saga-service",
+  "name": "parkgolf-marketplace-saga-service",
   "version": "0.0.1",
-  "description": "parkgolf-saga-service - Saga Orchestrator (distributed transaction management)",
+  "description": "parkgolf-marketplace-saga-service - 마켓 Saga Orchestrator (CREATE_BOOKING·payment-*, distributed transaction management)",
   "author": "Parkgolf Team",
   "private": true,
   "license": "UNLICENSED",

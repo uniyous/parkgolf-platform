@@ -38,9 +38,9 @@ export class BookingNatsController {
   // Booking Operations
   // ============================================
 
-  // [REMOVED] booking.create → saga-service (saga.booking.create)
-  // [REMOVED] booking.cancel → saga-service (saga.booking.cancel)
-  // [REMOVED] bookings.cancel → saga-service (saga.booking.cancel)
+  // [REMOVED] booking.create → marketplace-saga-service (saga.booking.create)
+  // [REMOVED] booking.cancel → marketplace-saga-service (saga.booking.cancel)
+  // [REMOVED] bookings.cancel → marketplace-saga-service (saga.booking.cancel)
 
   @MessagePattern('booking.findById')
   async findBookingById(@Payload() data: { id: number }) {
