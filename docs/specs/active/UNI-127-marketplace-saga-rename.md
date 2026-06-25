@@ -1,6 +1,6 @@
 ---
 issue: UNI-127
-pr:
+pr: https://github.com/uniyous/parkgolf-platform/pull/49
 ---
 
 # UNI-127 — saga-service → marketplace-saga-service 리네임
