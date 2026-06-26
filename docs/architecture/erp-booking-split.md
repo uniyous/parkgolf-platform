@@ -18,6 +18,10 @@
 - **2026-06-25** 마켓 saga 리네임 실행(UNI-127, 청크 `feat/UNI-127-marketplace-saga-rename`):
   - **리네임**: `saga-service`→`marketplace-saga-service`(정체성: 폴더·패키지·k8s·Helm·CI·라벨·로그/메타 태그) + **DB `saga_db`→`marketplace_saga_db`**(제품별 DB 대칭, 매니저는 `manager_saga_db`). 진입 subject `saga.booking.*`만 **유지**(호출자 무변경). 보류(나중)→당겨서 매니저 saga 신설과 동일 에픽에서 처리.
   - **DB 결정 변경**: 최초 "`saga_db` 유지(blast 최소)"에서 **DB도 리네임**으로 전환 — 제품별 대칭 명명 우선. 부팅 시 마이그레이션 미실행이라 **배포 전 `ALTER DATABASE saga_db RENAME TO marketplace_saga_db` 1회 필요**(또는 dev는 신규 DB+`db:migrate`).
+- **2026-06-26** 폴더 재구조화 착수 + 공유 방식 확정(UNI-112 chunk1 `feat/UNI-112-shared-skeleton`):
+  - **pnpm 전환·workspace 보류**: npm→pnpm **CLI**만 전환. **pnpm workspace는 채택 안 함** — repo 전역 workspace는 ①본 문서 "워크스페이스 폐기" 결정과 충돌, ②미래 polyglot(Go·Python) 서비스를 JS 패키지매니저가 관리 못 함(repo 루트를 pnpm이 소유하면 안 됨). workspace door는 `shared/packages/` 폴더 구조로 이미 열려 있어 필요 시 `pnpm-workspace.yaml` + `file:`→`workspace:*` 치환으로 trivial 전환.
+  - **shared 참조 = `file:` 로컬 의존**(tsconfig path alias 아님): 빌드된 dist를 node_modules 심볼릭으로 정상 resolve → tsc·런타임 트릭 0. shared는 자기 `tsc` 빌드(dist) 필요 → 의존 서비스 Docker는 **레포 루트 컨텍스트**에서 shared 선빌드(`cd-services.yml`에서 해당 서비스만 `CONTEXT="."`).
+  - **chunk1 추출**: `@uniyous/nats-common`(NatsResponse·응답 타입) · `@uniyous/saga-engine`(상태 enum·`StepDefinition`/`SagaDefinition`·`StepExecutorPort` = **순수 계약 표면**, NATS·DB import 0). 런타임 엔진(`SagaEngineService`)의 **포트화·이관은 UNI-127 ②**(엔진은 Drizzle·pgboss·CREATE_BOOKING 특화 결합이 남아 chunk1 비대상). marketplace-saga-service만 참조 전환·pnpm 전환(회귀 0 — tsc·런타임·Docker·컨테이너 4중 검증). `@uniyous/contracts`는 cross-service DTO 부재로 보류.
 
 ---
 
@@ -607,15 +611,15 @@ parkgolf/
 
 | 시점 | 방식 |
 |---|---|
-| 지금 (단일레포) | `shared/packages/*`를 tsconfig path alias로 참조 — publish 불필요 |
-| 미래 (3레포 분리) | `@uniyous/saga-engine` 등 GitHub Packages publish → 각 레포 `npm install` (버전 고정) |
+| 지금 (단일레포) | `shared/packages/*`를 **`file:` 로컬 의존**(pnpm)으로 참조 — node_modules 심볼릭, path alias·publish 불필요. shared는 자기 `tsc` 빌드(dist) |
+| 미래 (3레포 분리) | `@uniyous/saga-engine` 등 GitHub Packages publish → 각 레포 `pnpm install` (버전 고정). `file:`→published 한 줄 치환 |
 
 ### 핵심 규칙
 
 - `shared/packages/*` = 배포 안 됨(라이브러리), 앱·서비스에 번들. 의존 방향 **services → packages** (역방향 금지).
 - saga 엔진은 **순수**해야 공유 가능: NATS·DB 직접 import 금지 → `StepExecutor` 인터페이스(포트)만, 구현은 각 서비스가 주입(InventoryProvider·PgProvider와 동일 포트/어댑터).
 - `infra/k8s`는 **제품별 분산**(marketplace/manager/platform), **전역 infra**(terraform·argocd)만 루트.
-- 이행 순서: 서비스 리네임(PR #47) 머지 → `shared/` 골격 + saga-engine·contracts 추출 → services를 제품 폴더로 이동(CI·Dockerfile·path 갱신) → k8s 분할. 대형 변경이라 기능변경 0 청크로.
+- 이행 순서: 서비스 리네임(PR #47) 머지 → **[chunk1 ✅] `shared/` 골격 + nats-common·saga-engine 추출(`file:` 의존·pnpm, contracts 보류)** → services 제품 폴더 이동(CI·Dockerfile 컨텍스트·잔여 pnpm 전환) → k8s 분할. 대형 변경이라 기능변경 0 청크로.
 
 ---
 

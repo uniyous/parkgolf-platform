@@ -1,0 +1,16 @@
+{
+  "name": "@uniyous/nats-common",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Park Golf 공유: NATS 응답 헬퍼·표준 응답 타입 (배포 안 됨 · file: 의존 · 미래 @uniyous publish)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist tsconfig.tsbuildinfo"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

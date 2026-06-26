@@ -4,7 +4,7 @@
 // ==============================================
 import { pgTable, pgEnum, serial, integer, text, boolean, jsonb, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { SAGA_STATUS_VALUES, STEP_STATUS_VALUES } from '../contracts/enums';
+import { SAGA_STATUS_VALUES, STEP_STATUS_VALUES } from '@uniyous/saga-engine';
 
 export const sagaStatusEnum = pgEnum('SagaStatus', SAGA_STATUS_VALUES);
 export const stepStatusEnum = pgEnum('StepStatus', STEP_STATUS_VALUES);

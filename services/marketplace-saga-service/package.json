@@ -5,6 +5,7 @@
   "author": "Parkgolf Team",
   "private": true,
   "license": "UNLICENSED",
+  "packageManager": "pnpm@10.33.0",
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
@@ -25,6 +26,8 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@uniyous/nats-common": "file:../../shared/packages/nats-common",
+    "@uniyous/saga-engine": "file:../../shared/packages/saga-engine",
     "@google-cloud/opentelemetry-cloud-trace-exporter": "^2.4.1",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",

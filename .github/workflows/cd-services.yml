@@ -100,7 +100,11 @@ jobs:
           ENV=${{ needs.setup.outputs.environment }}
 
           IMAGE_NAME="$SERVICE"
-          CONTEXT="services/$SERVICE"
+          # shared/packages(file: 의존) 포함 서비스는 레포 루트를 빌드 컨텍스트로 (Dockerfile 주석 참조)
+          case "$SERVICE" in
+            marketplace-saga-service) CONTEXT="." ;;
+            *) CONTEXT="services/$SERVICE" ;;
+          esac
 
           IMAGE=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/parkgolf/$IMAGE_NAME
           docker build \

@@ -2,11 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { eq, and, count, asc, desc, gte, lte, inArray, type SQL } from 'drizzle-orm';
 import { DrizzleService } from '../../db/drizzle.service';
 import { sagaExecutions, sagaSteps } from '../../db/schema';
-import { SagaStatus, StepStatus } from '../../contracts/enums';
+import { SagaStatus, StepStatus } from '@uniyous/saga-engine';
 import { SagaRegistry } from './saga-registry';
 import { StepExecutorService } from './step-executor.service';
 import { SagaDefinition } from '../definitions/saga-definition.interface';
-import { NatsResponse, type SagaMeta } from '../../common/types/response.types';
+import { NatsResponse, type SagaMeta } from '@uniyous/nats-common';
 import { PgBossService } from '../../common/pgboss/pgboss.service';
 
 const SAGA_TIMEOUT_RECOVERY_QUEUE = 'saga-timeout-recovery';

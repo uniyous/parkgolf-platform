@@ -1,0 +1,16 @@
+{
+  "name": "@uniyous/saga-engine",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Park Golf 공유: 제네릭 saga 엔진 계약 — 상태 enum·step/saga 정의·StepExecutor 포트 (배포 안 됨 · file: 의존)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist tsconfig.tsbuildinfo"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}
