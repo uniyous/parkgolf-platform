@@ -56,7 +56,8 @@ jobs:
       - name: Determine apps list
         id: apps-list
         run: |
-          APPS=$(for d in apps/*/; do [ -f "$d/package.json" ] && basename "$d"; done | jq -R -s -c 'split("\n") | map(select(. != ""))')
+          # UNI-112: 앱이 <product>/apps/* 로 분산 (e2e-dev-api는 루트 apps/ 유지) → 전체 경로 매트릭스
+          APPS=$(for d in */apps/*/ apps/*/; do [ -f "${d}package.json" ] && echo "${d%/}"; done | jq -R -s -c 'split("\n") | map(select(. != ""))')
           echo "list=$APPS" >> $GITHUB_OUTPUT
 
       - name: Determine services list
@@ -87,26 +88,26 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: apps/${{ matrix.app }}/package-lock.json
+          cache-dependency-path: ${{ matrix.app }}/package-lock.json
 
       - name: Install dependencies
-        working-directory: apps/${{ matrix.app }}
+        working-directory: ${{ matrix.app }}
         run: npm ci
 
       - name: Lint
-        working-directory: apps/${{ matrix.app }}
+        working-directory: ${{ matrix.app }}
         run: npm run lint --if-present
 
       - name: Type check
-        working-directory: apps/${{ matrix.app }}
+        working-directory: ${{ matrix.app }}
         run: npm run typecheck --if-present || npm run type-check --if-present || true
 
       - name: Test
-        working-directory: apps/${{ matrix.app }}
+        working-directory: ${{ matrix.app }}
         run: npm test --if-present -- --passWithNoTests
 
       - name: Build
-        working-directory: apps/${{ matrix.app }}
+        working-directory: ${{ matrix.app }}
         run: npm run build
         env:
           VITE_API_URL: https://api.example.com
