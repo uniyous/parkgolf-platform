@@ -83,34 +83,49 @@ jobs:
       - name: Configure Docker
         run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
 
-      - name: Check Service Directory
-        id: check
+      - name: Resolve Service Path
+        id: resolve
         run: |
-          if [ -d "services/${{ matrix.service }}" ]; then
+          SERVICE="${{ matrix.service }}"
+          # 서비스 → 제품 폴더 매핑 (UNI-112 폴더 재구조화)
+          case "$SERVICE" in
+            marketplace-saga-service|booking-service|billing-service|consumer-bff|concierge-service|chat-service|chat-gateway|partner-service)
+              PRODUCT="marketplace" ;;
+            manager-bff|club-service)
+              PRODUCT="manager" ;;
+            iam-service|notify-service|location-service|weather-service|job-service)
+              PRODUCT="platform" ;;
+            *)
+              echo "::error::Unknown service (no product mapping): $SERVICE"; exit 1 ;;
+          esac
+          SVC_DIR="$PRODUCT/services/$SERVICE"
+          if [ -d "$SVC_DIR" ]; then
             echo "exists=true" >> $GITHUB_OUTPUT
+            echo "svc_dir=$SVC_DIR" >> $GITHUB_OUTPUT
           else
             echo "exists=false" >> $GITHUB_OUTPUT
-            echo "::warning::Service directory not found: services/${{ matrix.service }}"
+            echo "::warning::Service directory not found: $SVC_DIR"
           fi
 
       - name: Build & Push
-        if: steps.check.outputs.exists == 'true'
+        if: steps.resolve.outputs.exists == 'true'
         run: |
           SERVICE="${{ matrix.service }}"
           ENV=${{ needs.setup.outputs.environment }}
+          SVC_DIR="${{ steps.resolve.outputs.svc_dir }}"
 
           IMAGE_NAME="$SERVICE"
           # shared/packages(file: 의존) 포함 서비스는 레포 루트를 빌드 컨텍스트로 (Dockerfile 주석 참조)
           case "$SERVICE" in
             marketplace-saga-service) CONTEXT="." ;;
-            *) CONTEXT="services/$SERVICE" ;;
+            *) CONTEXT="$SVC_DIR" ;;
           esac
 
           IMAGE=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/parkgolf/$IMAGE_NAME
           docker build \
             -t $IMAGE:${{ github.sha }} \
             -t $IMAGE:${ENV}-latest \
-            -f services/$SERVICE/Dockerfile "$CONTEXT"
+            -f $SVC_DIR/Dockerfile "$CONTEXT"
           docker push $IMAGE:${{ github.sha }}
           docker push $IMAGE:${ENV}-latest
 

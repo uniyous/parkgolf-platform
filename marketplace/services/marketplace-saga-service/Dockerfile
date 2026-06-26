@@ -18,10 +18,10 @@ RUN cd shared/packages/nats-common && pnpm build
 RUN cd shared/packages/saga-engine && pnpm build
 
 # 2) 서비스: 매니페스트 → install(file: 의존이 위 빌드된 shared로 resolve) → 소스 → build
-WORKDIR /repo/services/marketplace-saga-service
-COPY services/marketplace-saga-service/package.json services/marketplace-saga-service/pnpm-lock.yaml ./
+WORKDIR /repo/marketplace/services/marketplace-saga-service
+COPY marketplace/services/marketplace-saga-service/package.json marketplace/services/marketplace-saga-service/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
-COPY services/marketplace-saga-service/ ./
+COPY marketplace/services/marketplace-saga-service/ ./
 RUN pnpm build
 
 # ── Production stage ──
@@ -35,10 +35,10 @@ COPY --from=builder /repo/shared/packages/nats-common/dist ./shared/packages/nat
 COPY --from=builder /repo/shared/packages/saga-engine/package.json ./shared/packages/saga-engine/
 COPY --from=builder /repo/shared/packages/saga-engine/dist ./shared/packages/saga-engine/dist
 
-WORKDIR /repo/services/marketplace-saga-service
-COPY services/marketplace-saga-service/package.json services/marketplace-saga-service/pnpm-lock.yaml ./
+WORKDIR /repo/marketplace/services/marketplace-saga-service
+COPY marketplace/services/marketplace-saga-service/package.json marketplace/services/marketplace-saga-service/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile --prod
-COPY --from=builder /repo/services/marketplace-saga-service/dist ./dist
+COPY --from=builder /repo/marketplace/services/marketplace-saga-service/dist ./dist
 
 # 비루트 사용자
 RUN addgroup -g 1001 -S nodejs && \
