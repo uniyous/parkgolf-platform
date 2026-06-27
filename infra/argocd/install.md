@@ -47,15 +47,18 @@ argocd repo add https://github.com/uniyous/parkgolf-platform.git \
 ## 4. Application 적용
 
 ```bash
-# 환경별 (dev / prod)
-kubectl apply -f k8s/argocd/application-dev.yaml
+# app-of-apps 루트 적용 (제품별 child app: platform/marketplace/manager 자동 생성)
+kubectl apply -f infra/argocd/root-dev.yaml
 # 또는
-kubectl apply -f k8s/argocd/application-prod.yaml
+kubectl apply -f infra/argocd/root-prod.yaml
 
-# 상태 확인
-argocd app get parkgolf-dev      # 또는 parkgolf-prod
-argocd app sync parkgolf-dev
+# 상태 확인 (루트 + 제품별 child)
+argocd app get parkgolf-root-dev
+kubectl -n argocd get applications        # platform-dev·marketplace-dev·manager-dev
+argocd app sync platform-dev marketplace-dev manager-dev
 ```
+
+> ⚠️ 구 단일 차트 Application(`parkgolf-dev`/`parkgolf-prod`)에서 전환 시: 새 root 적용 후 구 app 삭제 — `argocd app delete parkgolf-dev --cascade=false` (워크로드 보존, 새 child app이 인수). 차트 분할은 렌더 동일(helm diff=0)이라 워크로드 재생성 없음.
 
 ## 5. DB 백업 복원
 

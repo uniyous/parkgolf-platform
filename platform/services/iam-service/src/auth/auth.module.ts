@@ -15,7 +15,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
             useFactory: async (configService: ConfigService): Promise<JwtModuleOptions> => ({
                 secret: configService.getOrThrow<string>('JWT_SECRET'),
                 signOptions: {
-                    expiresIn: configService.get<string>('JWT_EXPIRES_IN') || '1h',
+                    // @types/jsonwebtoken 9.0.10+는 expiresIn을 StringValue|number로 좁힘 → config string 캐스팅
+                    expiresIn: (configService.get<string>('JWT_EXPIRES_IN') || '1h') as NonNullable<JwtModuleOptions['signOptions']>['expiresIn'],
                 },
             }),
             inject: [ConfigService],

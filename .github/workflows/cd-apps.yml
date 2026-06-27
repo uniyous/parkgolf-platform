@@ -98,8 +98,8 @@ jobs:
         run: |
           # 앱 → 제품 폴더 매핑 (UNI-112)
           case "${{ matrix.app }}" in
-            manager-console) DIR="manager/${{ steps.appdir.outputs.dir }}" ;;
-            marketplace-console|user-app-web) DIR="marketplace/${{ steps.appdir.outputs.dir }}" ;;
+            manager-console) DIR="manager/apps/${{ matrix.app }}" ;;
+            marketplace-console|user-app-web) DIR="marketplace/apps/${{ matrix.app }}" ;;
             *) echo "::error::Unknown app (no product mapping): ${{ matrix.app }}"; exit 1 ;;
           esac
           echo "dir=$DIR" >> $GITHUB_OUTPUT
@@ -164,8 +164,8 @@ jobs:
         id: appdir
         run: |
           case "${{ matrix.app }}" in
-            manager-console) DIR="manager/${{ steps.appdir.outputs.dir }}" ;;
-            marketplace-console|user-app-web) DIR="marketplace/${{ steps.appdir.outputs.dir }}" ;;
+            manager-console) DIR="manager/apps/${{ matrix.app }}" ;;
+            marketplace-console|user-app-web) DIR="marketplace/apps/${{ matrix.app }}" ;;
             *) echo "::error::Unknown app (no product mapping): ${{ matrix.app }}"; exit 1 ;;
           esac
           echo "dir=$DIR" >> $GITHUB_OUTPUT

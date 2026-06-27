@@ -60,7 +60,7 @@ parkgolf/
 - [x] **(chunk2)** 현존 15서비스가 위 매핑대로 `<product>/services/`로 `git mv`(히스토리 유지). marketplace-saga-service는 `file:` 경로(`../../../shared`)·Dockerfile·lock 보정 후 Docker 재검증 green
 - [x] **(chunk2)** `cd-services.yml`·`ci.yml`이 서비스→제품폴더 매핑 + PM 자동감지(pnpm/npm) + shared 선빌드로 경로 해석. dev 스크립트 resolver 견고화
 - [x] **(chunk3)** 제품 앱 5개 이동: marketplace-console·user-app-web/ios/android → `marketplace/apps/`, manager-console → `manager/apps/`. `e2e-dev-api`(테스트 하니스, 제품 앱 아님)는 루트 `apps/` 유지. `ci.yml`·`cd-apps.yml` 앱→제품경로 매핑
-- [ ] 나머지 14서비스·앱 npm → pnpm 일괄 전환 (chunk2b — 현재 13 npm + 1 pnpm 혼재, CI는 PM 자동감지로 양립)
+- [x] **(chunk2b)** 나머지 14서비스 npm → pnpm 전환(Dockerfile·packageManager·pnpm-lock). 드리프트 수용+코드 수정: iam `expiresIn` 캐스팅(@types/jsonwebtoken 9.0.10 타입 강화), chat-gateway `socket.io-adapter` 직접 의존 선언(phantom 해소). 14/14 로컬 빌드 + iam·chat-gateway Docker 검증 green
 - [x] **(chunk4)** k8s 차트 제품별 분할(`marketplace/manager/platform/infra/k8s`) + 라이브러리 차트(`shared/charts/parkgolf-lib`) + 전역 infra(`infra/argocd` app-of-apps, terraform 유지). **helm template diff dev·prod = 0 검증**(기능변경 0). cd-services serviceImageTags 제품 라우팅. 설계: `docs/architecture/k8s-product-split.md`
 - [ ] dev 기동 회귀 0 (전 서비스 부팅·NATS 연결·헬스체크 green) — 머지 후 ArgoCD 싱크 확인
 - [ ] `docs/`·`CLAUDE.md`·`README` 경로 표기 갱신, 잔존 구경로 참조 0
