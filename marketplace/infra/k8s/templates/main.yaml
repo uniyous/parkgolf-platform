@@ -1,0 +1,8 @@
+{{- /* marketplace 차트 — 마켓 서비스 + Redis·BackendConfig (UNI-112 chunk4) */ -}}
+{{- include "parkgolf-lib.redis" . }}
+{{- include "parkgolf-lib.backendConfigs" . }}
+{{- include "parkgolf-lib.deployments" . }}
+{{- include "parkgolf-lib.services" . }}
+{{- include "parkgolf-lib.dbSecrets" . }}
+{{- include "parkgolf-lib.hpa" . }}
+{{- include "parkgolf-lib.pdb" . }}

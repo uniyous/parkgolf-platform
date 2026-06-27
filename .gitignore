@@ -626,3 +626,6 @@ docs/business/mockups/package-lock.json
 
 # Database dumps (sensitive data, never commit)
 /backup/
+
+# Helm dependency build artifacts (file:// parkgolf-lib — ArgoCD rebuilds)
+*/infra/k8s/charts/

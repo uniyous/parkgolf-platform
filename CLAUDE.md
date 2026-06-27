@@ -2,30 +2,32 @@
 
 ## 프로젝트 구조
 
+> 미래 3레포 분리(parkgolf-shared·marketplace·manager) 경계를 폴더로 미리 그림(UNI-112). 단일레포 유지, 분리는 `git filter-repo`. 상세: `docs/architecture/erp-booking-split.md`·`k8s-product-split.md`
+
 ```
-apps/
-├── manager-console/        # 관리자 웹 (React + Vite + Tailwind)
-├── marketplace-console/     # 플랫폼 관리 웹 (React + Vite + Tailwind)
-├── user-app-web/           # 사용자 웹 (React + Vite + Tailwind)
-├── user-app-ios/           # iOS 앱 (SwiftUI + Tuist)
-├── user-app-android/       # Android 앱 (Kotlin + Jetpack Compose)
-services/
-├── manager-bff/              # BFF (NestJS) - REST → NATS
-├── consumer-bff/               # BFF (NestJS) - REST → NATS
-├── chat-gateway/           # WebSocket 서버 (Socket.IO)
-├── iam-service/            # 인증/사용자/친구 (Prisma)
-├── course-service/         # 골프장/코스/게임 (Prisma)
-├── booking-service/        # 예약 (Prisma)
-├── marketplace-saga-service/           # Saga 오케스트레이터 (Prisma)
-├── billing-service/        # 결제 (Prisma)
-├── chat-service/           # 채팅 (Prisma)
-├── notify-service/         # 알림 (Prisma)
-├── concierge-service/          # AI 에이전트 (DeepSeek)
-├── partner-service/        # 외부 파트너 연동
-├── job-service/            # 스케줄링 작업
-├── location-service/       # 위치 (카카오 로컬 API)
-└── weather-service/        # 날씨 (기상청 API)
+shared/
+├── packages/            file: 로컬 의존(pnpm, 배포X) — workspace는 보류
+│   ├── nats-common/       NatsResponse·응답 타입 (@uniyous/nats-common)
+│   └── saga-engine/       saga 계약·StepExecutorPort (@uniyous/saga-engine)
+└── charts/parkgolf-lib/  Helm 라이브러리 차트 (제품 차트 공유 템플릿)
+
+marketplace/  🟧                         manager/  🟦                    platform/  🟨 (공유 코어)
+├── apps/  marketplace-console·          ├── apps/  manager-console      └── services/  iam·notify·
+│         user-app-web/ios/android       ├── services/  manager-bff·             location·weather·job
+├── services/  booking·billing·          │             club-service       └── infra/k8s/  공유 인프라
+│   marketplace-saga·consumer-bff·       └── infra/k8s/                          (NATS·PG·Redis·config·
+│   concierge·chat-service·chat-gateway·                                          secrets·Ingress)
+│   partner
+└── infra/k8s/  Redis·BackendConfig
+
+infra/         전역: terraform(VPC·GKE·WIF) · argocd(app-of-apps 루트 + 제품별 child)
+apps/          e2e-dev-api (제품 무관 테스트 하니스만 루트 유지)
+docs/ scripts/
 ```
+
+- **BFF**: `manager-bff`·`consumer-bff` (REST → NATS) · **ERP 정책/골프장**: `club-service`(course-service 부재, Drizzle)
+- **shared 참조**: `@uniyous/*` = `file:` 로컬 의존(pnpm). 빌드: shared 선빌드 후 서비스. shared 의존 서비스 Docker는 레포 루트 컨텍스트
+- **배포**: dev = 단일 클러스터(`parkgolf-dev` ns)에 제품 3 release. prod 클러스터 분리는 별건(UNI-94/100)
 
 상세 문서: `docs/architecture/`, `docs/workflow/`, `docs/policy/`
 

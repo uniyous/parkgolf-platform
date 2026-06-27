@@ -1,0 +1,54 @@
+# platform prod override
+global:
+  namespace: parkgolf-prod
+  domain: api.parkgolfmate.com
+  image:
+    tag: prod-latest
+
+config:
+  NODE_ENV: production
+
+externalSecrets:
+  clusterName: parkgolf-prod-cluster
+  clusterLocation: asia-northeast3   # regional
+
+postgres:
+  storage: 50Gi
+  resources:
+    requests: { cpu: 500m, memory: 1Gi }
+    limits:   { cpu: 2,    memory: 4Gi }
+
+nats:
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+
+defaults:
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 768Mi }
+
+services:
+  - name: iam-service
+    db: iam_db
+    replicas: 2
+  - name: notify-service
+    db: notify_db
+    replicas: 2
+  - name: weather-service
+    replicas: 2
+    extraEnv:
+      - { name: KMA_API_KEY, secretRef: { name: parkgolf-secrets, key: KMA_API_KEY } }
+      - { name: KMA_API_URL, configRef: { name: parkgolf-config,  key: KMA_API_URL } }
+  - name: location-service
+    replicas: 2
+    extraEnv:
+      - { name: KAKAO_API_KEY, secretRef: { name: parkgolf-secrets, key: KAKAO_API_KEY } }
+  - name: job-service
+    replicas: 1   # cron 단일 인스턴스 권장
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits:   { cpu: 300m, memory: 384Mi }
+
+ingress:
+  staticIpName: parkgolf-parkgolf-prod-cluster-ip

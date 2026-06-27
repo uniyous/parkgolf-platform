@@ -147,40 +147,47 @@ jobs:
       - name: Update image tag in env values
         run: |
           ENV=${{ needs.setup.outputs.environment }}
-          VALUES_FILE="k8s/charts/parkgolf/values-${ENV}.yaml"
           NEW_TAG=${{ github.sha }}
           SERVICES_JSON='${{ needs.setup.outputs.matrix }}'
           INPUT_SERVICES="${{ github.event.inputs.services }}"
 
-          # serviceImageTags 노드 보장 (없거나 null이면 빈 객체로 초기화)
-          CURRENT=$(yq '.serviceImageTags' "$VALUES_FILE")
-          if [ "$CURRENT" = "null" ] || [ -z "$CURRENT" ]; then
-            yq -i '.serviceImageTags = {}' "$VALUES_FILE"
-          fi
+          # 서비스 → 제품 차트 매핑 (UNI-112: values가 <product>/infra/k8s/ 로 분산)
+          product_of() {
+            case "$1" in
+              marketplace-saga-service|booking-service|billing-service|consumer-bff|concierge-service|chat-service|chat-gateway|partner-service) echo marketplace ;;
+              manager-bff|club-service) echo manager ;;
+              iam-service|notify-service|location-service|weather-service|job-service) echo platform ;;
+              *) echo "" ;;
+            esac
+          }
 
-          # 빌드된 service의 tag만 갱신 (다른 service는 기존 tag 또는 global.image.tag fallback)
+          # 빌드된 service의 tag를 해당 제품 values 파일에 라우팅
           for svc in $(echo "$SERVICES_JSON" | jq -r '.[]'); do
-            yq -i ".serviceImageTags.\"$svc\" = \"${NEW_TAG}\"" "$VALUES_FILE"
-            echo "Updated: serviceImageTags.$svc = $NEW_TAG"
+            P=$(product_of "$svc")
+            if [ -z "$P" ]; then echo "::warning::no product mapping for $svc"; continue; fi
+            VF="$P/infra/k8s/values-${ENV}.yaml"
+            cur=$(yq '.serviceImageTags' "$VF")
+            if [ "$cur" = "null" ] || [ -z "$cur" ]; then yq -i '.serviceImageTags = {}' "$VF"; fi
+            yq -i ".serviceImageTags.\"$svc\" = \"${NEW_TAG}\"" "$VF"
+            echo "Updated $VF: serviceImageTags.$svc = $NEW_TAG"
           done
 
-          # services: all (또는 입력 비어있음=all로 처리)일 때만 global.image.tag fallback도 갱신
+          # services=all → 전 제품 values의 global.image.tag fallback도 갱신
           if [ "$INPUT_SERVICES" = "all" ] || [ -z "$INPUT_SERVICES" ]; then
-            yq -i ".global.image.tag = \"${NEW_TAG}\"" "$VALUES_FILE"
-            echo "Updated: global.image.tag = $NEW_TAG (services=all)"
+            for P in platform marketplace manager; do
+              yq -i ".global.image.tag = \"${NEW_TAG}\"" "$P/infra/k8s/values-${ENV}.yaml"
+              echo "Updated $P/infra/k8s/values-${ENV}.yaml: global.image.tag = $NEW_TAG"
+            done
           else
             echo "Skipped global.image.tag update (services=$INPUT_SERVICES, not all)"
           fi
-
-          echo "---After update ($VALUES_FILE)---"
-          yq '.global.image.tag, .serviceImageTags' "$VALUES_FILE"
-          echo "VALUES_FILE=$VALUES_FILE" >> $GITHUB_ENV
 
       - name: Commit & push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "$VALUES_FILE"
+          ENV=${{ needs.setup.outputs.environment }}
+          git add platform/infra/k8s/values-${ENV}.yaml marketplace/infra/k8s/values-${ENV}.yaml manager/infra/k8s/values-${ENV}.yaml
           if git diff --cached --quiet; then
             echo "No changes — skip commit"
           else
@@ -205,12 +212,12 @@ jobs:
             echo "|------|-------|"
             echo "| Image tag | \`$SHA\` |"
             echo "| Tags pushed | \`$SHA\`, \`${ENV}-latest\` |"
-            echo "| Helm values updated | \`k8s/charts/parkgolf/values-${ENV}.yaml\` |"
+            echo "| Helm values updated | \`{platform,marketplace,manager}/infra/k8s/values-${ENV}.yaml\` |"
             echo "| Build result | ${{ needs.build-and-push.result }} |"
             echo "| Manifest commit result | ${{ needs.update-manifest.result }} |"
             echo ""
             echo "ArgoCD auto-sync (≤5분). 진행 확인:"
             echo "\`\`\`"
-            echo "kubectl -n argocd get application parkgolf-${ENV}"
+            echo "kubectl -n argocd get application -l app.kubernetes.io/part-of=parkgolf || kubectl -n argocd get applications"
             echo "\`\`\`"
           } >> $GITHUB_STEP_SUMMARY

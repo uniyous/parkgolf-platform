@@ -1,13 +1,10 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: parkgolf-prod
----
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: parkgolf-prod
+  name: marketplace-prod
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -15,16 +12,15 @@ spec:
   source:
     repoURL: https://github.com/uniyous/parkgolf-platform.git
     targetRevision: main
-    path: k8s/charts/parkgolf
+    path: marketplace/infra/k8s
     helm:
-      releaseName: parkgolf
+      releaseName: parkgolf-marketplace
       valueFiles:
         - values.yaml
         - values-prod.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: parkgolf-prod
-  # controller가 자동 추가하는 default field 무시 (cosmetic drift 차단)
   ignoreDifferences:
     - group: external-secrets.io
       kind: ExternalSecret
@@ -36,10 +32,6 @@ spec:
         - .spec.data[].remoteRef.decodingStrategy
         - .spec.data[].remoteRef.metadataPolicy
         - .spec.data[].remoteRef.nullBytePolicy
-    - group: external-secrets.io
-      kind: ClusterSecretStore
-      jqPathExpressions:
-        - .spec.conditions
     - group: apps
       kind: StatefulSet
       jqPathExpressions:
@@ -50,7 +42,6 @@ spec:
         - .spec.volumeClaimTemplates[].apiVersion
         - .spec.volumeClaimTemplates[].kind
   syncPolicy:
-    # prod: 자동 sync 끄고 수동 승인 권장 (안전)
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true

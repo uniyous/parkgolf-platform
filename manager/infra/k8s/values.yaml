@@ -1,0 +1,38 @@
+global:
+  namespace: parkgolf-dev
+  image:
+    registry: asia-northeast3-docker.pkg.dev/parkgolf-uniyous/parkgolf
+    tag: 27494d8ecbca49cd89bd3dba18c46fdcd16c077e
+    pullPolicy: IfNotPresent
+  domain: dev-api.parkgolfmate.com
+
+serviceImageTags: {}
+
+# dbSecrets 렌더에 필요 (ClusterSecretStore·parkgolf-secrets 싱글톤은 platform 소유)
+externalSecrets:
+  enabled: true
+  secretStoreName: gcp-secret-store
+
+defaults:
+  resources:
+    requests: { cpu: 30m, memory: 128Mi }
+    limits:   { cpu: 250m, memory: 384Mi }
+  startupProbe:
+    httpGet: { path: /health, port: 8080 }
+    failureThreshold: 12
+    periodSeconds: 5
+  readinessProbe:
+    httpGet: { path: /health/ready, port: 8080 }
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    failureThreshold: 3
+  livenessProbe:
+    httpGet: { path: /health/live, port: 8080 }
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    failureThreshold: 3
+
+services:
+  - name: club-service
+    db: club_db
+  - name: manager-bff

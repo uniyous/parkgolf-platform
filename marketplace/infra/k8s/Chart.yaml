@@ -1,0 +1,9 @@
+apiVersion: v2
+name: parkgolf-marketplace
+description: 🟧 marketplace 제품 차트 — booking·billing·marketplace-saga·consumer-bff·concierge·chat-*·partner + Redis·BackendConfig
+type: application
+version: 0.1.0
+dependencies:
+  - name: parkgolf-lib
+    version: 0.1.0
+    repository: "file://../../../shared/charts/parkgolf-lib"

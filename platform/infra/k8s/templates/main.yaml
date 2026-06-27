@@ -1,0 +1,11 @@
+{{- /* platform 차트 — 공유 인프라 싱글톤 + 공유 코어 서비스 (UNI-112 chunk4) */ -}}
+{{- include "parkgolf-lib.configmap" . }}
+{{- include "parkgolf-lib.externalSecretsShared" . }}
+{{- include "parkgolf-lib.nats" . }}
+{{- include "parkgolf-lib.postgres" . }}
+{{- include "parkgolf-lib.ingress" . }}
+{{- include "parkgolf-lib.deployments" . }}
+{{- include "parkgolf-lib.services" . }}
+{{- include "parkgolf-lib.dbSecrets" . }}
+{{- include "parkgolf-lib.hpa" . }}
+{{- include "parkgolf-lib.pdb" . }}

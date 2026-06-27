@@ -22,6 +22,9 @@
   - **pnpm 전환·workspace 보류**: npm→pnpm **CLI**만 전환. **pnpm workspace는 채택 안 함** — repo 전역 workspace는 ①본 문서 "워크스페이스 폐기" 결정과 충돌, ②미래 polyglot(Go·Python) 서비스를 JS 패키지매니저가 관리 못 함(repo 루트를 pnpm이 소유하면 안 됨). workspace door는 `shared/packages/` 폴더 구조로 이미 열려 있어 필요 시 `pnpm-workspace.yaml` + `file:`→`workspace:*` 치환으로 trivial 전환.
   - **shared 참조 = `file:` 로컬 의존**(tsconfig path alias 아님): 빌드된 dist를 node_modules 심볼릭으로 정상 resolve → tsc·런타임 트릭 0. shared는 자기 `tsc` 빌드(dist) 필요 → 의존 서비스 Docker는 **레포 루트 컨텍스트**에서 shared 선빌드(`cd-services.yml`에서 해당 서비스만 `CONTEXT="."`).
   - **chunk1 추출**: `@uniyous/nats-common`(NatsResponse·응답 타입) · `@uniyous/saga-engine`(상태 enum·`StepDefinition`/`SagaDefinition`·`StepExecutorPort` = **순수 계약 표면**, NATS·DB import 0). 런타임 엔진(`SagaEngineService`)의 **포트화·이관은 UNI-127 ②**(엔진은 Drizzle·pgboss·CREATE_BOOKING 특화 결합이 남아 chunk1 비대상). marketplace-saga-service만 참조 전환·pnpm 전환(회귀 0 — tsc·런타임·Docker·컨테이너 4중 검증). `@uniyous/contracts`는 cross-service DTO 부재로 보류.
+- **2026-06-27** 폴더 재구조화 chunk2~4 실행(UNI-112):
+  - **chunk2/3**: services 15개 → `<product>/services/`, 제품 앱 5개 → `<product>/apps/`(git mv). `cd-services`·`cd-apps`·`ci` 서비스→제품폴더 매핑 + PM 자동감지. `e2e-dev-api`는 루트 `apps/` 유지.
+  - **chunk4 k8s 분할**: 단일 umbrella 차트 → **Helm 라이브러리 차트**(`shared/charts/parkgolf-lib`, 복제 금지) + 제품 3차트(`<product>/infra/k8s`) + **app-of-apps**(`infra/argocd` 루트 + 제품별 child, platform=sync-wave 0). 공유 인프라(NATS·PG·config·secrets·Ingress)=platform, Redis·BackendConfig=marketplace. **dev는 단일 클러스터(`parkgolf-dev` ns)에 3 release**(설계 "dev 단일 클러스터" 준수 — release만 1→3). `helm template` 분할 전후 **dev·prod 렌더 diff = 0**(기능변경 0 검증). `_helpers.tpl`이 `.Release.Name` 미사용이라 release 분할에도 리소스 불변. terraform은 `infra/` 유지. 설계 상세: [k8s-product-split.md](k8s-product-split.md).
 
 ---
 

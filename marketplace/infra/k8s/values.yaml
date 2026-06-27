@@ -1,0 +1,108 @@
+global:
+  namespace: parkgolf-dev
+  image:
+    registry: asia-northeast3-docker.pkg.dev/parkgolf-uniyous/parkgolf
+    tag: 27494d8ecbca49cd89bd3dba18c46fdcd16c077e
+    pullPolicy: IfNotPresent
+  domain: dev-api.parkgolfmate.com
+
+serviceImageTags: {}
+
+# dbSecrets 렌더에 필요 (ClusterSecretStore·parkgolf-secrets 싱글톤은 platform 소유)
+externalSecrets:
+  enabled: true
+  secretStoreName: gcp-secret-store
+
+defaults:
+  resources:
+    requests: { cpu: 30m, memory: 128Mi }
+    limits:   { cpu: 250m, memory: 384Mi }
+  startupProbe:
+    httpGet: { path: /health, port: 8080 }
+    failureThreshold: 12
+    periodSeconds: 5
+  readinessProbe:
+    httpGet: { path: /health/ready, port: 8080 }
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    failureThreshold: 3
+  livenessProbe:
+    httpGet: { path: /health/live, port: 8080 }
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    failureThreshold: 3
+
+# In-cluster Redis (concierge working memory — marketplace 전용 소유)
+redis:
+  enabled: true
+  image: redis:7-alpine
+  maxmemory: 256mb
+  maxmemoryPolicy: allkeys-lru
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits:   { cpu: 250m, memory: 512Mi }
+
+services:
+  - name: booking-service
+    db: booking_db
+  - name: billing-service
+    db: billing_db
+    extraEnv:
+      - { name: TOSS_SECRET_KEY,   secretRef: { name: parkgolf-secrets, key: TOSS_SECRET_KEY } }
+      - { name: TOSS_SECURITY_KEY, secretRef: { name: parkgolf-secrets, key: TOSS_SECURITY_KEY } }
+      - { name: TOSS_API_URL,      configRef: { name: parkgolf-config,  key: TOSS_API_URL } }
+      # e2e용 토스 API 우회 (paymentKey "e2e_test_*"만 해당)
+      # 서비스 내부에서 NODE_ENV=production이면 자동 무력화 — 이중 안전장치
+      - { name: TOSS_TEST_BYPASS,  value: "true" }
+  - name: marketplace-saga-service
+    db: marketplace_saga_db
+  - name: chat-service
+    db: chat_db
+  - name: partner-service
+    db: partner_db
+    extraEnv:
+      - { name: PARTNER_ENCRYPTION_KEY, secretRef: { name: parkgolf-secrets, key: PARTNER_ENCRYPTION_KEY } }
+  - name: chat-gateway
+    replicas: 2
+    strategy:
+      type: RollingUpdate
+      rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }
+    pdb: { maxUnavailable: 1 }
+    backendConfig: websocket
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits:   { cpu: 300m, memory: 384Mi }
+  - name: concierge-service
+    # multi-pod 운영 — Redis Working Memory + per-conversation lock으로 동시성 안전
+    # 설계: docs/workflow/AGENT_MEMORY.md §3.5, §8
+    replicas: 2
+    db: concierge_db
+    hpa:
+      enabled: true
+      min: 2
+      max: 10
+      cpu: 70
+      memory: 75
+    extraEnv:
+      - { name: DEEPSEEK_API_KEY,    secretRef: { name: parkgolf-secrets, key: DEEPSEEK_API_KEY } }
+      - { name: DEEPSEEK_API_URL,    configRef: { name: parkgolf-config,  key: DEEPSEEK_API_URL } }
+      - { name: DEEPSEEK_MODEL,      configRef: { name: parkgolf-config,  key: DEEPSEEK_MODEL } }
+      - { name: CONVERSATION_TTL,    configRef: { name: parkgolf-config,  key: CONVERSATION_TTL } }
+      - { name: MAX_HISTORY_TURNS,   configRef: { name: parkgolf-config,  key: MAX_HISTORY_TURNS } }
+      - { name: REDIS_URL,           configRef: { name: parkgolf-config,  key: REDIS_URL } }
+  - name: consumer-bff
+    backendConfig: consumer-bff
+
+# BackendConfig 정의 (chat-gateway·consumer-bff Service annotation 대상 — marketplace 소유)
+backendConfigs:
+  websocket:
+    timeoutSec: 3600
+    sessionAffinity:
+      affinityType: GENERATED_COOKIE
+      affinityCookieTtlSec: 3600
+    connectionDraining:
+      drainingTimeoutSec: 60
+  consumer-bff:
+    timeoutSec: 120
+    connectionDraining:
+      drainingTimeoutSec: 30
