@@ -87,5 +87,11 @@
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
   },
-  "packageManager": "pnpm@10.33.0"
+  "packageManager": "pnpm@10.33.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "bcrypt",
+      "@mapbox/node-pre-gyp"
+    ]
+  }
 }
