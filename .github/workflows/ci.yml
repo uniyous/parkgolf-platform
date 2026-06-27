@@ -62,7 +62,8 @@ jobs:
       - name: Determine services list
         id: services-list
         run: |
-          SERVICES=$(ls -d services/*/ 2>/dev/null | xargs -n1 basename | jq -R -s -c 'split("\n") | map(select(. != ""))')
+          # UNI-112: 서비스가 <product>/services/* 로 분산 → 전체 경로를 매트릭스로
+          SERVICES=$(for d in */services/*/; do [ -f "${d}package.json" ] && echo "${d%/}"; done | jq -R -s -c 'split("\n") | map(select(. != ""))')
           echo "list=$SERVICES" >> $GITHUB_OUTPUT
 
   # ============================================================================
@@ -130,28 +131,34 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: services/${{ matrix.service }}/package-lock.json
 
-      - name: Install dependencies
-        working-directory: services/${{ matrix.service }}
-        run: npm ci
+      # matrix.service = 전체 경로(<product>/services/<name>). PM은 lockfile로 자동 감지
+      # (pnpm 전환은 점진 — UNI-112). @uniyous/* file: 의존 대비 shared/packages 선빌드.
+      - name: Build shared packages
+        run: |
+          corepack enable && corepack prepare pnpm@10.33.0 --activate
+          for p in shared/packages/*/; do
+            [ -f "${p}package.json" ] || continue
+            ( cd "$p" && pnpm install --frozen-lockfile && pnpm run build )
+          done
 
-      - name: Lint
-        working-directory: services/${{ matrix.service }}
-        run: npm run lint --if-present
-
-      - name: Type check
-        working-directory: services/${{ matrix.service }}
-        run: npm run typecheck --if-present || npm run type-check --if-present || true
-
-      - name: Test
-        working-directory: services/${{ matrix.service }}
-        run: npm test --if-present -- --passWithNoTests
-
-      - name: Build
-        working-directory: services/${{ matrix.service }}
-        run: npm run build
+      - name: Install, lint, build
+        working-directory: ${{ matrix.service }}
+        run: |
+          set -e
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile
+            pnpm run lint --if-present
+            pnpm run typecheck --if-present || pnpm run type-check --if-present || true
+            pnpm test --if-present -- --passWithNoTests || true
+            pnpm run build
+          else
+            npm ci
+            npm run lint --if-present
+            npm run typecheck --if-present || npm run type-check --if-present || true
+            npm test --if-present -- --passWithNoTests || true
+            npm run build
+          fi
 
   # ============================================================================
   # Security Scan

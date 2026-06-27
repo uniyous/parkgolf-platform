@@ -42,11 +42,11 @@ importers:
         specifier: ^1.40.0
         version: 1.41.1
       '@uniyous/nats-common':
-        specifier: file:../../shared/packages/nats-common
-        version: file:../../shared/packages/nats-common
+        specifier: file:../../../shared/packages/nats-common
+        version: file:../../../shared/packages/nats-common
       '@uniyous/saga-engine':
-        specifier: file:../../shared/packages/saga-engine
-        version: file:../../shared/packages/saga-engine
+        specifier: file:../../../shared/packages/saga-engine
+        version: file:../../../shared/packages/saga-engine
       class-transformer:
         specifier: ^0.5.1
         version: 0.5.1
@@ -2376,11 +2376,11 @@ packages:
     resolution: {integrity: sha512-CY3uyFSRbcQv3nnSv8S0+lDftMVz6P963PoRlxrV7ew/Md564g9ut60PYzdLM5qW4jFn93GBF+Soi90ISAN+GQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@uniyous/nats-common@file:../../shared/packages/nats-common':
-    resolution: {directory: ../../shared/packages/nats-common, type: directory}
+  '@uniyous/nats-common@file:../../../shared/packages/nats-common':
+    resolution: {directory: ../../../shared/packages/nats-common, type: directory}
 
-  '@uniyous/saga-engine@file:../../shared/packages/saga-engine':
-    resolution: {directory: ../../shared/packages/saga-engine, type: directory}
+  '@uniyous/saga-engine@file:../../../shared/packages/saga-engine':
+    resolution: {directory: ../../../shared/packages/saga-engine, type: directory}
 
   '@webassemblyjs/ast@1.14.1':
     resolution: {integrity: sha512-nuBEDgQfm1ccRp/8bCQrx1frohyufl4JlbMMZ4P1wpeOfDhF6FQkxZJ1b/e+PLwr6X1Nhw6OLme5usuBWYBvuQ==}
@@ -7417,9 +7417,9 @@ snapshots:
       '@typescript-eslint/types': 8.62.0
       eslint-visitor-keys: 5.0.1
 
-  '@uniyous/nats-common@file:../../shared/packages/nats-common': {}
+  '@uniyous/nats-common@file:../../../shared/packages/nats-common': {}
 
-  '@uniyous/saga-engine@file:../../shared/packages/saga-engine': {}
+  '@uniyous/saga-engine@file:../../../shared/packages/saga-engine': {}
 
   '@webassemblyjs/ast@1.14.1':
     dependencies:

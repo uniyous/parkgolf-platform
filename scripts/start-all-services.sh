@@ -26,11 +26,21 @@ mkdir -p "$PID_DIR"
 # 핵심 서비스만 포함 (notify, search, ml 서비스는 MVP 완료 후 추가)
 SERVICES="iam-service:3011 club-service:3012 booking-service:3013 manager-bff:3091 consumer-bff:3092 manager-console:3000 user-webapp:3001"
 
+# 서비스/앱 디렉터리 해석 (UNI-112: <product>/services|apps 분산 — 제품 무관 자동 탐색)
+resolve_dir() {
+    local name=$1 d
+    for d in "$PROJECT_ROOT"/*/services/"$name" "$PROJECT_ROOT"/services/"$name" \
+             "$PROJECT_ROOT"/*/apps/"$name" "$PROJECT_ROOT"/apps/"$name"; do
+        [ -d "$d" ] && { echo "$d"; return 0; }
+    done
+    return 1
+}
+
 # 서비스 시작 함수
 start_service() {
     local service=$1
     local port=$2
-    local service_dir="$PROJECT_ROOT/services/$service"
+    local service_dir="$(resolve_dir "$service")"
     
     echo -e "${YELLOW}Starting $service on port $port...${NC}"
     

@@ -57,10 +57,10 @@ parkgolf/
 - [x] **(chunk1)** saga-engine 순수성: NATS·DB import 0 — 상태 enum·step/saga 정의·`StepExecutorPort`만(순수 계약 표면). 런타임 엔진(SagaEngineService) **포트화·이관은 UNI-127 ②**
 - [x] **(chunk1)** marketplace-saga-service가 `file:` 의존(@uniyous/*)으로 참조 전환 + 로컬 사본 삭제 + pnpm 전환. 로컬 tsc·런타임·Docker 빌드·컨테이너 런타임 resolve 4중 green
 - [ ] `@uniyous/contracts` — 현 cross-service DTO 부재로 **보류**(실 콘텐츠 생기면 생성, 빈 placeholder 금지)
-- [ ] 현존 15서비스가 위 매핑대로 `<product>/services/`로 `git mv`(히스토리 유지)
-- [ ] 앱 7개가 `<product>/apps/`로 이동
-- [ ] `cd-services.yml`이 서비스→제품폴더 매핑으로 context/Dockerfile 경로 해석(전 서비스 빌드 통과)
-- [ ] 나머지 14서비스·앱 npm → pnpm 일괄 전환
+- [x] **(chunk2)** 현존 15서비스가 위 매핑대로 `<product>/services/`로 `git mv`(히스토리 유지). marketplace-saga-service는 `file:` 경로(`../../../shared`)·Dockerfile·lock 보정 후 Docker 재검증 green
+- [x] **(chunk2)** `cd-services.yml`·`ci.yml`이 서비스→제품폴더 매핑 + PM 자동감지(pnpm/npm) + shared 선빌드로 경로 해석. dev 스크립트 resolver 견고화
+- [ ] 앱 7개가 `<product>/apps/`로 이동 (chunk3)
+- [ ] 나머지 14서비스·앱 npm → pnpm 일괄 전환 (chunk2b — 현재 13 npm + 1 pnpm 혼재, CI는 PM 자동감지로 양립)
 - [ ] k8s 차트 제품별 분할(`marketplace/manager/platform/infra/k8s`) + 전역 infra(terraform·argocd)만 루트, ArgoCD app 경로 갱신
 - [ ] dev 기동 회귀 0 (전 서비스 부팅·NATS 연결·헬스체크 green)
 - [ ] `docs/`·`CLAUDE.md`·`README` 경로 표기 갱신, 잔존 구경로 참조 0
