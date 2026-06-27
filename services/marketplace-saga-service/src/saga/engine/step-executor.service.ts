@@ -2,16 +2,10 @@ import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout, catchError, of } from 'rxjs';
 import { StepDefinition } from '../definitions/saga-definition.interface';
-
-export interface StepResult {
-  success: boolean;
-  data?: Record<string, unknown>;
-  error?: string;
-  elapsedMs: number;
-}
+import type { StepResult, StepExecutorPort } from '@uniyous/saga-engine';
 
 @Injectable()
-export class StepExecutorService {
+export class StepExecutorService implements StepExecutorPort {
   private readonly logger = new Logger(StepExecutorService.name);
 
   constructor(

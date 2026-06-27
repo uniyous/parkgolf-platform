@@ -1,4 +1,9 @@
-/** NATS 응답 타입 */
+/**
+ * @uniyous/nats-common — NATS 표준 응답 타입 + NatsResponse 헬퍼
+ *
+ * Microservice는 NatsResponse.success()/.paginated()/.withSaga()/.deleted() 로 응답.
+ * 배포되지 않는 공유 라이브러리(file: 의존). 미래 3레포 분리 시 @uniyous publish 전환.
+ */
 
 export interface Pagination {
   total: number;
@@ -10,7 +15,16 @@ export interface Pagination {
 /** Saga 트랜잭션 메타데이터 */
 export interface SagaMeta {
   executionId: number;
-  status: 'COMPLETED' | 'FAILED' | 'REQUIRES_MANUAL' | 'STARTED' | 'STEP_EXECUTING' | 'STEP_COMPLETED' | 'STEP_FAILED' | 'COMPENSATING' | 'COMPENSATED';
+  status:
+    | 'COMPLETED'
+    | 'FAILED'
+    | 'REQUIRES_MANUAL'
+    | 'STARTED'
+    | 'STEP_EXECUTING'
+    | 'STEP_COMPLETED'
+    | 'STEP_FAILED'
+    | 'COMPENSATING'
+    | 'COMPENSATED';
   failReason?: string;
   duplicate?: boolean;
 }

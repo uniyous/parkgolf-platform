@@ -1,0 +1,10 @@
+# Docker 빌드 컨텍스트 제외 — shared/packages 의존 서비스는 레포 루트를 컨텍스트로 빌드
+**/node_modules
+**/dist
+**/.git
+.git
+**/*.tsbuildinfo
+**/coverage
+**/.env
+**/.env.*
+**/*.log
