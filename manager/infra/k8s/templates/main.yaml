@@ -1,0 +1,6 @@
+{{- /* manager 차트 — 매니저 서비스 (UNI-112 chunk4) */ -}}
+{{- include "parkgolf-lib.deployments" . }}
+{{- include "parkgolf-lib.services" . }}
+{{- include "parkgolf-lib.dbSecrets" . }}
+{{- include "parkgolf-lib.hpa" . }}
+{{- include "parkgolf-lib.pdb" . }}

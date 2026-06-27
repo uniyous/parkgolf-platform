@@ -1,0 +1,5 @@
+apiVersion: v2
+name: parkgolf-lib
+description: Park Golf 공유 Helm 라이브러리 차트 — 제품 차트(marketplace·manager·platform)가 공유하는 템플릿 단일 소스 (복제 금지, UNI-112)
+type: library
+version: 0.1.0

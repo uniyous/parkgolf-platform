@@ -1,0 +1,26 @@
+# app-of-apps 루트 (dev) — infra/argocd/apps/dev/ 의 제품별 Application을 관리.
+# 부트스트랩: kubectl apply -f infra/argocd/root-dev.yaml (최초 1회)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: parkgolf-root-dev
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/uniyous/parkgolf-platform.git
+    targetRevision: develop
+    path: infra/argocd/apps/dev
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

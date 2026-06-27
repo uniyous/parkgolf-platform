@@ -1,0 +1,9 @@
+# manager dev override
+global:
+  namespace: parkgolf-dev
+  domain: dev-api.parkgolfmate.com
+  image:
+    tag: e335d18d6c03b4a3bb6d236e47d16b4597fda5a4
+serviceImageTags:
+  club-service: e335d18d6c03b4a3bb6d236e47d16b4597fda5a4
+  manager-bff: e335d18d6c03b4a3bb6d236e47d16b4597fda5a4

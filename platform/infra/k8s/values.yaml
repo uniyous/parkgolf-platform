@@ -1,0 +1,117 @@
+global:
+  namespace: parkgolf-dev
+  image:
+    registry: asia-northeast3-docker.pkg.dev/parkgolf-uniyous/parkgolf
+    tag: 27494d8ecbca49cd89bd3dba18c46fdcd16c077e
+    pullPolicy: IfNotPresent
+  domain: dev-api.parkgolfmate.com
+
+serviceImageTags: {}
+
+# 공통 ConfigMap (parkgolf-config) — 전 제품 서비스가 envFrom/configMapKeyRef로 참조 (platform 소유)
+config:
+  NODE_ENV: development
+  NATS_URL: nats://nats:4222
+  REDIS_URL: redis://parkgolf-redis:6379
+  TOSS_API_URL: https://api.tosspayments.com/v1
+  KMA_API_URL: http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0
+  DEEPSEEK_API_URL: https://api.deepseek.com/v1
+  DEEPSEEK_MODEL: deepseek-chat
+  CONVERSATION_TTL: "1800"
+  MAX_HISTORY_TURNS: "10"
+
+# External Secrets — GCP Secret Manager 동기화 (ClusterSecretStore·parkgolf-secrets = platform 소유)
+externalSecrets:
+  enabled: true
+  secretStoreName: gcp-secret-store
+  gcpProjectId: parkgolf-uniyous
+  clusterName: parkgolf-dev-cluster
+  clusterLocation: asia-northeast3-a
+  keys:
+    - POSTGRES_USER
+    - POSTGRES_PASSWORD
+    - JWT_SECRET
+    - JWT_REFRESH_SECRET
+    - TOSS_SECRET_KEY
+    - TOSS_SECURITY_KEY
+    - KMA_API_KEY
+    - KAKAO_API_KEY
+    - DEEPSEEK_API_KEY
+    - PARTNER_ENCRYPTION_KEY
+
+# In-cluster PostgreSQL (전 제품 DB 단일 StatefulSet — dev 단일 클러스터, platform 소유)
+postgres:
+  enabled: true
+  image: postgres:15.17
+  storage: 10Gi
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 1Gi }
+  databases:
+    - iam_db
+    - club_db
+    - booking_db
+    - billing_db
+    - marketplace_saga_db
+    - chat_db
+    - notify_db
+    - partner_db
+    - concierge_db
+
+# In-cluster NATS (전 제품 공유 버스 — platform 소유)
+nats:
+  enabled: true
+  image: nats:2.10-alpine
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits:   { cpu: 250m, memory: 256Mi }
+
+defaults:
+  resources:
+    requests: { cpu: 30m, memory: 128Mi }
+    limits:   { cpu: 250m, memory: 384Mi }
+  startupProbe:
+    httpGet: { path: /health, port: 8080 }
+    failureThreshold: 12
+    periodSeconds: 5
+  readinessProbe:
+    httpGet: { path: /health/ready, port: 8080 }
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    failureThreshold: 3
+  livenessProbe:
+    httpGet: { path: /health/live, port: 8080 }
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    failureThreshold: 3
+
+# platform 서비스 (공유 코어)
+services:
+  - name: iam-service
+    db: iam_db
+  - name: notify-service
+    db: notify_db
+  - name: weather-service
+    extraEnv:
+      - { name: KMA_API_KEY, secretRef: { name: parkgolf-secrets, key: KMA_API_KEY } }
+      - { name: KMA_API_URL, configRef: { name: parkgolf-config,  key: KMA_API_URL } }
+  - name: location-service
+    extraEnv:
+      - { name: KAKAO_API_KEY, secretRef: { name: parkgolf-secrets, key: KAKAO_API_KEY } }
+  - name: job-service
+    resources:
+      requests: { cpu: 50m, memory: 64Mi }
+      limits:   { cpu: 200m, memory: 256Mi }
+
+# Ingress (공유 edge — 전 제품 서비스로 라우팅, 단일 네임스페이스라 서비스명 참조. platform 소유)
+ingress:
+  enabled: true
+  staticIpName: parkgolf-parkgolf-dev-cluster-ip
+  managedCert: parkgolf-cert
+  rules:
+    - { path: /api/admin,    service: manager-bff }
+    - { path: /api/user,     service: consumer-bff }
+    - { path: /socket.io,    service: chat-gateway }
+    - { path: /chat,         service: chat-gateway }
+    - { path: /notification, service: chat-gateway }
+    - { path: /webhook,      service: billing-service }

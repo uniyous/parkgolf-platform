@@ -1,0 +1,18 @@
+# manager prod override
+global:
+  namespace: parkgolf-prod
+  domain: api.parkgolfmate.com
+  image:
+    tag: prod-latest
+
+defaults:
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 768Mi }
+
+services:
+  - name: club-service
+    db: club_db
+    replicas: 2
+  - name: manager-bff
+    replicas: 2

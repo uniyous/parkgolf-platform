@@ -1,0 +1,6 @@
+dependencies:
+- name: parkgolf-lib
+  repository: file://../../../shared/charts/parkgolf-lib
+  version: 0.1.0
+digest: sha256:ef6afd9c2cf9810f338ce539f0278ee74562ccd781f2f7e19d8b773d7e7fd908
+generated: "2026-06-27T20:30:37.615562+09:00"
