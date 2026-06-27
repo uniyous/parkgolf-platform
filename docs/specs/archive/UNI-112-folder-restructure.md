@@ -1,6 +1,6 @@
 ---
 issue: UNI-112
-pr:
+pr: "#51 #56 #53 #54 #55 (merged to develop 2026-06-27)"
 ---
 
 # UNI-112 — 폴더 재구조화 (shared·marketplace·manager·platform + infra 분산)
