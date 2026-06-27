@@ -1,37 +1,37 @@
 # Build stage
 FROM node:20-alpine AS builder
-
+RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 WORKDIR /app
 
 # bcrypt native build dependencies
 RUN apk add --no-cache python3 make g++
 
 # Copy package files first for better caching
-COPY package*.json ./
+COPY package.json pnpm-lock.yaml ./
 
 # Install all dependencies (including devDependencies for build)
-RUN npm ci
+RUN pnpm install --frozen-lockfile
 
 # Copy source code
 COPY . .
 
 # Build the application
-RUN npm run build
+RUN pnpm build
 
 # Production stage
 FROM node:20-alpine AS production
-
+RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 WORKDIR /app
 
 # Install dumb-init and bcrypt native build dependencies
 RUN apk add --no-cache dumb-init python3 make g++
 
 # Copy package files
-COPY package*.json ./
+COPY package.json pnpm-lock.yaml ./
 
 # Install production dependencies only and clean up build tools
-RUN npm ci --only=production && \
-    npm cache clean --force && \
+RUN pnpm install --frozen-lockfile --prod && \
+    pnpm store prune && \
     apk del python3 make g++
 
 # Copy built application from builder
