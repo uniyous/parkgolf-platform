@@ -60,6 +60,10 @@ export class PricingService {
     if (!Number.isInteger(playerCount) || playerCount < 1) {
       throw new BadRequestException(`playerCount 오류: ${input.playerCount}`);
     }
+    if (!Number.isInteger(clubId) || clubId <= 0) {
+      // clubId 누락 시 0으로 coerce되어 CLUB 스코프 할인이 조용히 누락되는 것 방지
+      throw new BadRequestException(`clubId 오류: ${input.clubId}`);
+    }
 
     const [slot] = await this.db.select().from(gameTimeSlots).where(eq(gameTimeSlots.id, gameTimeSlotId)).limit(1);
     if (!slot) throw new NotFoundException(`타임슬롯 없음: ${gameTimeSlotId}`);
@@ -88,6 +92,8 @@ export class PricingService {
     for (const r of candidates) {
       const remaining = baseAmount - discountTotal;
       if (remaining <= 0) break;
+      // 비중첩 규칙은 이미 적용된 할인 위에 쌓지 않음(단독일 때만 적용)
+      if (!r.stackable && discounts.length > 0) continue;
       const raw = r.amountType === 'RATE' ? Math.floor((baseAmount * r.amountValue) / 10000) : r.amountValue;
       const capped = r.maxDiscountAmount != null ? Math.min(raw, r.maxDiscountAmount) : raw;
       const amount = Math.max(0, Math.min(capped, remaining));
@@ -138,6 +144,9 @@ export class PricingService {
   // ===== discount_rules 관리 (manager-bff) =====
 
   async upsertDiscountRule(input: UpsertDiscountInput) {
+    if (!Number.isFinite(input.amountValue) || input.amountValue < 0) {
+      throw new BadRequestException(`amountValue는 0 이상이어야 합니다: ${input.amountValue}`);
+    }
     const values = {
       scopeLevel: input.scopeLevel,
       companyId: input.companyId,
