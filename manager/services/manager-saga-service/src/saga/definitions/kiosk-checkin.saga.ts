@@ -18,6 +18,7 @@ export const KioskCheckinSaga: SagaDefinition = {
       timeout: NATS_TIMEOUTS.DEFAULT,
       targetService: 'FRONTDESK_SERVICE',
       buildRequest: (payload) => ({
+        bookingId: payload.bookingId, // 생성 시 undefined, 보상 시 hoist됨 → markFailed가 사용 (UNI-114)
         kioskId: payload.kioskId,
         clubId: payload.clubId,
         gameTimeSlotId: payload.gameTimeSlotId,

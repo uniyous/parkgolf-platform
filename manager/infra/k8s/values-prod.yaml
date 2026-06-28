@@ -22,3 +22,6 @@ services:
   - name: payment-service
     db: payment_db
     replicas: 2
+  - name: frontdesk-service
+    db: frontdesk_db
+    replicas: 2

@@ -9,3 +9,4 @@ serviceImageTags:
   manager-bff: e335d18d6c03b4a3bb6d236e47d16b4597fda5a4
   manager-saga-service: e335d18d6c03b4a3bb6d236e47d16b4597fda5a4
   payment-service: e335d18d6c03b4a3bb6d236e47d16b4597fda5a4
+  frontdesk-service: e335d18d6c03b4a3bb6d236e47d16b4597fda5a4

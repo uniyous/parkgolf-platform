@@ -40,3 +40,5 @@ services:
     db: manager_saga_db
   - name: payment-service
     db: payment_db
+  - name: frontdesk-service
+    db: frontdesk_db
