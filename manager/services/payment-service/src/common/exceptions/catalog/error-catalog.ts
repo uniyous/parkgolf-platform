@@ -79,6 +79,8 @@ export const PaymentErrors = defineErrors({
   PG_UNAVAILABLE: { code: 'PAY_017', message: 'PG에 연결할 수 없습니다', httpStatus: 503 },
   PG_TIMEOUT: { code: 'PAY_018', message: 'PG 응답 시간 초과', httpStatus: 504 },
   PG_ERROR: { code: 'PAY_019', message: 'PG 처리 중 오류가 발생했습니다', httpStatus: 502 },
+  ALREADY_PAID: { code: 'PAY_020', message: '이미 수납된 플레이어가 있습니다', httpStatus: 409 },
+  CHECKOUT_INVALID: { code: 'PAY_021', message: 'checkout 요청이 올바르지 않습니다', httpStatus: 400 },
 });
 
 // ============================================

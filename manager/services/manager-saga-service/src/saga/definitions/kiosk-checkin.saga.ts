@@ -58,6 +58,7 @@ export const KioskCheckinSaga: SagaDefinition = {
         pricingSnapshot: payload.pricingSnapshot, // 산정 근거 (정산 대사) — UNI-129
         method: payload.paymentMethod, // CARD (키오스크 무인)
         kioskId: payload.kioskId,
+        idempotencyKey: payload.idempotencyKey, // checkout 멱등 (UNI-133)
       }),
       mergeResponse: (payload, response) => ({
         ...payload,

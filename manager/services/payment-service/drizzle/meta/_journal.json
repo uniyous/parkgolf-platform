@@ -43,6 +43,13 @@
       "when": 1782641038328,
       "tag": "0005_uni131_settlements",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1782658842235,
+      "tag": "0006_uni133_checkout_allocations",
+      "breakpoints": true
     }
   ]
 }

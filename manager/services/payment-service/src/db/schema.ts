@@ -3,6 +3,7 @@
 // 현장결제(현금·카드단말) 수납 기록 + 일마감. 컬럼명 snake_case(@map).
 // ==============================================
 import { pgTable, pgEnum, serial, integer, text, jsonb, boolean, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 /** 요금 산정 할인 항목 */
 export interface PricingDiscount {
@@ -51,16 +52,44 @@ export const payments = pgTable(
     channel: paymentChannelEnum('channel').notNull().default('DESK'),
     status: paymentStatusEnum('status').notNull().default('COLLECTED'),
     receiptId: text('receipt_id').notNull(),
+    idempotencyKey: text('idempotency_key'), // checkout 멱등(saga correlationId 등) — UNI-133
     staffId: integer('staff_id'),
     kioskId: text('kiosk_id'),
     collectedAt: timestamp('collected_at', { precision: 3 }).notNull().defaultNow(),
     refundedAt: timestamp('refunded_at', { precision: 3 }),
   },
   (t) => [
-    uniqueIndex('payments_booking_id_key').on(t.bookingId), // bookingId 멱등
+    // UNI-133: 한 booking에 checkout(payment) 다수 가능 → bookingId unique 제거(plain index)
+    index('payments_booking_idx').on(t.bookingId),
+    uniqueIndex('payments_idempotency_key_key').on(t.idempotencyKey), // checkout 멱등 (null 허용)
     uniqueIndex('payments_payment_key_key').on(t.paymentKey), // PG 결제 식별자 멱등 (null 허용)
     index('payments_club_collected_idx').on(t.clubId, t.collectedAt),
     index('payments_company_idx').on(t.companyId),
+  ],
+);
+
+// ==============================================
+// checkout 귀속 (UNI-133) — payment(checkout) 1건이 booking_player 다수를 커버(N:M).
+// 모두/개별/N명분 1인 결제 = allocation 조합. 플레이어 활성 1건(이중수납 방지).
+// ==============================================
+export const checkoutAllocationStatusEnum = pgEnum('CheckoutAllocationStatus', ['ACTIVE', 'REFUNDED']);
+
+export const checkoutAllocations = pgTable(
+  'checkout_allocations',
+  {
+    id: serial('id').primaryKey(),
+    paymentId: integer('payment_id').notNull(), // payments.id (= checkout)
+    bookingId: integer('booking_id').notNull(),
+    bookingPlayerId: integer('booking_player_id').notNull(), // frontdesk booking_players.id
+    amount: integer('amount').notNull(),
+    status: checkoutAllocationStatusEnum('status').notNull().default('ACTIVE'),
+    createdAt: timestamp('created_at', { precision: 3 }).notNull().defaultNow(),
+  },
+  (t) => [
+    // 플레이어당 활성 수납 1건 (부분 unique) — 이중수납 방지, 환불 이력은 공존
+    uniqueIndex('checkout_alloc_player_active_key').on(t.bookingPlayerId).where(sql`${t.status} = 'ACTIVE'`),
+    index('checkout_alloc_payment_idx').on(t.paymentId),
+    index('checkout_alloc_booking_idx').on(t.bookingId),
   ],
 );
 
