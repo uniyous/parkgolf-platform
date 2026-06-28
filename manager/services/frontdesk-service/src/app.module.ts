@@ -4,6 +4,7 @@ import { CommonModule } from './common/common.module';
 import { NatsModule } from './common/nats/nats.module';
 import { DrizzleModule } from './db/drizzle.module';
 import { BookingModule } from './booking/booking.module';
+import { CheckoutFlowModule } from './checkout/checkout-flow.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { BookingModule } from './booking/booking.module';
     NatsModule,
     DrizzleModule,
     BookingModule,
+    CheckoutFlowModule,
   ],
   controllers: [],
   providers: [],
