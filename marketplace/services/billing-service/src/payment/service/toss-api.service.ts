@@ -59,8 +59,10 @@ export class TossApiService {
 
   private rethrow(e: unknown): never {
     if (e instanceof PgProviderError) {
+      this.logger.error(`Toss API Error [${e.code}]${e.providerCode ? ` (${e.providerCode})` : ''}: ${e.message}`);
       throw new AppException(ERROR_MAP[e.code] ?? Errors.External.ERROR, e.message);
     }
+    this.logger.error('Toss API unexpected error', e as Error);
     throw e;
   }
 
