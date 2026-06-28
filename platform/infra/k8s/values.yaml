@@ -59,6 +59,7 @@ postgres:
     - concierge_db
     - manager_saga_db
     - payment_db
+    - frontdesk_db
 
 # In-cluster NATS (전 제품 공유 버스 — platform 소유)
 nats:
