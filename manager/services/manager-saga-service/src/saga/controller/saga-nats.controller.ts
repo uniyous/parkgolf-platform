@@ -19,13 +19,15 @@ export class SagaNatsController {
   @MessagePattern('saga.deskbooking.create')
   async handleCreateDeskBooking(@Payload() data: Record<string, unknown>) {
     this.logger.log('[Saga] saga.deskbooking.create received');
-    const { staffId, channel, ...deskBookingFields } = data;
+    // paymentMethod는 COLLECT_PAYMENT step이 top-level payload.paymentMethod로 읽으므로 hoist
+    const { staffId, channel, paymentMethod, ...deskBookingFields } = data;
     return this.sagaEngine.startSaga(
       'CREATE_DESK_BOOKING',
       {
         deskBookingData: deskBookingFields,
         channel: channel ?? 'DESK',
         staffId,
+        paymentMethod,
         idempotencyKey: deskBookingFields.idempotencyKey,
       },
       'STAFF',
