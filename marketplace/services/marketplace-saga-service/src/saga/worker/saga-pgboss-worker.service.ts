@@ -3,7 +3,7 @@ import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout, catchError } from 'rxjs';
 import type PgBoss from 'pg-boss';
 import { PgBossService } from '../../common/pgboss/pgboss.service';
-import { SagaEngineService } from '../engine/saga-engine.service';
+import { SagaEngine } from '@uniyous/saga-engine';
 import { NATS_TIMEOUTS } from '../../common/constants/nats.constants';
 
 const SAGA_TIMEOUT_RECOVERY_QUEUE = 'saga-timeout-recovery';
@@ -41,7 +41,7 @@ export class SagaPgBossWorkerService implements OnModuleInit {
 
   constructor(
     private readonly pgboss: PgBossService,
-    private readonly sagaEngine: SagaEngineService,
+    private readonly sagaEngine: SagaEngine,
     @Inject('BOOKING_SERVICE') private readonly bookingClient: ClientProxy,
   ) {}
 

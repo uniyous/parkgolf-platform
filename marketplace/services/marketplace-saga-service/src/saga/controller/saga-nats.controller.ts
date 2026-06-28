@@ -1,12 +1,12 @@
 import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, EventPattern, Payload } from '@nestjs/microservices';
-import { SagaEngineService } from '../engine/saga-engine.service';
+import { SagaEngine } from '@uniyous/saga-engine';
 
 @Controller()
 export class SagaNatsController {
   private readonly logger = new Logger(SagaNatsController.name);
 
-  constructor(private readonly sagaEngine: SagaEngineService) {}
+  constructor(private readonly sagaEngine: SagaEngine) {}
 
   // ===== Saga 트리거 (BFF → marketplace-saga-service) =====
 

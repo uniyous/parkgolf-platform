@@ -11,8 +11,38 @@ import { NATS_TIMEOUTS } from '../../common/constants/nats.constants';
  * 외부 연동 골프장: VERIFY_EXTERNAL → NOTIFY_EXTERNAL 단계 추가
  * 내부 골프장: 기존 흐름 그대로 (condition으로 SKIP)
  */
+// CREATE_BOOKING 후 결제 미완료 시 자동 정리용 — PaymentSplit.expirationMinutes와 동기화
+const PAYMENT_TIMEOUT_QUEUE = 'payment-timeout';
+const PAYMENT_TIMEOUT_DELAY_SECONDS = 3 * 60;
+
 export const CreateBookingSaga: SagaDefinition = {
   name: 'CREATE_BOOKING',
+  // bookingId 확보 즉시 결제 타임아웃 one-off 잡 등록 (UNI-38 #6). 구 엔진 하드코딩 → 정의 훅으로 (UNI-127 ②).
+  hooks: {
+    async onStepCompleted({ payload, scheduler, logger, state }) {
+      if (state.paymentTimeoutScheduled || typeof payload.bookingId !== 'number') return;
+      state.paymentTimeoutScheduled = true;
+      const bookingId = payload.bookingId;
+      try {
+        await scheduler.schedule(
+          PAYMENT_TIMEOUT_QUEUE,
+          { bookingId },
+          {
+            startAfter: PAYMENT_TIMEOUT_DELAY_SECONDS,
+            singletonKey: `payment-timeout-${bookingId}`,
+            retryLimit: 3,
+          },
+        );
+        logger.log(
+          `[SagaEngine] payment-timeout scheduled: booking ${bookingId} (+${PAYMENT_TIMEOUT_DELAY_SECONDS}s)`,
+        );
+      } catch (err) {
+        logger.warn(
+          `[SagaEngine] Failed to schedule payment-timeout for booking ${bookingId}: ${err instanceof Error ? err.message : 'unknown'}`,
+        );
+      }
+    },
+  },
   steps: [
     {
       name: 'CREATE_BOOKING_RECORD',
