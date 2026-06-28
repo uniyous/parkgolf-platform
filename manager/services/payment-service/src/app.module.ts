@@ -5,6 +5,7 @@ import { DrizzleModule } from './db/drizzle.module';
 import { PaymentModule } from './payment/payment.module';
 import { PgModule } from './pg/pg.module';
 import { SettlementModule } from './settlement/settlement.module';
+import { CheckoutModule } from './checkout/checkout.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { SettlementModule } from './settlement/settlement.module';
     PaymentModule,
     PgModule,
     SettlementModule,
+    CheckoutModule,
   ],
   controllers: [],
   providers: [],

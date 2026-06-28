@@ -15,6 +15,7 @@ interface CollectInput {
   clubId?: number;
   companyId?: number;
   pricingSnapshot?: PricingSnapshot; // 산정 근거 (정산 대사) — UNI-129
+  idempotencyKey?: string; // checkout 멱등(saga correlationId) — UNI-133 (bookingId unique 제거 대체)
 }
 
 /**
@@ -72,6 +73,7 @@ export class PaymentService {
           channel: input.channel ?? 'DESK',
           status: 'COLLECTED',
           receiptId,
+          idempotencyKey: input.idempotencyKey,
           staffId: input.staffId,
           kioskId: input.kioskId,
         })

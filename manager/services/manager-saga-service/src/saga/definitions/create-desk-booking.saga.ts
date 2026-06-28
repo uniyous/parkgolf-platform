@@ -63,6 +63,7 @@ export const CreateDeskBookingSaga: SagaDefinition = {
         pricingSnapshot: payload.pricingSnapshot, // 산정 근거 (정산 대사) — UNI-129
         method: payload.paymentMethod, // CASH | CARD (현장)
         staffId: payload.staffId,
+        idempotencyKey: payload.idempotencyKey, // checkout 멱등 (UNI-133)
       }),
       mergeResponse: (payload, response) => ({
         ...payload,
