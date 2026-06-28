@@ -1,5 +1,5 @@
 // ==============================================
-// marketplace-saga-service / marketplace_saga_db — Drizzle schema (UNI-84)
+// manager-saga-service / manager_saga_db — Drizzle schema (UNI-84)
 // 컬럼명은 기존 DB(@map snake_case) 유지 → DB 무변경. updatedAt 없음.
 // ==============================================
 import { pgTable, pgEnum, serial, integer, text, boolean, jsonb, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';

@@ -18,7 +18,7 @@ import { DrizzleService } from '../../db/drizzle.service';
 import { sagaExecutions, sagaSteps } from '../../db/schema';
 
 /**
- * SagaStorePort의 Drizzle/marketplace_saga_db 어댑터 (UNI-127 ②).
+ * SagaStorePort의 Drizzle/manager_saga_db 어댑터 (UNI-127 ②).
  * 쿼리는 구 SagaEngineService에서 verbatim 이관 — DB 동작 기능변경 0.
  */
 @Injectable()
