@@ -66,6 +66,8 @@ export interface SagaDefinition<TTarget extends string = string> {
   name: string;
   /** Step 목록 (실행 순서대로) */
   steps: StepDefinition<TTarget>[];
+  /** 라이프사이클 훅 — 제품 특화 로직(payment-timeout 등). 엔진은 제품 무지 */
+  hooks?: import('./ports').SagaHooks;
 }
 
 // ── StepExecutor 포트 ──
@@ -92,3 +94,8 @@ export interface StepExecutorPort {
     timeoutMs: number,
   ): Promise<StepResult>;
 }
+
+// ── 런타임 엔진 + 포트 (UNI-127 ②) ──
+export * from './ports';
+export * from './engine';
+export * from './registry';

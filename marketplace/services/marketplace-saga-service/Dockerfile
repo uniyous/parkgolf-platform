@@ -7,15 +7,13 @@ FROM node:20-alpine AS builder
 RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 WORKDIR /repo
 
-# 1) shared 패키지: 매니페스트 → install(devDeps) → 소스 → build(dist)
-COPY shared/packages/nats-common/package.json shared/packages/nats-common/pnpm-lock.yaml ./shared/packages/nats-common/
-COPY shared/packages/saga-engine/package.json shared/packages/saga-engine/pnpm-lock.yaml ./shared/packages/saga-engine/
-RUN cd shared/packages/nats-common && pnpm install --frozen-lockfile
-RUN cd shared/packages/saga-engine && pnpm install --frozen-lockfile
+# 1) shared 패키지 — 의존성 순으로 완전 빌드.
+#    saga-engine은 @uniyous/nats-common(file:)에 의존 → nats-common dist를 먼저 빌드해야
+#    saga-engine install/build가 그 타입을 resolve. (순서 뒤바뀌면 dist 없는 nats-common 스냅샷)
 COPY shared/packages/nats-common/ ./shared/packages/nats-common/
+RUN cd shared/packages/nats-common && pnpm install --frozen-lockfile && pnpm build
 COPY shared/packages/saga-engine/ ./shared/packages/saga-engine/
-RUN cd shared/packages/nats-common && pnpm build
-RUN cd shared/packages/saga-engine && pnpm build
+RUN cd shared/packages/saga-engine && pnpm install --frozen-lockfile && pnpm build
 
 # 2) 서비스: 매니페스트 → install(file: 의존이 위 빌드된 shared로 resolve) → 소스 → build
 WORKDIR /repo/marketplace/services/marketplace-saga-service

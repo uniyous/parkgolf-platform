@@ -7419,7 +7419,9 @@ snapshots:
 
   '@uniyous/nats-common@file:../../../shared/packages/nats-common': {}
 
-  '@uniyous/saga-engine@file:../../../shared/packages/saga-engine': {}
+  '@uniyous/saga-engine@file:../../../shared/packages/saga-engine':
+    dependencies:
+      '@uniyous/nats-common': file:../../../shared/packages/nats-common
 
   '@webassemblyjs/ast@1.14.1':
     dependencies:
