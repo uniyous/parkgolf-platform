@@ -19,3 +19,6 @@ services:
   - name: manager-saga-service
     db: manager_saga_db
     replicas: 2
+  - name: payment-service
+    db: payment_db
+    replicas: 2

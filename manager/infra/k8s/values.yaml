@@ -38,3 +38,5 @@ services:
   - name: manager-bff
   - name: manager-saga-service
     db: manager_saga_db
+  - name: payment-service
+    db: payment_db
