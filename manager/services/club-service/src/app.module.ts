@@ -6,6 +6,7 @@ import { CourseModule } from './course/course.module';
 import { GameModule } from './game/game.module';
 import { CommonModule } from './common/common.module';
 import { PolicyModule } from './policy/policy.module';
+import { PricingModule } from './pricing/pricing.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { PolicyModule } from './policy/policy.module';
     CourseModule,
     GameModule,
     PolicyModule,
+    PricingModule,
   ],
 })
 export class AppModule {}
