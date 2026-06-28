@@ -44,6 +44,9 @@ importers:
       '@uniyous/nats-common':
         specifier: file:../../../shared/packages/nats-common
         version: file:../../../shared/packages/nats-common
+      '@uniyous/pg-provider':
+        specifier: file:../../../shared/packages/pg-provider
+        version: file:../../../shared/packages/pg-provider
       class-transformer:
         specifier: ^0.5.1
         version: 0.5.1
@@ -2372,6 +2375,9 @@ packages:
 
   '@uniyous/nats-common@file:../../../shared/packages/nats-common':
     resolution: {directory: ../../../shared/packages/nats-common, type: directory}
+
+  '@uniyous/pg-provider@file:../../../shared/packages/pg-provider':
+    resolution: {directory: ../../../shared/packages/pg-provider, type: directory}
 
   '@webassemblyjs/ast@1.14.1':
     resolution: {integrity: sha512-nuBEDgQfm1ccRp/8bCQrx1frohyufl4JlbMMZ4P1wpeOfDhF6FQkxZJ1b/e+PLwr6X1Nhw6OLme5usuBWYBvuQ==}
@@ -7353,6 +7359,8 @@ snapshots:
       eslint-visitor-keys: 5.0.1
 
   '@uniyous/nats-common@file:../../../shared/packages/nats-common': {}
+
+  '@uniyous/pg-provider@file:../../../shared/packages/pg-provider': {}
 
   '@webassemblyjs/ast@1.14.1':
     dependencies:
