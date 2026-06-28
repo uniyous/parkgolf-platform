@@ -27,8 +27,8 @@ billing의 `TossApiService`는 `ConfigService`+HTTP만 의존(저결합)이라 �
 |---|---|---|---|
 | **[3a]** | `shared/packages/pg-provider` 신설 — `PgProviderPort` + `TossAdapter` | 없음 | ✅ PR #61 |
 | **[3c-i]** | payment-service PG 설정 해석 — `PgConfigResolver`·`PgProviderRegistry`·`PgSecretProvider`·게이트웨이·`pg_configs` | [3a] | ✅ PR #61 |
+| **[3c-ii]** | PG 결제 경로 — `payment.pg.confirm`/`cancel` → payments 기록(provider·paymentKey·pgRaw) | [3c-i] | ✅ PR #61 |
 | [3b] | billing → pg-provider 전환 (Docker 루트컨텍스트·file: 의존·에러매핑) | marketplace 인프라 | 후속 |
-| [3c-ii] | PG 결제 경로 — `payment.pg.confirm`/`cancel` → payments 기록(provider·paymentKey) | frontdesk(greenfield)·payments 스키마 | 후속 |
 
 ## [3a] 계약 — `@uniyous/pg-provider`
 
@@ -74,10 +74,22 @@ pgErrorToAppException      PgProviderError(정규화) → PAY_* 카탈로그
 - **NATS**: `payment.pgConfig.upsert` / `.list` / `.resolve` (manager-bff 관리). resolve 응답은 **secretRef만**(실제 키 절대 미노출).
 - 어댑터 dep: `@uniyous/pg-provider`(file: 의존) + Dockerfile 루트컨텍스트에 pg-provider 빌드·복사 추가.
 
+## [3c-ii] PG 결제 경로 — payment-service (PR #61)
+
+온라인 PG(간편결제·신용카드) 결제. `PgGatewayService`를 소비.
+
+- **NATS `payment.pg.confirm`** — `{ bookingId, paymentKey, orderId, amount, clubId?, companyId?, staffId?, kioskId?, channel?, pricingSnapshot? }`
+  → `resolveGateway(clubId, companyId)` → `adapter.confirm(creds, ...)` → payments 기록(`method='CARD'`·`provider`·`paymentKey`·`pgRaw`·`status='COLLECTED'`). `bookingId`/`paymentKey` 멱등.
+  → 응답 `NatsResponse.success({ paymentId, receiptId, status, amount, provider, paymentKey })`
+- **NATS `payment.pg.cancel`** (보상) — `{ bookingId, cancelReason?, cancelAmount? }` → `adapter.cancel` → `status='REFUNDED'`. 미존재/이미 환불/**현장결제(provider=null)** 면 멱등 no-op.
+- payments 스키마: `provider`(null=현장·TOSS=PG) · `payment_key`(unique) · `pg_raw`(jsonb). method enum 불변(현장 CARD=VAN, PG도 CARD지만 `provider`로 구분).
+- `PgProviderError`(정규화) → `pgErrorToAppException` → `PAY_*`.
+
+> ⚠️ frontdesk(greenfield) 연동: 위젯 paymentKey 발급 후 `payment.pg.confirm` 호출. saga `COLLECT_PAYMENT`의 PG 분기(현장 vs PG 라우팅)는 frontdesk 설계 시 확정 — 현재 계약만 제공(contract-first).
+
 ## 후속 — 본 PR 범위 아님
 
 - **[3b]** billing `TossApiService` → `TossAdapter` 위임(시그니처 유지, `PgProviderError`→`AppException` 매핑), Dockerfile 루트컨텍스트, file: 의존, cd-services CONTEXT 분기, lockfile
-- **[3c-ii]** `payment.pg.confirm`/`cancel` → `PgGatewayService.resolveGateway()` + 어댑터 호출 + payments 기록(provider·paymentKey·pgRaw). frontdesk(greenfield) 트리거 대기
 
 ## 미해결
 

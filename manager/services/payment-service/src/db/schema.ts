@@ -29,6 +29,9 @@ export interface PricingSnapshot {
 export const paymentMethodEnum = pgEnum('PaymentMethod', ['CASH', 'CARD']);
 export const paymentChannelEnum = pgEnum('PaymentChannel', ['DESK', 'PHONE', 'WALK_IN', 'KIOSK']);
 export const paymentStatusEnum = pgEnum('PaymentStatus', ['COLLECTED', 'REFUNDED']);
+// PG enum — payments.provider·pg_configs 공용 (payments보다 먼저 선언)
+export const pgScopeEnum = pgEnum('PgScope', ['PLATFORM', 'COMPANY', 'CLUB']);
+export const pgProviderEnum = pgEnum('PgProvider', ['TOSS']);
 
 export const payments = pgTable(
   'payments',
@@ -40,6 +43,9 @@ export const payments = pgTable(
     amount: integer('amount').notNull(),
     pricingSnapshot: jsonb('pricing_snapshot').$type<PricingSnapshot>(), // 산정 근거 (정산 대사)
     method: paymentMethodEnum('method').notNull(),
+    provider: pgProviderEnum('provider'), // null = 현장(현금·카드단말 VAN), TOSS = 온라인 PG (UNI-130 [3c-ii])
+    paymentKey: text('payment_key'), // PG 전용 — provider 결제 식별자
+    pgRaw: jsonb('pg_raw'), // PG 원본 응답(카드·간편결제 상세)
     channel: paymentChannelEnum('channel').notNull().default('DESK'),
     status: paymentStatusEnum('status').notNull().default('COLLECTED'),
     receiptId: text('receipt_id').notNull(),
@@ -50,6 +56,7 @@ export const payments = pgTable(
   },
   (t) => [
     uniqueIndex('payments_booking_id_key').on(t.bookingId), // bookingId 멱등
+    uniqueIndex('payments_payment_key_key').on(t.paymentKey), // PG 결제 식별자 멱등 (null 허용)
     index('payments_club_collected_idx').on(t.clubId, t.collectedAt),
     index('payments_company_idx').on(t.companyId),
   ],
@@ -73,10 +80,8 @@ export const paymentCloses = pgTable(
 // ==============================================
 // PG 설정 (UNI-130 [3c]) — 골프장별 PG 선택. 정책 resolve와 동형(Club→Company→Platform).
 // secretRef = Secret Manager 시크릿 이름(실제 키 아님). 실제 키는 PgSecretProvider가 resolve.
+// (pgScopeEnum·pgProviderEnum은 상단에 선언 — payments.provider 공용)
 // ==============================================
-export const pgScopeEnum = pgEnum('PgScope', ['PLATFORM', 'COMPANY', 'CLUB']);
-export const pgProviderEnum = pgEnum('PgProvider', ['TOSS']);
-
 export const pgConfigs = pgTable(
   'pg_configs',
   {
