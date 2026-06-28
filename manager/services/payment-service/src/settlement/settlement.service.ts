@@ -47,9 +47,14 @@ export class SettlementService {
       return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000) };
     }
     if (cycle === 'MONTHLY') {
-      const [y, m] = periodKey.split('-').map(Number); // YYYY-MM
-      if (!y || !m) throw new AppException(Errors.Validation.INVALID_INPUT, `periodKey 형식 오류: ${periodKey}`);
-      const start = new Date(`${periodKey}-01T00:00:00+09:00`);
+      const parts = periodKey.split('-'); // YYYY-MM (DD 등 추가분은 형식 오류)
+      const y = Number(parts[0]);
+      const m = Number(parts[1]);
+      if (parts.length !== 2 || !y || !m || m < 1 || m > 12) {
+        throw new AppException(Errors.Validation.INVALID_INPUT, `MONTHLY periodKey는 YYYY-MM 형식: ${periodKey}`);
+      }
+      const ym = `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}`;
+      const start = new Date(`${ym}-01T00:00:00+09:00`);
       const next = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
       return { start, end: new Date(`${next}-01T00:00:00+09:00`) };
     }
@@ -60,6 +65,26 @@ export class SettlementService {
   /** 정산 산출·upsert (club·provider·cycle·periodKey 멱등). 기존 status는 보존 */
   async run(input: RunInput) {
     const { start, end } = this.window(input.cycle, input.periodKey, input.periodStart, input.periodEnd);
+
+    // 잠금: 이미 대사/지급된 정산은 재실행으로 금액을 덮어쓰지 않음(PENDING만 재계산)
+    const [locked] = await this.db
+      .select()
+      .from(settlements)
+      .where(
+        and(
+          eq(settlements.clubId, input.clubId),
+          eq(settlements.provider, input.provider),
+          eq(settlements.cycle, input.cycle),
+          eq(settlements.periodKey, input.periodKey),
+        ),
+      )
+      .limit(1);
+    if (locked && locked.status !== 'PENDING') {
+      this.logger.warn(
+        `[Settlement] locked(${locked.status}) — 재계산 skip: club=${input.clubId} ${input.cycle} ${input.periodKey}`,
+      );
+      return NatsResponse.success({ ...locked, locked: true });
+    }
 
     const [grossAgg] = await this.db
       .select({ total: sum(payments.amount), cnt: count() })
