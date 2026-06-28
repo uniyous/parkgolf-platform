@@ -71,7 +71,7 @@ export class BookingService {
       playerCount: Number(d.playerCount ?? 1),
       channel: input.channel ?? 'DESK',
       staffId: input.staffId,
-      memberContext: (d.memberContext as Record<string, unknown>) ?? undefined,
+      memberContext: d.memberContext && typeof d.memberContext === 'object' ? (d.memberContext as Record<string, unknown>) : undefined,
     });
   }
 
@@ -140,13 +140,21 @@ export class BookingService {
 
   /** club-service 요금 계산엔진 호출 — BASE+할인 항목·PricingSnapshot */
   private async quote(clubId: number, gameTimeSlotId: number, playerCount: number, companyId?: number, memberContext?: Record<string, unknown>): Promise<QuoteResult> {
-    const res = await firstValueFrom(
-      this.clubClient
-        .send<{ success: boolean; data: QuoteResult }>('pricing.quote', { clubId, gameTimeSlotId, playerCount, companyId, memberContext })
-        .pipe(timeout(10000)),
-    );
+    let res: { success: boolean; data: QuoteResult } | undefined;
+    try {
+      res = await firstValueFrom(
+        this.clubClient
+          .send<{ success: boolean; data: QuoteResult }>('pricing.quote', { clubId, gameTimeSlotId, playerCount, companyId, memberContext })
+          .pipe(timeout(10000)),
+      );
+    } catch (e) {
+      // 타임아웃·연결 실패 → 균일 예외(원인 메시지 보존). step 실패 → saga 보상
+      const msg = e instanceof Error ? e.message : String(e);
+      throw new AppException(Errors.External.UNAVAILABLE, `pricing.quote 실패: ${msg}`);
+    }
     const data = res?.data;
     if (!data || typeof data.total !== 'number') {
+      // club이 도메인 에러를 {success:false,error} 값으로 반환한 경우 포함
       throw new AppException(Errors.External.UNAVAILABLE, 'pricing.quote 응답 오류');
     }
     return data;
