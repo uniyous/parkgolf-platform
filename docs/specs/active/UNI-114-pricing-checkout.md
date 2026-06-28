@@ -27,7 +27,7 @@ erDiagram
   BOOKING ||--|{ BOOKING_PLAYER : "플레이어"
   BOOKING_PLAYER ||--|{ BOOKING_CHARGE_LINE : "항목 계산(동결)"
   CHECKOUT ||--|{ CHECKOUT_ALLOCATION : "커버 플레이어"
-  BOOKING_PLAYER ||--o| CHECKOUT_ALLOCATION : "활성 1"
+  BOOKING_PLAYER ||--o{ CHECKOUT_ALLOCATION : "활성 1 (환불이력 포함 N)"
   DISCOUNT_RULE }o--o{ BOOKING_CHARGE_LINE : "source (할인 적용 근거)"
 
   GAME_TIME_SLOT { int id "club-service · price · maxPlayers · bookedPlayers · version" }
@@ -61,7 +61,7 @@ erDiagram
 
 ## 수납(checkout) — 유연 결제
 
-`checkout` 1건이 `checkout_allocation`으로 1+ 플레이어를 커버. **플레이어는 활성(=비환불 COLLECTED) allocation 1개만** → 이중수납 방지. `booking_player.paymentStatus`는 활성 allocation 유무로 PAID.
+`checkout` 1건이 `checkout_allocation`으로 1+ 플레이어를 커버. **플레이어는 활성(=비환불 COLLECTED) allocation 1개만** → 이중수납 방지(환불 이력 행은 공존하므로 **partial-unique(active) 또는 앱레벨**로 강제 — 구현은 UNI-133). `booking_player.paymentStatus`는 활성 allocation 유무로 PAID.
 
 | 시나리오 | checkout | allocation |
 |---|---|---|
