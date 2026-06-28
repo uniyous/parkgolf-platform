@@ -3,7 +3,7 @@ import { eq, and, gte, lt, isNull, count, sum, type SQL } from 'drizzle-orm';
 import { NatsResponse } from '@uniyous/nats-common';
 import { DrizzleService } from '../db/drizzle.service';
 import { isUniqueViolation } from '../common/db/db-error';
-import { payments, paymentCloses } from '../db/schema';
+import { payments, paymentCloses, type PricingSnapshot } from '../db/schema';
 
 interface CollectInput {
   bookingId: number;
@@ -14,6 +14,7 @@ interface CollectInput {
   kioskId?: string;
   clubId?: number;
   companyId?: number;
+  pricingSnapshot?: PricingSnapshot; // 산정 근거 (정산 대사) — UNI-129
 }
 
 /**
@@ -49,6 +50,13 @@ export class PaymentService {
       });
     }
 
+    // 산정 스냅샷 total은 청구액(amount)과 일치해야 함 — 불일치는 정산 대사 위험 신호
+    if (input.pricingSnapshot && input.pricingSnapshot.total !== input.amount) {
+      this.logger.warn(
+        `[Payment] pricing mismatch: bookingId=${input.bookingId} amount=${input.amount} snapshot.total=${input.pricingSnapshot.total}`,
+      );
+    }
+
     const receiptId = `RCP-${input.bookingId}-${Date.now()}`;
     let created: typeof payments.$inferSelect;
     try {
@@ -59,6 +67,7 @@ export class PaymentService {
           clubId: input.clubId,
           companyId: input.companyId,
           amount: input.amount,
+          pricingSnapshot: input.pricingSnapshot,
           method: input.method,
           channel: input.channel ?? 'DESK',
           status: 'COLLECTED',

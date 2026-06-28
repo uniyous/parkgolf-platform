@@ -33,6 +33,7 @@ export const CreateDeskBookingSaga: SagaDefinition = {
         playerCount: response.playerCount,
         clubId: response.clubId,
         totalPrice: response.totalPrice,
+        pricingSnapshot: response.pricingSnapshot, // frontdesk 산정 근거 → COLLECT_PAYMENT로 전달 (UNI-129)
       }),
     },
     {
@@ -58,6 +59,7 @@ export const CreateDeskBookingSaga: SagaDefinition = {
         bookingId: payload.bookingId,
         clubId: payload.clubId, // 일마감·정산 클럽 식별 (CREATE_DESK_BOOKING_RECORD에서 hoist됨)
         amount: payload.totalPrice,
+        pricingSnapshot: payload.pricingSnapshot, // 산정 근거 (정산 대사) — UNI-129
         method: payload.paymentMethod, // CASH | CARD (현장)
         staffId: payload.staffId,
       }),

@@ -1,6 +1,7 @@
 import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { PaymentService } from './payment.service';
+import type { PricingSnapshot } from '../db/schema';
 
 /**
  * payment-service NATS 컨트롤러 (UNI-113 수납).
@@ -24,6 +25,7 @@ export class PaymentNatsController {
     kioskId?: string;
     clubId?: number;
     companyId?: number;
+    pricingSnapshot?: PricingSnapshot;
   }) {
     this.logger.log(`[payment.collect] bookingId=${data.bookingId} amount=${data.amount} method=${data.method}`);
     return this.payment.collect(data);

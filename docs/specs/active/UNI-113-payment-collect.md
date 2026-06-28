@@ -24,14 +24,16 @@ UNI-113 체크리스트 중 **수납(매니저) = `payment-service` 신설**만 
 manager-saga 정의의 step action을 payment-service가 NATS로 응답한다(NatsResponse).
 
 - **NATS `payment.collect`** (request-reply) — saga `COLLECT_PAYMENT` step
-  - 요청: `{ bookingId: number, amount: number, method: 'CASH'|'CARD', staffId?: number, kioskId?: string, clubId?: number, companyId?: number }`
+  - 요청: `{ bookingId: number, amount: number, method: 'CASH'|'CARD', staffId?: number, kioskId?: string, clubId?: number, companyId?: number, pricingSnapshot?: PricingSnapshot }`
+  - `clubId` (UNI-128): saga `CREATE_DESK_BOOKING_RECORD` mergeResponse에서 hoist — 일마감·정산 클럽 식별. `companyId`는 frontdesk mergeResponse 확정 후 연결(현재 미반환)
+  - `pricingSnapshot` (UNI-129): 산정 근거 동결(정산 대사). `{ gameTimeSlotId?, playerCount, unitPrice, baseAmount, discounts?, policyId?, total, calculatedAt? }`. `total`은 `amount`와 일치(불일치 시 warn)
   - 응답: `NatsResponse.success({ paymentId, receiptId, status: 'COLLECTED', amount })`
-  - 멱등: `bookingId` 기준 — 이미 COLLECTED면 기존 레코드 반환(saga 재시도 안전)
+  - 멱등: `bookingId` 기준(unique index) — 이미 존재면 기존 레코드 반환(`duplicate: true`). 동시 재시도 23505는 멱등 재조회로 흡수
 - **NATS `payment.refund`** (compensation) — saga `COLLECT_PAYMENT.compensate`
   - 요청: 동일 `buildRequest`(`{ bookingId, amount, method, staffId/kioskId }`)
   - 응답: `NatsResponse.success({ refunded: true })`. 미존재/이미 환불이면 멱등 성공
 - **NATS `payment.list` / `payment.get`** (manager-bff 조회) — `manager.*` 네임스페이스 검토
-- **NATS `payment.dailyClose`** (일마감) — `{ closeDate, clubId, closedBy }` → 당일 수납 집계·마감 레코드
+- **NATS `payment.dailyClose`** (일마감) — `{ closeDate, clubId?, companyId?, closedBy? }` → 당일(KST 영업일) 수납 집계·마감 레코드. 일경계 `closeDate 00:00 +09:00`부터 24h, `companyId` 테넌시 필터, `date×club` 멱등(null clubId는 `isNull` 매칭)
 
 > ⚠️ 진입 subject `payment.*`는 manager-saga 계약과 **정확히 일치**해야 함(targetService=PAYMENT_SERVICE). 변경 시 manager-saga 정의 동시 수정.
 
@@ -48,12 +50,15 @@ manager-saga 정의의 step action을 payment-service가 NATS로 응답한다(Na
 ## DB (`payment_db`, Drizzle)
 
 ```
-payments        id · bookingId · clubId · companyId · amount · method(CASH|CARD)
-                · channel(DESK|PHONE|WALK_IN|KIOSK) · status(COLLECTED|REFUNDED)
+payments        id · bookingId · clubId · companyId · amount · pricingSnapshot(jsonb)
+                · method(CASH|CARD) · channel(DESK|PHONE|WALK_IN|KIOSK) · status(COLLECTED|REFUNDED)
                 · receiptId · staffId · kioskId · collectedAt · refundedAt
                 @@unique(bookingId)  -- 멱등
 payment_closes  id · closeDate · clubId · companyId · totalAmount · count · closedBy · closedAt
+                @@unique(closeDate, clubId)
 ```
+
+마이그레이션: `drizzle/0000_uni113_payment_collect.sql`(초기) · `0001_uni129_pricing_snapshot.sql`(pricing_snapshot 추가). 배포 시 `drizzle-kit migrate` 적용 단계 필요(미해결 — UNI-128).
 
 ## 범위 / 변경 파일
 
@@ -64,11 +69,11 @@ payment_closes  id · closeDate · clubId · companyId · totalAmount · count �
 인프라:
 - `platform/infra/k8s/values.yaml`(postgres.databases += `payment_db`)
 - `manager/infra/k8s/values*.yaml`(payment-service 등록)
-- `.github/workflows/cd-services.yml`(목록·제품매핑=manager·Docker 컨텍스트는 shared 의존 없으면 서비스 디렉터리)
+- `.github/workflows/cd-services.yml`(목록·제품매핑=manager·Docker 컨텍스트=레포 루트 — `@uniyous/nats-common` file: 의존)
 
 ## 배포 의존성
 
 - payment-service는 **leaf**(NATS 수신만, 외부 서비스 호출 없음 — 인벤토리는 club, 부킹은 frontdesk가 담당) → 호출자 재배포 의존 없음
 - `payment_db` 생성(platform postgres-init `CREATE DATABASE WHERE NOT EXISTS`) 선행
 - manager-saga의 `CREATE_DESK_BOOKING`/`KIOSK_CHECKIN` `COLLECT_PAYMENT` step이 이 서비스로 해소됨 → **frontdesk-service(UNI-114)와 함께 desk-booking E2E 완성**(frontdesk 미존재 시 saga 1·4 step은 여전히 계약/타임아웃)
-- shared `file:` 의존 없음 → Docker 컨텍스트 = 서비스 디렉터리(일반 서비스 패턴, marketplace-saga 같은 루트 컨텍스트 불필요)
+- shared `@uniyous/nats-common`(file: 의존) → Docker 컨텍스트 = **레포 루트**(서비스 폴더 밖 shared 포함). cd-services에서 payment-service는 CONTEXT="." 분기

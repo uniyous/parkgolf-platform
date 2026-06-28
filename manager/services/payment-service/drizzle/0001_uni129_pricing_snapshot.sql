@@ -1,0 +1,1 @@
+ALTER TABLE "payments" ADD COLUMN "pricing_snapshot" jsonb;
