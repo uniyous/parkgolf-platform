@@ -12,6 +12,7 @@ export interface PgConfigResolved {
   provider: PgProviderName;
   secretRef: string;
   baseUrl: string | null;
+  feeRate: number; // PG 수수료율(bps) — 정산 fee 산정
   inherited: boolean;
   inheritedFrom: PgScope | null;
 }
@@ -69,6 +70,7 @@ export class PgConfigResolver {
       provider: row.provider,
       secretRef: row.secretRef,
       baseUrl: row.baseUrl,
+      feeRate: row.feeRate,
       inherited,
       inheritedFrom: inherited ? from : null,
     };

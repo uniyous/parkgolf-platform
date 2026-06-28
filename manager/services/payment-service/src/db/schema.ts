@@ -94,6 +94,7 @@ export const pgConfigs = pgTable(
     provider: pgProviderEnum('provider').notNull(),
     secretRef: text('secret_ref').notNull(), // Secret Manager 시크릿 이름
     baseUrl: text('base_url'), // 선택 (테스트 엔드포인트 등)
+    feeRate: integer('fee_rate').notNull().default(0), // PG 계약 수수료율(basis points, 330=3.3%) — 정산 fee 산정 (UNI-131)
     active: boolean('active').notNull().default(true),
     createdAt: timestamp('created_at', { precision: 3 }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { precision: 3 })
@@ -102,4 +103,44 @@ export const pgConfigs = pgTable(
       .$onUpdate(() => new Date()),
   },
   (t) => [uniqueIndex('pg_configs_scope_key').on(t.scopeLevel, t.companyId, t.clubId)],
+);
+
+// ==============================================
+// PG 정산 (UNI-131 [4]) — 클럽 × provider × 주기(일/주/월) 단위 집계·대사.
+// gross(COLLECTED) − refund(REFUNDED) = net, fee = net × feeRate, payout = net − fee.
+// ==============================================
+export const settlementCycleEnum = pgEnum('SettlementCycle', ['DAILY', 'WEEKLY', 'MONTHLY']);
+export const settlementStatusEnum = pgEnum('SettlementStatus', ['PENDING', 'RECONCILED', 'PAID']);
+
+export const settlements = pgTable(
+  'settlements',
+  {
+    id: serial('id').primaryKey(),
+    clubId: integer('club_id').notNull(), // 정산은 클럽 단위
+    companyId: integer('company_id'), // 정보용(테넌시)
+    provider: pgProviderEnum('provider').notNull(),
+    cycle: settlementCycleEnum('cycle').notNull(),
+    periodKey: text('period_key').notNull(), // DAILY=YYYY-MM-DD · WEEKLY=YYYY-Www · MONTHLY=YYYY-MM
+    periodStart: timestamp('period_start', { precision: 3 }).notNull(),
+    periodEnd: timestamp('period_end', { precision: 3 }).notNull(),
+    grossAmount: integer('gross_amount').notNull(), // COLLECTED 합
+    refundAmount: integer('refund_amount').notNull(), // REFUNDED 합(기간 내 refundedAt)
+    netAmount: integer('net_amount').notNull(), // gross − refund
+    feeRate: integer('fee_rate').notNull(), // 적용 수수료율(bps) 스냅샷
+    feeAmount: integer('fee_amount').notNull(), // net × feeRate
+    payoutAmount: integer('payout_amount').notNull(), // net − fee
+    count: integer('count').notNull(), // COLLECTED 건수
+    status: settlementStatusEnum('status').notNull().default('PENDING'),
+    reconciledAt: timestamp('reconciled_at', { precision: 3 }),
+    paidAt: timestamp('paid_at', { precision: 3 }),
+    createdAt: timestamp('created_at', { precision: 3 }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { precision: 3 })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => [
+    uniqueIndex('settlements_club_provider_period_key').on(t.clubId, t.provider, t.cycle, t.periodKey),
+    index('settlements_status_idx').on(t.status),
+  ],
 );
