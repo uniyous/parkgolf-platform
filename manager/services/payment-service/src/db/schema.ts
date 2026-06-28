@@ -28,7 +28,8 @@ export interface PricingSnapshot {
 
 export const paymentMethodEnum = pgEnum('PaymentMethod', ['CASH', 'CARD']);
 export const paymentChannelEnum = pgEnum('PaymentChannel', ['DESK', 'PHONE', 'WALK_IN', 'KIOSK']);
-export const paymentStatusEnum = pgEnum('PaymentStatus', ['COLLECTED', 'REFUNDED']);
+// PENDING/FAILED = PG 결제 선점(reserve-then-charge) 상태 — 현장 수납(collect)은 COLLECTED 직행
+export const paymentStatusEnum = pgEnum('PaymentStatus', ['COLLECTED', 'REFUNDED', 'PENDING', 'FAILED']);
 // PG enum — payments.provider·pg_configs 공용 (payments보다 먼저 선언)
 export const pgScopeEnum = pgEnum('PgScope', ['PLATFORM', 'COMPANY', 'CLUB']);
 export const pgProviderEnum = pgEnum('PgProvider', ['TOSS']);
@@ -45,6 +46,7 @@ export const payments = pgTable(
     method: paymentMethodEnum('method').notNull(),
     provider: pgProviderEnum('provider'), // null = 현장(현금·카드단말 VAN), TOSS = 온라인 PG (UNI-130 [3c-ii])
     paymentKey: text('payment_key'), // PG 전용 — provider 결제 식별자
+    pgConfigId: integer('pg_config_id'), // 결제 시 사용한 pg_configs.id — 취소 시 동일 계정 고정
     pgRaw: jsonb('pg_raw'), // PG 원본 응답(카드·간편결제 상세)
     channel: paymentChannelEnum('channel').notNull().default('DESK'),
     status: paymentStatusEnum('status').notNull().default('COLLECTED'),

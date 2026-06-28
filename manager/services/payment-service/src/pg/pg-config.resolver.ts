@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, asc } from 'drizzle-orm';
 import type { PgProviderName } from '@uniyous/pg-provider';
 import { DrizzleService } from '../db/drizzle.service';
 import { pgConfigs } from '../db/schema';
@@ -34,6 +34,7 @@ export class PgConfigResolver {
         .select()
         .from(pgConfigs)
         .where(and(eq(pgConfigs.scopeLevel, 'CLUB'), eq(pgConfigs.clubId, clubId), eq(pgConfigs.active, true)))
+        .orderBy(asc(pgConfigs.id))
         .limit(1);
       if (row) return this.toResolved(row, false, null);
     }
@@ -42,6 +43,7 @@ export class PgConfigResolver {
         .select()
         .from(pgConfigs)
         .where(and(eq(pgConfigs.scopeLevel, 'COMPANY'), eq(pgConfigs.companyId, companyId), eq(pgConfigs.active, true)))
+        .orderBy(asc(pgConfigs.id))
         .limit(1);
       if (row) return this.toResolved(row, !!clubId, 'COMPANY');
     }
@@ -49,6 +51,7 @@ export class PgConfigResolver {
       .select()
       .from(pgConfigs)
       .where(and(eq(pgConfigs.scopeLevel, 'PLATFORM'), eq(pgConfigs.active, true)))
+      .orderBy(asc(pgConfigs.id))
       .limit(1);
     if (platform) return this.toResolved(platform, !!(clubId || companyId), 'PLATFORM');
 

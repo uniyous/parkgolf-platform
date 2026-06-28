@@ -5,6 +5,7 @@ import { PgProviderError } from '@uniyous/pg-provider';
 import { DrizzleService } from '../db/drizzle.service';
 import { payments, type PricingSnapshot } from '../db/schema';
 import { isUniqueViolation } from '../common/db/db-error';
+import { AppException, Errors } from '../common/exceptions';
 import { PgGatewayService } from './pg-gateway.service';
 import { pgErrorToAppException } from './pg-error.map';
 
@@ -23,8 +24,10 @@ interface PgConfirmInput {
 
 /**
  * 온라인 PG 결제 (UNI-130 [3c-ii]) — frontdesk 간편결제·신용카드.
- * 클럽별 PG를 PgGatewayService로 resolve → 어댑터 호출 → payments 기록(provider·paymentKey·pgRaw).
- * 현장 수납(현금·카드단말)은 PaymentService.collect, 본 경로는 온라인 PG 전용.
+ *
+ * confirm은 **reserve-then-charge**: bookingId/paymentKey를 PENDING 행으로 먼저 선점한 뒤 청구.
+ * 동시 요청은 선점 단계의 unique 위반으로 차단되어 **이중·orphan 청구를 방지**.
+ * cancel은 결제 시 사용한 `pgConfigId`로 **동일 PG 계정**을 고정해 취소.
  */
 @Injectable()
 export class PgPaymentService {
@@ -39,28 +42,74 @@ export class PgPaymentService {
     return this.drizzle.db;
   }
 
-  /** PG 결제 승인 — bookingId 멱등 */
+  private duplicate(row: typeof payments.$inferSelect) {
+    return NatsResponse.success({
+      paymentId: row.id,
+      receiptId: row.receiptId,
+      status: row.status,
+      amount: row.amount,
+      provider: row.provider,
+      paymentKey: row.paymentKey,
+      duplicate: true,
+    });
+  }
+
+  /** PG 결제 승인 — reserve-then-charge (bookingId/paymentKey 멱등) */
   async confirm(input: PgConfirmInput) {
-    const [existing] = await this.db
-      .select()
-      .from(payments)
-      .where(eq(payments.bookingId, input.bookingId))
-      .limit(1);
+    const [existing] = await this.db.select().from(payments).where(eq(payments.bookingId, input.bookingId)).limit(1);
     if (existing) {
-      this.logger.warn(`[PG] duplicate confirm: bookingId=${input.bookingId}, status=${existing.status}`);
-      return NatsResponse.success({
-        paymentId: existing.id,
-        receiptId: existing.receiptId,
-        status: existing.status,
-        amount: existing.amount,
-        provider: existing.provider,
-        paymentKey: existing.paymentKey,
-        duplicate: true,
-      });
+      // 직전 시도가 FAILED면 청구가 일어나지 않았으므로 재시도 허용(행 제거)
+      if (existing.status === 'FAILED') {
+        await this.db.delete(payments).where(eq(payments.id, existing.id));
+      } else {
+        this.logger.warn(`[PG] duplicate confirm: bookingId=${input.bookingId}, status=${existing.status}`);
+        return this.duplicate(existing);
+      }
     }
 
-    // 클럽별 PG resolve → 어댑터 승인 (정규화 에러는 payment 예외로 매핑)
-    const { creds, port } = await this.gateway.resolveGateway(input.clubId, input.companyId);
+    // resolve (청구 없음 — DB·시크릿 읽기만)
+    const { creds, port, configId } = await this.gateway.resolveGateway(input.clubId, input.companyId);
+
+    // 1) 선점 — PENDING 행(청구 전). 동시 요청은 여기 unique 위반으로 차단
+    const receiptId = `RCP-${input.bookingId}-${Date.now()}`;
+    let reserved: typeof payments.$inferSelect;
+    try {
+      [reserved] = await this.db
+        .insert(payments)
+        .values({
+          bookingId: input.bookingId,
+          clubId: input.clubId,
+          companyId: input.companyId,
+          amount: input.amount,
+          pricingSnapshot: input.pricingSnapshot,
+          method: 'CARD', // 온라인 PG — VAN/현금과는 provider로 구분
+          provider: creds.provider,
+          paymentKey: input.paymentKey,
+          pgConfigId: configId,
+          channel: input.channel ?? 'DESK',
+          status: 'PENDING',
+          receiptId,
+          staffId: input.staffId,
+          kioskId: input.kioskId,
+        })
+        .returning();
+    } catch (e) {
+      // 동시 선점(bookingId 또는 paymentKey unique) — 멱등 재조회
+      if (isUniqueViolation(e)) {
+        const [row] =
+          (await this.db.select().from(payments).where(eq(payments.bookingId, input.bookingId)).limit(1)) ?? [];
+        if (row) {
+          this.logger.warn(`[PG] concurrent confirm reserved elsewhere: bookingId=${input.bookingId}`);
+          return this.duplicate(row);
+        }
+        const [byKey] =
+          (await this.db.select().from(payments).where(eq(payments.paymentKey, input.paymentKey)).limit(1)) ?? [];
+        if (byKey) return this.duplicate(byKey);
+      }
+      throw e;
+    }
+
+    // 2) 청구 — 선점 성공 후라 단일 요청만 도달
     let result;
     try {
       result = await port.confirm(creds, {
@@ -69,81 +118,46 @@ export class PgPaymentService {
         amount: input.amount,
       });
     } catch (e) {
+      // 청구 실패 → 선점 행 FAILED(재시도는 새 paymentKey로)
+      await this.db.update(payments).set({ status: 'FAILED' }).where(eq(payments.id, reserved.id));
       if (e instanceof PgProviderError) throw pgErrorToAppException(e);
       throw e;
     }
 
-    const receiptId = `RCP-${input.bookingId}-${Date.now()}`;
-    let created: typeof payments.$inferSelect;
-    try {
-      [created] = await this.db
-        .insert(payments)
-        .values({
-          bookingId: input.bookingId,
-          clubId: input.clubId,
-          companyId: input.companyId,
-          amount: input.amount,
-          pricingSnapshot: input.pricingSnapshot,
-          method: 'CARD', // 온라인 PG(카드·간편결제) — VAN/현금과는 provider로 구분
-          provider: creds.provider,
-          paymentKey: input.paymentKey,
-          pgRaw: result.raw,
-          channel: input.channel ?? 'DESK',
-          status: 'COLLECTED',
-          receiptId,
-          staffId: input.staffId,
-          kioskId: input.kioskId,
-        })
-        .returning();
-    } catch (e) {
-      // 동시 승인 재시도 — bookingId/paymentKey unique 위반은 멱등 재조회로 흡수
-      if (isUniqueViolation(e)) {
-        const [row] = await this.db.select().from(payments).where(eq(payments.bookingId, input.bookingId)).limit(1);
-        if (row) {
-          this.logger.warn(`[PG] concurrent confirm resolved idempotently: bookingId=${input.bookingId}`);
-          return NatsResponse.success({
-            paymentId: row.id,
-            receiptId: row.receiptId,
-            status: row.status,
-            amount: row.amount,
-            provider: row.provider,
-            paymentKey: row.paymentKey,
-            duplicate: true,
-          });
-        }
-      }
-      throw e;
-    }
+    // 3) 확정
+    const [updated] = await this.db
+      .update(payments)
+      .set({ status: 'COLLECTED', pgRaw: result.raw })
+      .where(eq(payments.id, reserved.id))
+      .returning();
 
     this.logger.log(
       `[PG] confirmed: bookingId=${input.bookingId}, provider=${creds.provider}, paymentKey=${input.paymentKey}, receipt=${receiptId}`,
     );
     return NatsResponse.success({
-      paymentId: created.id,
-      receiptId: created.receiptId,
-      status: created.status,
-      amount: created.amount,
-      provider: created.provider,
-      paymentKey: created.paymentKey,
+      paymentId: updated.id,
+      receiptId: updated.receiptId,
+      status: updated.status,
+      amount: updated.amount,
+      provider: updated.provider,
+      paymentKey: updated.paymentKey,
     });
   }
 
-  /** PG 결제 취소(보상) — 미존재/이미 환불/현장결제면 멱등 no-op */
+  /** PG 결제 취소(보상) — 결제 시 config 고정. 비-COLLECTED/현장결제면 멱등 no-op */
   async cancel(input: { bookingId: number; cancelReason?: string; cancelAmount?: number }) {
-    const [row] = await this.db
-      .select()
-      .from(payments)
-      .where(eq(payments.bookingId, input.bookingId))
-      .limit(1);
+    const [row] = await this.db.select().from(payments).where(eq(payments.bookingId, input.bookingId)).limit(1);
 
-    if (!row || row.status === 'REFUNDED' || !row.paymentKey || !row.provider) {
-      this.logger.log(
-        `[PG] cancel no-op: bookingId=${input.bookingId} (${row ? row.status : 'not_found'}${row && !row.paymentKey ? '/non-pg' : ''})`,
-      );
+    if (!row || row.status !== 'COLLECTED' || !row.paymentKey || !row.provider) {
+      this.logger.log(`[PG] cancel no-op: bookingId=${input.bookingId} (${row ? row.status : 'not_found'})`);
       return NatsResponse.success({ refunded: true, noop: true });
     }
+    if (row.pgConfigId == null) {
+      throw new AppException(Errors.Payment.PG_CONFIG_NOT_FOUND, `bookingId=${input.bookingId} pgConfigId 없음`);
+    }
 
-    const { creds, port } = await this.gateway.resolveGateway(row.clubId ?? undefined, row.companyId ?? undefined);
+    // 결제 시 사용한 config로 고정(active 무관) → 동일 PG 계정으로 취소
+    const { creds, port } = await this.gateway.gatewayForConfig(row.pgConfigId);
     try {
       await port.cancel(creds, {
         paymentKey: row.paymentKey,

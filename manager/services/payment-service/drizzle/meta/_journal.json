@@ -29,6 +29,13 @@
       "when": 1782639249128,
       "tag": "0003_uni130_payments_pg",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1782640559266,
+      "tag": "0004_uni130_pg_reserve_config",
+      "breakpoints": true
     }
   ]
 }

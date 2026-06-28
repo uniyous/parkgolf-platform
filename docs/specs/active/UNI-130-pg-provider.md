@@ -79,10 +79,11 @@ pgErrorToAppException      PgProviderError(정규화) → PAY_* 카탈로그
 온라인 PG(간편결제·신용카드) 결제. `PgGatewayService`를 소비.
 
 - **NATS `payment.pg.confirm`** — `{ bookingId, paymentKey, orderId, amount, clubId?, companyId?, staffId?, kioskId?, channel?, pricingSnapshot? }`
-  → `resolveGateway(clubId, companyId)` → `adapter.confirm(creds, ...)` → payments 기록(`method='CARD'`·`provider`·`paymentKey`·`pgRaw`·`status='COLLECTED'`). `bookingId`/`paymentKey` 멱등.
+  → **reserve-then-charge**: ① `resolveGateway` → ② `payments` PENDING 행으로 `bookingId`/`paymentKey` 선점 → ③ `adapter.confirm` 청구 → ④ COLLECTED 확정(`pgRaw`). 청구 실패 시 FAILED(새 paymentKey로 재시도). **선점이 청구보다 먼저라 동시 요청의 이중·orphan 청구 차단**.
   → 응답 `NatsResponse.success({ paymentId, receiptId, status, amount, provider, paymentKey })`
-- **NATS `payment.pg.cancel`** (보상) — `{ bookingId, cancelReason?, cancelAmount? }` → `adapter.cancel` → `status='REFUNDED'`. 미존재/이미 환불/**현장결제(provider=null)** 면 멱등 no-op.
-- payments 스키마: `provider`(null=현장·TOSS=PG) · `payment_key`(unique) · `pg_raw`(jsonb). method enum 불변(현장 CARD=VAN, PG도 CARD지만 `provider`로 구분).
+- **NATS `payment.pg.cancel`** (보상) — `{ bookingId, cancelReason?, cancelAmount? }` → 결제 시 저장한 **`pgConfigId`로 동일 PG 계정 고정**(`gatewayForConfig`) → `adapter.cancel` → `REFUNDED`. 비-COLLECTED/현장결제면 멱등 no-op.
+- payments 스키마: `provider`(null=현장·TOSS=PG) · `payment_key`(unique) · `pg_config_id`(취소 계정 고정) · `pg_raw`(jsonb) · status에 `PENDING`/`FAILED` 추가. method enum 불변(`provider`로 VAN/PG 구분).
+- PG 설정 해석: 결정성 위해 `orderBy(id)`, upsert는 find-then-update(ON CONFLICT NULL 회피).
 - `PgProviderError`(정규화) → `pgErrorToAppException` → `PAY_*`.
 
 > ⚠️ frontdesk(greenfield) 연동: 위젯 paymentKey 발급 후 `payment.pg.confirm` 호출. saga `COLLECT_PAYMENT`의 PG 분기(현장 vs PG 라우팅)는 frontdesk 설계 시 확정 — 현재 계약만 제공(contract-first).
