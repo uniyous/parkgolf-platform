@@ -8,6 +8,7 @@ import { relations } from 'drizzle-orm';
 import {
   GAME_STATUS_VALUES, TIME_SLOT_STATUS_VALUES, COURSE_STATUS_VALUES, CLUB_STATUS_VALUES, TEE_BOX_LEVEL_VALUES,
   SLOT_MODE_VALUES, CLUB_TYPE_VALUES, BOOKING_MODE_VALUES, POLICY_SCOPE_VALUES, NOSHOW_PENALTY_TYPE_VALUES,
+  DISCOUNT_KIND_VALUES, DISCOUNT_AMOUNT_TYPE_VALUES, DISCOUNT_APPLIES_TO_VALUES,
 } from '../contracts/enums';
 
 export const gameStatusEnum = pgEnum('GameStatus', GAME_STATUS_VALUES);
@@ -20,6 +21,42 @@ export const clubTypeEnum = pgEnum('ClubType', CLUB_TYPE_VALUES);
 export const bookingModeEnum = pgEnum('BookingMode', BOOKING_MODE_VALUES);
 export const policyScopeEnum = pgEnum('PolicyScope', POLICY_SCOPE_VALUES);
 export const noShowPenaltyTypeEnum = pgEnum('NoShowPenaltyType', NOSHOW_PENALTY_TYPE_VALUES);
+export const discountKindEnum = pgEnum('DiscountKind', DISCOUNT_KIND_VALUES);
+export const discountAmountTypeEnum = pgEnum('DiscountAmountType', DISCOUNT_AMOUNT_TYPE_VALUES);
+export const discountAppliesToEnum = pgEnum('DiscountAppliesTo', DISCOUNT_APPLIES_TO_VALUES);
+
+// ── DiscountRule (UNI-132) — 요금 할인 규칙. generic·data-driven, Club→Company→Platform stack ──
+export const discountRules = pgTable(
+  'discount_rules',
+  {
+    id: serial('id').primaryKey(),
+    scopeLevel: policyScopeEnum('scope_level').notNull(),
+    companyId: integer('company_id'),
+    clubId: integer('club_id'),
+    kind: discountKindEnum('kind').notNull(),
+    code: text('code').notNull(),
+    label: text('label').notNull(),
+    amountType: discountAmountTypeEnum('amount_type').notNull(),
+    amountValue: integer('amount_value').notNull(), // FIXED=원, RATE=bps(330=3.3%)
+    appliesTo: discountAppliesToEnum('applies_to').notNull().default('PER_PLAYER'),
+    eligibility: jsonb('eligibility'), // 자격 조건(회원유형·지역 등) — 추후 구체화
+    validFrom: timestamp('valid_from', { precision: 3 }),
+    validTo: timestamp('valid_to', { precision: 3 }),
+    stackable: boolean('stackable').notNull().default(false),
+    priority: integer('priority').notNull().default(0),
+    maxDiscountAmount: integer('max_discount_amount'),
+    active: boolean('active').notNull().default(true),
+    createdAt: timestamp('created_at', { precision: 3 }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { precision: 3 })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => [
+    index('discount_rules_scope_idx').on(t.scopeLevel, t.companyId, t.clubId),
+    index('discount_rules_active_idx').on(t.active),
+  ],
+);
 
 const ts = (name: string) => timestamp(name, { precision: 3 });
 const createdAt = () => ts('created_at').notNull().defaultNow();

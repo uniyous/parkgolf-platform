@@ -44,5 +44,16 @@ export const BOOKING_MODE_VALUES = vals(BookingMode);
 export const POLICY_SCOPE_VALUES = vals(PolicyScope);
 export const NOSHOW_PENALTY_TYPE_VALUES = vals(NoShowPenaltyType);
 
+// 할인 규칙 (UNI-132) — generic data-driven
+export const DiscountKind = { PROMOTION: 'PROMOTION', EVENT: 'EVENT', MEMBER: 'MEMBER', MANUAL: 'MANUAL' } as const;
+export type DiscountKind = (typeof DiscountKind)[keyof typeof DiscountKind];
+export const DiscountAmountType = { FIXED: 'FIXED', RATE: 'RATE' } as const;
+export type DiscountAmountType = (typeof DiscountAmountType)[keyof typeof DiscountAmountType];
+export const DiscountAppliesTo = { PER_PLAYER: 'PER_PLAYER', PER_BOOKING: 'PER_BOOKING' } as const;
+export type DiscountAppliesTo = (typeof DiscountAppliesTo)[keyof typeof DiscountAppliesTo];
+export const DISCOUNT_KIND_VALUES = vals(DiscountKind);
+export const DISCOUNT_AMOUNT_TYPE_VALUES = vals(DiscountAmountType);
+export const DISCOUNT_APPLIES_TO_VALUES = vals(DiscountAppliesTo);
+
 // jsonb 값 타입
 export type JsonValue = string | number | boolean | null | { [key: string]: JsonValue } | JsonValue[];
