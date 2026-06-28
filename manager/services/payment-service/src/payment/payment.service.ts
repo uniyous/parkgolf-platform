@@ -32,12 +32,15 @@ export class PaymentService {
     return this.drizzle.db;
   }
 
-  /** 현장결제 기록 — bookingId 멱등(saga 재시도 안전) */
+  /** 현장결제 기록 — idempotencyKey 멱등(saga 재시도·동시성 안전). bookingId unique 제거(UNI-133) 대체 */
   async collect(input: CollectInput) {
+    // 미지정 시 bookingId 기반 결정적 키 → saga 전액 path는 booking당 1건 보장(idempotency_key unique)
+    const idempotencyKey = input.idempotencyKey ?? `collect:${input.bookingId}`;
+
     const [existing] = await this.db
       .select()
       .from(payments)
-      .where(eq(payments.bookingId, input.bookingId))
+      .where(eq(payments.idempotencyKey, idempotencyKey))
       .limit(1);
 
     if (existing) {
@@ -73,15 +76,15 @@ export class PaymentService {
           channel: input.channel ?? 'DESK',
           status: 'COLLECTED',
           receiptId,
-          idempotencyKey: input.idempotencyKey,
+          idempotencyKey,
           staffId: input.staffId,
           kioskId: input.kioskId,
         })
         .returning();
     } catch (e) {
-      // 동시 재시도(select 통과 후 둘 다 insert) — unique(booking_id) 위반은 멱등 재조회로 흡수
+      // 동시 재시도(select 통과 후 둘 다 insert) — idempotency_key unique 위반은 멱등 재조회로 흡수
       if (isUniqueViolation(e)) {
-        const [row] = await this.db.select().from(payments).where(eq(payments.bookingId, input.bookingId)).limit(1);
+        const [row] = await this.db.select().from(payments).where(eq(payments.idempotencyKey, idempotencyKey)).limit(1);
         if (row) {
           this.logger.warn(`[Payment] concurrent collect resolved idempotently: bookingId=${input.bookingId}`);
           return NatsResponse.success({
