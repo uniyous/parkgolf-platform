@@ -52,11 +52,15 @@ export class CheckoutFlowService {
       .from(bookingPlayers)
       .where(and(eq(bookingPlayers.bookingId, input.bookingId), inArray(bookingPlayers.id, input.bookingPlayerIds)));
     if (players.length !== input.bookingPlayerIds.length) {
-      throw new AppException(Errors.Validation.INVALID_INPUT, '예약에 속하지 않는 플레이어 포함');
+      throw new AppException(Errors.Validation.INVALID_INPUT, '예약에 속하지 않거나 중복된 플레이어 포함');
     }
     if (players.some((p) => p.paymentStatus === 'PAID')) {
       throw new AppException(Errors.Booking.INVALID_STATE, '이미 수납된 플레이어 포함');
     }
+
+    // 미지정 시 결정적 멱등 키 → 동시·재시도 시 payment가 기존 checkout 반환(이중수납·orphan 방지)
+    const sortedIds = [...players.map((p) => p.id)].sort((a, b) => a - b);
+    const idempotencyKey = input.idempotencyKey ?? `pay:${input.bookingId}:${sortedIds.join('-')}`;
 
     const allocations = players.map((p) => ({ bookingPlayerId: p.id, amount: p.chargeAmount }));
     const reply = await this.callPayment('payment.checkout.create', {
@@ -68,10 +72,10 @@ export class CheckoutFlowService {
       staffId: input.staffId ?? booking.staffId,
       kioskId: booking.kioskId,
       channel: booking.channel,
-      idempotencyKey: input.idempotencyKey,
+      idempotencyKey,
     });
     const data = reply.data;
-    if (!data?.checkoutId) {
+    if (!reply.success || !data?.checkoutId) {
       throw new AppException(Errors.External.UNAVAILABLE, reply.error?.message ?? 'checkout 생성 실패');
     }
 
@@ -85,17 +89,21 @@ export class CheckoutFlowService {
     });
   }
 
-  /** 체크아웃 취소(환불) — payment 취소 + 커버 플레이어 paymentStatus 환원 */
-  async cancel(input: { checkoutId: number; bookingPlayerIds?: number[]; reason?: string }) {
+  /** 체크아웃 취소(환불) — 커버 플레이어는 checkout의 실제 allocation에서 도출(임의 환원 방지) */
+  async cancel(input: { checkoutId: number; reason?: string }) {
+    const getReply = await this.callPayment('payment.checkout.get', { checkoutId: input.checkoutId });
+    const allocations = (getReply.data?.allocations as Array<{ bookingPlayerId: number }> | undefined) ?? [];
+    const playerIds = allocations.map((a) => a.bookingPlayerId);
+
     const reply = await this.callPayment('payment.checkout.cancel', { checkoutId: input.checkoutId, reason: input.reason });
     if (!reply.success) {
       throw new AppException(Errors.External.UNAVAILABLE, reply.error?.message ?? 'checkout 취소 실패');
     }
-    if (input.bookingPlayerIds?.length) {
-      await this.db.update(bookingPlayers).set({ paymentStatus: 'REFUNDED' }).where(inArray(bookingPlayers.id, input.bookingPlayerIds));
+    if (playerIds.length) {
+      await this.db.update(bookingPlayers).set({ paymentStatus: 'REFUNDED' }).where(inArray(bookingPlayers.id, playerIds));
     }
-    this.logger.log(`[Checkout] cancelled: checkout=${input.checkoutId}`);
-    return NatsResponse.success({ refunded: true, checkoutId: input.checkoutId });
+    this.logger.log(`[Checkout] cancelled: checkout=${input.checkoutId} players=${playerIds.join(',')}`);
+    return NatsResponse.success({ refunded: true, checkoutId: input.checkoutId, players: playerIds });
   }
 
   /** 예약 체크아웃 현황 — 플레이어 입장·수납 상태 + checkout 목록 */

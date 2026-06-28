@@ -31,7 +31,7 @@ export class CheckoutFlowController {
   }
 
   @MessagePattern('frontdesk.checkout.cancel')
-  async cancel(@Payload() data: { checkoutId: number; bookingPlayerIds?: number[]; reason?: string }) {
+  async cancel(@Payload() data: { checkoutId: number; reason?: string }) {
     this.logger.log(`[frontdesk.checkout.cancel] checkout=${data.checkoutId}`);
     return this.flow.cancel(data);
   }
