@@ -19,6 +19,6 @@ import { PG_SECRET_PROVIDER, EnvPgSecretProvider } from './pg-secret.provider';
     PgProviderRegistry,
     { provide: PG_SECRET_PROVIDER, useClass: EnvPgSecretProvider },
   ],
-  exports: [PgGatewayService, PgPaymentService],
+  exports: [PgGatewayService, PgPaymentService, PgConfigResolver],
 })
 export class PgModule {}
