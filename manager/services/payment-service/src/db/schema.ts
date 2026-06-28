@@ -2,7 +2,7 @@
 // payment-service / payment_db — Drizzle schema (UNI-113 수납)
 // 현장결제(현금·카드단말) 수납 기록 + 일마감. 컬럼명 snake_case(@map).
 // ==============================================
-import { pgTable, pgEnum, serial, integer, text, jsonb, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, pgEnum, serial, integer, text, jsonb, boolean, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
 
 /** 요금 산정 할인 항목 */
 export interface PricingDiscount {
@@ -68,4 +68,31 @@ export const paymentCloses = pgTable(
     closedAt: timestamp('closed_at', { precision: 3 }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex('payment_closes_date_club_key').on(t.closeDate, t.clubId)],
+);
+
+// ==============================================
+// PG 설정 (UNI-130 [3c]) — 골프장별 PG 선택. 정책 resolve와 동형(Club→Company→Platform).
+// secretRef = Secret Manager 시크릿 이름(실제 키 아님). 실제 키는 PgSecretProvider가 resolve.
+// ==============================================
+export const pgScopeEnum = pgEnum('PgScope', ['PLATFORM', 'COMPANY', 'CLUB']);
+export const pgProviderEnum = pgEnum('PgProvider', ['TOSS']);
+
+export const pgConfigs = pgTable(
+  'pg_configs',
+  {
+    id: serial('id').primaryKey(),
+    scopeLevel: pgScopeEnum('scope_level').notNull(),
+    companyId: integer('company_id'), // COMPANY·CLUB 스코프
+    clubId: integer('club_id'), // CLUB 스코프
+    provider: pgProviderEnum('provider').notNull(),
+    secretRef: text('secret_ref').notNull(), // Secret Manager 시크릿 이름
+    baseUrl: text('base_url'), // 선택 (테스트 엔드포인트 등)
+    active: boolean('active').notNull().default(true),
+    createdAt: timestamp('created_at', { precision: 3 }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { precision: 3 })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => [uniqueIndex('pg_configs_scope_key').on(t.scopeLevel, t.companyId, t.clubId)],
 );

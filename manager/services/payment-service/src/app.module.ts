@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { CommonModule } from './common/common.module';
 import { DrizzleModule } from './db/drizzle.module';
 import { PaymentModule } from './payment/payment.module';
+import { PgModule } from './pg/pg.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { PaymentModule } from './payment/payment.module';
     CommonModule,
     DrizzleModule,
     PaymentModule,
+    PgModule,
   ],
   controllers: [],
   providers: [],

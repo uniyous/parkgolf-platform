@@ -25,9 +25,10 @@ billing의 `TossApiService`는 `ConfigService`+HTTP만 의존(저결합)이라 �
 
 | | 내용 | 의존 | 본 spec |
 |---|---|---|---|
-| **[3a]** | `shared/packages/pg-provider` 신설 — `PgProviderPort` + `TossAdapter` | 없음 | ✅ 이번 |
+| **[3a]** | `shared/packages/pg-provider` 신설 — `PgProviderPort` + `TossAdapter` | 없음 | ✅ PR #61 |
+| **[3c-i]** | payment-service PG 설정 해석 — `PgConfigResolver`·`PgProviderRegistry`·`PgSecretProvider`·게이트웨이·`pg_configs` | [3a] | ✅ PR #61 |
 | [3b] | billing → pg-provider 전환 (Docker 루트컨텍스트·file: 의존·에러매핑) | marketplace 인프라 | 후속 |
-| [3c] | payment-service 통합 + `PgConfigResolver`(클럽별) + frontdesk PG 경로 | resolver 세부·frontdesk(greenfield) | 후속 |
+| [3c-ii] | PG 결제 경로 — `payment.pg.confirm`/`cancel` → payments 기록(provider·paymentKey) | frontdesk(greenfield)·payments 스키마 | 후속 |
 
 ## [3a] 계약 — `@uniyous/pg-provider`
 
@@ -56,10 +57,27 @@ TossAdapter implements PgProviderPort  (provider='TOSS')
 - [ ] `TossAdapter` 5메서드 — billing `TossApiService`와 동일 엔드포인트·바이패스·에러매핑(정규화)
 - [ ] `tsc` green (글로벌 fetch, `@types/node`), consumer 미수정(추출만)
 
-## 후속 ([3b]·[3c]) — 본 PR 범위 아님
+## [3c-i] PG 설정 해석 — payment-service (PR #61)
 
-- [3b] billing `TossApiService` → `TossAdapter` 위임(시그니처 유지, `PgProviderError`→`AppException` 매핑), Dockerfile 루트컨텍스트, `package.json` file: 의존, cd-services CONTEXT 분기, lockfile
-- [3c] payment-service `PgProviderPort` 레지스트리 + `PgConfigResolver`(세부 추후) + frontdesk PG 결제(staffId·clubId·워크인) — frontdesk greenfield 대기
+골프장별 PG 선택의 **설정 해석 서브시스템**. 실제 결제 경로(confirm/cancel→payments)는 [3c-ii].
+
+```
+pg_configs (payment_db)   scopeLevel(PLATFORM|COMPANY|CLUB) · companyId? · clubId? · provider(TOSS)
+                          · secretRef(Secret Manager 이름) · baseUrl? · active   @@unique(scope,company,club)
+PgConfigResolver          resolve(clubId?, companyId?) → Club→Company→Platform fallback (정책 resolve 동형)
+PgSecretProvider          secretRef → 실제 키. EnvPgSecretProvider(now) / SecretManager(후속). 키는 메모리 외 노출 X
+PgProviderRegistry        provider → 어댑터(TOSS=TossAdapter, @uniyous/pg-provider)
+PgGatewayService          resolveGateway() → { creds: PgCredentials, port } · pg_configs CRUD(secretRef만 노출)
+pgErrorToAppException      PgProviderError(정규화) → PAY_* 카탈로그
+```
+
+- **NATS**: `payment.pgConfig.upsert` / `.list` / `.resolve` (manager-bff 관리). resolve 응답은 **secretRef만**(실제 키 절대 미노출).
+- 어댑터 dep: `@uniyous/pg-provider`(file: 의존) + Dockerfile 루트컨텍스트에 pg-provider 빌드·복사 추가.
+
+## 후속 — 본 PR 범위 아님
+
+- **[3b]** billing `TossApiService` → `TossAdapter` 위임(시그니처 유지, `PgProviderError`→`AppException` 매핑), Dockerfile 루트컨텍스트, file: 의존, cd-services CONTEXT 분기, lockfile
+- **[3c-ii]** `payment.pg.confirm`/`cancel` → `PgGatewayService.resolveGateway()` + 어댑터 호출 + payments 기록(provider·paymentKey·pgRaw). frontdesk(greenfield) 트리거 대기
 
 ## 미해결
 

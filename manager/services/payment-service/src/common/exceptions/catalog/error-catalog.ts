@@ -63,6 +63,25 @@ export const DatabaseErrors = defineErrors({
 });
 
 // ============================================
+// 결제/PG 에러 (PAY_xxx) — PgProviderError(정규화) → 매핑 (UNI-130)
+// ============================================
+export const PaymentErrors = defineErrors({
+  PG_CONFIG_NOT_FOUND: { code: 'PAY_001', message: '클럽 PG 설정을 찾을 수 없습니다', httpStatus: 400 },
+  PG_SECRET_MISSING: { code: 'PAY_002', message: 'PG 시크릿을 찾을 수 없습니다', httpStatus: 500 },
+  PG_UNSUPPORTED_PROVIDER: { code: 'PAY_003', message: '지원하지 않는 PG입니다', httpStatus: 400 },
+  PG_ALREADY_PROCESSED: { code: 'PAY_010', message: '이미 처리된 결제입니다', httpStatus: 409 },
+  PG_INVALID_CARD: { code: 'PAY_011', message: '카드 정보가 올바르지 않습니다', httpStatus: 400 },
+  PG_EXCEED_LIMIT: { code: 'PAY_012', message: '결제 한도를 초과했습니다', httpStatus: 400 },
+  PG_INSUFFICIENT_BALANCE: { code: 'PAY_013', message: '잔액이 부족합니다', httpStatus: 400 },
+  PG_NOT_FOUND: { code: 'PAY_014', message: '결제를 찾을 수 없습니다', httpStatus: 404 },
+  PG_ALREADY_CANCELLED: { code: 'PAY_015', message: '이미 취소된 결제입니다', httpStatus: 409 },
+  PG_EXCEED_CANCEL_AMOUNT: { code: 'PAY_016', message: '취소 가능 금액을 초과했습니다', httpStatus: 400 },
+  PG_UNAVAILABLE: { code: 'PAY_017', message: 'PG에 연결할 수 없습니다', httpStatus: 503 },
+  PG_TIMEOUT: { code: 'PAY_018', message: 'PG 응답 시간 초과', httpStatus: 504 },
+  PG_ERROR: { code: 'PAY_019', message: 'PG 처리 중 오류가 발생했습니다', httpStatus: 502 },
+});
+
+// ============================================
 // 시스템 에러 (SYS_xxx)
 // ============================================
 export const SystemErrors = defineErrors({
@@ -81,5 +100,6 @@ export const Errors = {
   Validation: ValidationErrors,
   External: ExternalErrors,
   Database: DatabaseErrors,
+  Payment: PaymentErrors,
   System: SystemErrors,
 } as const;
