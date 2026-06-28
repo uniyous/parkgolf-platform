@@ -16,3 +16,6 @@ services:
     replicas: 2
   - name: manager-bff
     replicas: 2
+  - name: manager-saga-service
+    db: manager_saga_db
+    replicas: 2
