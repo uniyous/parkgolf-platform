@@ -28,7 +28,7 @@ billing의 `TossApiService`는 `ConfigService`+HTTP만 의존(저결합)이라 �
 | **[3a]** | `shared/packages/pg-provider` 신설 — `PgProviderPort` + `TossAdapter` | 없음 | ✅ PR #61 |
 | **[3c-i]** | payment-service PG 설정 해석 — `PgConfigResolver`·`PgProviderRegistry`·`PgSecretProvider`·게이트웨이·`pg_configs` | [3a] | ✅ PR #61 |
 | **[3c-ii]** | PG 결제 경로 — `payment.pg.confirm`/`cancel` → payments 기록(provider·paymentKey·pgRaw) | [3c-i] | ✅ PR #61 |
-| [3b] | billing → pg-provider 전환 (Docker 루트컨텍스트·file: 의존·에러매핑) | marketplace 인프라 | 후속 |
+| **[3b]** | billing → pg-provider 전환 (Docker 루트컨텍스트·file: 의존·에러매핑) | [3a] | ✅ 별도 PR |
 
 ## [3a] 계약 — `@uniyous/pg-provider`
 
@@ -90,7 +90,12 @@ pgErrorToAppException      PgProviderError(정규화) → PAY_* 카탈로그
 
 ## 후속 — 본 PR 범위 아님
 
-- **[3b]** billing `TossApiService` → `TossAdapter` 위임(시그니처 유지, `PgProviderError`→`AppException` 매핑), Dockerfile 루트컨텍스트, file: 의존, cd-services CONTEXT 분기, lockfile
+## [3b] billing → pg-provider 전환 (별도 PR)
+
+billing `TossApiService`를 공유 `TossAdapter` 위임 wrapper로 전환 — **call site·반환타입 무변경**(Toss 응답 타입은 wrapper가 `@uniyous/pg-provider`에서 재노출). `PgProviderError` → billing `AppException`(Payment/Refund/External) 매핑. env 단일 자격증명(본사 Toss).
+
+- `HttpModule`/`HttpService` 제거(어댑터가 global fetch) · `@uniyous/pg-provider` file: 의존 · Dockerfile **레포 루트 컨텍스트**(shared 빌드/복사) · `cd-services.yml` CONTEXT="." 분기에 billing-service 추가 · lockfile
+- ⚠️ billing은 운영 서비스 → 배포 시 Docker 컨텍스트 변경 영향(CI/CD 확인 필요)
 
 ## 미해결
 

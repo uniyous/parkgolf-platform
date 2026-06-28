@@ -117,7 +117,7 @@ jobs:
           IMAGE_NAME="$SERVICE"
           # shared/packages(file: 의존) 포함 서비스는 레포 루트를 빌드 컨텍스트로 (Dockerfile 주석 참조)
           case "$SERVICE" in
-            marketplace-saga-service|manager-saga-service|payment-service) CONTEXT="." ;;
+            marketplace-saga-service|manager-saga-service|payment-service|billing-service) CONTEXT="." ;;
             *) CONTEXT="$SVC_DIR" ;;
           esac
 

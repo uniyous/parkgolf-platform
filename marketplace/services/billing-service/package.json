@@ -26,6 +26,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@uniyous/pg-provider": "file:../../../shared/packages/pg-provider",
     "@google-cloud/opentelemetry-cloud-trace-exporter": "^2.4.1",
     "@nestjs/axios": "^4.0.0",
     "@nestjs/common": "^11.0.1",

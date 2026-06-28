@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { HttpModule } from '@nestjs/axios';
 import { PaymentService } from './service/payment.service';
 import { PaymentSplitService } from './service/payment-split.service';
 import { TossApiService } from './service/toss-api.service';
@@ -8,13 +7,8 @@ import { PaymentReconcileService } from './service/payment-reconcile.service';
 import { PaymentNatsController } from './controller/payment-nats.controller';
 import { WebhookController } from './controller/webhook.controller';
 
+// TossApiService는 @uniyous/pg-provider(global fetch)로 위임 — HttpModule 불필요 (UNI-130 [3b])
 @Module({
-  imports: [
-    HttpModule.register({
-      timeout: 60000, // 토스페이먼츠 권장 Read Timeout 60초 (카드사 승인 최대 지연 대비)
-      maxRedirects: 5,
-    }),
-  ],
   controllers: [PaymentNatsController, WebhookController],
   providers: [
     PaymentService,

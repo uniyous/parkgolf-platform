@@ -44,6 +44,9 @@ importers:
       '@opentelemetry/semantic-conventions':
         specifier: ^1.40.0
         version: 1.41.1
+      '@uniyous/pg-provider':
+        specifier: file:../../../shared/packages/pg-provider
+        version: file:../../../shared/packages/pg-provider
       axios:
         specifier: ^1.7.9
         version: 1.18.1
@@ -2391,6 +2394,9 @@ packages:
   '@typescript-eslint/visitor-keys@8.62.0':
     resolution: {integrity: sha512-CY3uyFSRbcQv3nnSv8S0+lDftMVz6P963PoRlxrV7ew/Md564g9ut60PYzdLM5qW4jFn93GBF+Soi90ISAN+GQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@uniyous/pg-provider@file:../../../shared/packages/pg-provider':
+    resolution: {directory: ../../../shared/packages/pg-provider, type: directory}
 
   '@webassemblyjs/ast@1.14.1':
     resolution: {integrity: sha512-nuBEDgQfm1ccRp/8bCQrx1frohyufl4JlbMMZ4P1wpeOfDhF6FQkxZJ1b/e+PLwr6X1Nhw6OLme5usuBWYBvuQ==}
@@ -7462,6 +7468,8 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 8.62.0
       eslint-visitor-keys: 5.0.1
+
+  '@uniyous/pg-provider@file:../../../shared/packages/pg-provider': {}
 
   '@webassemblyjs/ast@1.14.1':
     dependencies:
