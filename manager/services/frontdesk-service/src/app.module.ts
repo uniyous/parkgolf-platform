@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { CommonModule } from './common/common.module';
+import { NatsModule } from './common/nats/nats.module';
 import { DrizzleModule } from './db/drizzle.module';
 import { BookingModule } from './booking/booking.module';
 
@@ -13,6 +14,7 @@ import { BookingModule } from './booking/booking.module';
       ignoreEnvFile: process.env.NODE_ENV === 'production',
     }),
     CommonModule,
+    NatsModule,
     DrizzleModule,
     BookingModule,
   ],

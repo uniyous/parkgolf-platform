@@ -1,9 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
+import { firstValueFrom, timeout } from 'rxjs';
 import { eq, and, count, desc, type SQL } from 'drizzle-orm';
 import { NatsResponse } from '@uniyous/nats-common';
 import { DrizzleService } from '../db/drizzle.service';
 import { AppException, Errors } from '../common/exceptions';
-import { bookings, bookingPlayers } from '../db/schema';
+import { bookings, bookingPlayers, bookingChargeLines } from '../db/schema';
 
 type Channel = 'DESK' | 'PHONE' | 'WALK_IN' | 'KIOSK';
 
@@ -15,19 +17,43 @@ interface CreateBookingInput {
   channel: Channel;
   staffId?: number;
   kioskId?: string;
-  totalPrice: number;
+  memberContext?: Record<string, unknown>;
+}
+
+interface QuoteLine {
+  type: 'BASE' | 'DISCOUNT' | 'SURCHARGE';
+  label: string;
+  qty: number;
+  unitAmount: number;
+  amount: number;
+  source: string | null;
+  sourceRef: number | null;
+}
+interface QuoteResult {
+  clubId: number;
+  gameTimeSlotId: number;
+  playerCount: number;
+  unitPrice: number;
+  baseAmount: number;
+  discountTotal: number;
+  total: number;
+  lines: QuoteLine[];
+  snapshot: Record<string, unknown>;
 }
 
 /**
- * 부킹 도메인 (UNI-114) — manager-saga CREATE_DESK_BOOKING·KIOSK_CHECKIN 계약 구현.
- * 슬롯 인벤토리는 club-service(slot.reserve), 수납은 payment-service. 여기선 예약 레코드·플레이어 단위.
- * ⚠️ totalPrice·플레이어 chargeAmount는 현재 입력 기반 placeholder — 요금 계산엔진은 UNI-132.
+ * 부킹 도메인 (UNI-114 / UNI-132) — manager-saga CREATE_DESK_BOOKING·KIOSK_CHECKIN 계약 구현.
+ * 부킹 시 club-service `pricing.quote`로 항목별 요금 계산 → 예약 원장(booking_charge_lines) 동결.
+ * 슬롯 인벤토리는 club(slot.reserve), 수납은 payment-service. PricingSnapshot은 COLLECT_PAYMENT로 전달.
  */
 @Injectable()
 export class BookingService {
   private readonly logger = new Logger(BookingService.name);
 
-  constructor(private readonly drizzle: DrizzleService) {}
+  constructor(
+    private readonly drizzle: DrizzleService,
+    @Inject('CLUB_SERVICE') private readonly clubClient: ClientProxy,
+  ) {}
 
   private get db() {
     return this.drizzle.db;
@@ -35,7 +61,7 @@ export class BookingService {
 
   // ===== saga: 데스크 부킹 =====
 
-  /** CREATE_DESK_BOOKING_RECORD — deskBookingData에서 예약 생성. saga mergeResponse가 clubId/totalPrice hoist */
+  /** CREATE_DESK_BOOKING_RECORD — deskBookingData에서 예약 생성. saga mergeResponse가 clubId/totalPrice/pricingSnapshot hoist */
   async createDeskBooking(input: { deskBookingData?: Record<string, unknown>; channel?: Channel; staffId?: number }) {
     const d = input.deskBookingData ?? {};
     return this.createBooking({
@@ -45,7 +71,7 @@ export class BookingService {
       playerCount: Number(d.playerCount ?? 1),
       channel: input.channel ?? 'DESK',
       staffId: input.staffId,
-      totalPrice: this.placeholderTotal(d),
+      memberContext: (d.memberContext as Record<string, unknown>) ?? undefined,
     });
   }
 
@@ -56,8 +82,6 @@ export class BookingService {
     gameTimeSlotId: number;
     playerCount: number;
     companyId?: number;
-    unitPrice?: number;
-    totalPrice?: number;
   }) {
     return this.createBooking({
       clubId: Number(input.clubId),
@@ -66,7 +90,6 @@ export class BookingService {
       playerCount: Number(input.playerCount ?? 1),
       channel: 'KIOSK',
       kioskId: input.kioskId,
-      totalPrice: this.placeholderTotal(input as Record<string, unknown>),
     });
   }
 
@@ -77,7 +100,7 @@ export class BookingService {
     return NatsResponse.success({ bookingId, status: 'CONFIRMED' });
   }
 
-  /** 보상: 예약 실패 처리 (markFailed) — 멱등. bookingId 없으면 no-op(보상 payload 누락 대비) */
+  /** 보상: 예약 실패 처리 (markFailed) — 멱등. bookingId 없으면 no-op */
   async markFailed(bookingId?: number) {
     if (!bookingId) {
       this.logger.warn('[Booking] markFailed no-op: bookingId 누락');
@@ -109,20 +132,28 @@ export class BookingService {
     const [booking] = await this.db.select().from(bookings).where(eq(bookings.id, id)).limit(1);
     if (!booking) return NatsResponse.success({ error: 'Booking not found' });
     const players = await this.db.select().from(bookingPlayers).where(eq(bookingPlayers.bookingId, id));
-    return NatsResponse.success({ ...booking, players });
+    const lines = await this.db.select().from(bookingChargeLines).where(eq(bookingChargeLines.bookingId, id));
+    return NatsResponse.success({ ...booking, players, chargeLines: lines });
   }
 
   // ===== 내부 =====
 
-  /** 요금 계산엔진(UNI-132) 전까지 입력값 기반 placeholder */
-  private placeholderTotal(d: Record<string, unknown>): number {
-    const players = Number(d.playerCount ?? 1);
-    if (d.totalPrice != null) return Number(d.totalPrice);
-    return Number(d.unitPrice ?? 0) * players;
+  /** club-service 요금 계산엔진 호출 — BASE+할인 항목·PricingSnapshot */
+  private async quote(clubId: number, gameTimeSlotId: number, playerCount: number, companyId?: number, memberContext?: Record<string, unknown>): Promise<QuoteResult> {
+    const res = await firstValueFrom(
+      this.clubClient
+        .send<{ success: boolean; data: QuoteResult }>('pricing.quote', { clubId, gameTimeSlotId, playerCount, companyId, memberContext })
+        .pipe(timeout(10000)),
+    );
+    const data = res?.data;
+    if (!data || typeof data.total !== 'number') {
+      throw new AppException(Errors.External.UNAVAILABLE, 'pricing.quote 응답 오류');
+    }
+    return data;
   }
 
   private async createBooking(b: CreateBookingInput) {
-    // 입력 검증 — NaN/0/음수가 notNull 컬럼에 들어가 saga step이 모호한 DB 에러로 실패하는 것 방지
+    // 입력 검증 — NaN/0/음수가 notNull 컬럼·계산에 들어가 saga step이 모호하게 실패하는 것 방지
     if (!Number.isInteger(b.clubId) || b.clubId <= 0) {
       throw new AppException(Errors.Validation.INVALID_INPUT, `clubId 누락/오류: ${b.clubId}`);
     }
@@ -132,11 +163,11 @@ export class BookingService {
     if (!Number.isInteger(b.playerCount) || b.playerCount < 1) {
       throw new AppException(Errors.Booking.INVALID_PLAYER_COUNT, `playerCount: ${b.playerCount}`);
     }
-    if (!Number.isFinite(b.totalPrice) || b.totalPrice < 0) {
-      throw new AppException(Errors.Validation.INVALID_INPUT, `totalPrice 오류: ${b.totalPrice}`);
-    }
 
-    // 동시 생성 충돌 방지 — 시각+난수 suffix (unique booking_number)
+    // 요금 계산(BASE+할인) — club 권위. 실패 시 step 실패 → saga 보상
+    const quote = await this.quote(b.clubId, b.gameTimeSlotId, b.playerCount, b.companyId, b.memberContext);
+    const totalPrice = quote.total;
+
     const suffix = Math.floor(Math.random() * 1e4)
       .toString()
       .padStart(4, '0');
@@ -153,21 +184,34 @@ export class BookingService {
         staffId: b.staffId,
         kioskId: b.kioskId,
         status: 'PENDING',
-        totalPrice: b.totalPrice,
+        totalPrice,
       })
       .returning();
 
-    // 플레이어별 원장 단위 — chargeAmount는 균등 분할 placeholder(UNI-132에서 정식 계산)
-    const unit = b.playerCount > 0 ? Math.floor(b.totalPrice / b.playerCount) : 0;
+    // 플레이어별 chargeAmount 균등 분할(플레이어별 할인 귀속은 추후) — 합계는 total 보존
+    const unit = Math.floor(totalPrice / b.playerCount);
     const playerRows = Array.from({ length: b.playerCount }, (_, i) => ({
       bookingId: created.id,
       playerNo: i + 1,
-      chargeAmount: i === b.playerCount - 1 ? b.totalPrice - unit * (b.playerCount - 1) : unit,
+      chargeAmount: i === b.playerCount - 1 ? totalPrice - unit * (b.playerCount - 1) : unit,
     }));
-    if (playerRows.length) await this.db.insert(bookingPlayers).values(playerRows);
+    await this.db.insert(bookingPlayers).values(playerRows);
+
+    // 예약 원장 항목 동결 (BASE/DISCOUNT)
+    const lineRows = quote.lines.map((l) => ({
+      bookingId: created.id,
+      type: l.type,
+      label: l.label,
+      qty: l.qty,
+      unitAmount: l.unitAmount,
+      amount: l.amount,
+      source: l.source,
+      sourceRef: l.sourceRef,
+    }));
+    if (lineRows.length) await this.db.insert(bookingChargeLines).values(lineRows);
 
     this.logger.log(
-      `[Booking] created: id=${created.id} ${bookingNumber} club=${b.clubId} slot=${b.gameTimeSlotId} players=${b.playerCount} total=${b.totalPrice}`,
+      `[Booking] created: id=${created.id} ${bookingNumber} club=${b.clubId} slot=${b.gameTimeSlotId} players=${b.playerCount} total=${totalPrice} (lines=${lineRows.length})`,
     );
     return NatsResponse.success({
       bookingId: created.id,
@@ -175,7 +219,8 @@ export class BookingService {
       gameTimeSlotId: created.gameTimeSlotId,
       playerCount: created.playerCount,
       clubId: created.clubId,
-      totalPrice: created.totalPrice,
+      totalPrice,
+      pricingSnapshot: quote.snapshot,
     });
   }
 }
