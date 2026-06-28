@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { eq, and, count, desc, type SQL } from 'drizzle-orm';
 import { NatsResponse } from '@uniyous/nats-common';
 import { DrizzleService } from '../db/drizzle.service';
+import { AppException, Errors } from '../common/exceptions';
 import { bookings, bookingPlayers } from '../db/schema';
 
 type Channel = 'DESK' | 'PHONE' | 'WALK_IN' | 'KIOSK';
@@ -121,7 +122,25 @@ export class BookingService {
   }
 
   private async createBooking(b: CreateBookingInput) {
-    const bookingNumber = `FD-${b.channel}-${Date.now()}`;
+    // 입력 검증 — NaN/0/음수가 notNull 컬럼에 들어가 saga step이 모호한 DB 에러로 실패하는 것 방지
+    if (!Number.isInteger(b.clubId) || b.clubId <= 0) {
+      throw new AppException(Errors.Validation.INVALID_INPUT, `clubId 누락/오류: ${b.clubId}`);
+    }
+    if (!Number.isInteger(b.gameTimeSlotId) || b.gameTimeSlotId <= 0) {
+      throw new AppException(Errors.Validation.INVALID_INPUT, `gameTimeSlotId 누락/오류: ${b.gameTimeSlotId}`);
+    }
+    if (!Number.isInteger(b.playerCount) || b.playerCount < 1) {
+      throw new AppException(Errors.Booking.INVALID_PLAYER_COUNT, `playerCount: ${b.playerCount}`);
+    }
+    if (!Number.isFinite(b.totalPrice) || b.totalPrice < 0) {
+      throw new AppException(Errors.Validation.INVALID_INPUT, `totalPrice 오류: ${b.totalPrice}`);
+    }
+
+    // 동시 생성 충돌 방지 — 시각+난수 suffix (unique booking_number)
+    const suffix = Math.floor(Math.random() * 1e4)
+      .toString()
+      .padStart(4, '0');
+    const bookingNumber = `FD-${b.channel}-${Date.now()}-${suffix}`;
     const [created] = await this.db
       .insert(bookings)
       .values({
