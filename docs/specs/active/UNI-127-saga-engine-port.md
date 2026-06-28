@@ -34,12 +34,14 @@ UNI-127 ①(리네임)은 완료(archive). ②는 **런타임 엔진을 포트�
 - [~] **런타임 회귀(7정의 흐름·보상·타임아웃)**: 자동 saga 테스트 부재 → 쿼리 verbatim 이관 + 제어흐름 보존으로 코드 동등성 확보. **배포 전 통합/카나리 필수**
 - [x] DB 스키마(`sagaExecutions`/`sagaSteps`) 불변 — 어댑터가 동일 테이블 사용
 
-### chunk B — manager-saga-service 신설 (신규)
-- [ ] `manager/services/manager-saga-service` 신설 — 같은 `@uniyous/saga-engine` import + 매니저 어댑터(`manager_saga_db`, 매니저 NATS 토큰)
-- [ ] 매니저 정의: `CREATE_DESK_BOOKING`(데스크·전화·워크인), `KIOSK_*`(키오스크 체크인·현장수납) — frontdesk-service·club-service·payment-service(수납) 호출
-- [ ] 진입 subject 분리: `saga.deskbooking.create`·`saga.kiosk.*` (마켓 `saga.booking.*`와 충돌 X)
-- [ ] **관리 subject 네임스페이스 분리**: `saga.list/get/...`는 현재 marketplace-saga 단독 구독 → manager-saga도 구독 시 NATS 라운드로빈 충돌. 매니저는 `manager.saga.list/get/retry/resolve/stats`로 분리(manager-bff가 매니저 전용 조회)
-- [ ] `manager_saga_db` 신설 + k8s(platform postgres `databases`에 추가) + manager 차트에 서비스 등록
+### chunk B — manager-saga-service 신설 (신규) ✅ 구현 완료 (정의는 contract-first)
+- [x] `manager/services/manager-saga-service` 신설(marketplace-saga 템플릿) — 같은 `@uniyous/saga-engine` import + 매니저 어댑터(`DrizzleSagaStore`=manager_saga_db, `StepExecutorService`=FRONTDESK/CLUB/PAYMENT/NOTIFICATION/IAM 토큰, `PgBossJobScheduler`)
+- [x] 매니저 정의: `CREATE_DESK_BOOKING`(데스크·전화·워크인), `KIOSK_CHECKIN`(키오스크 현장수납). ⚠️ frontdesk·payment(수납) greenfield → step action은 **NATS 계약(contract-first)**, 서비스 생성 전엔 실행 시 타임아웃. `slot.reserve`는 club-service 공통
+- [x] 진입 subject 분리: `saga.deskbooking.create`·`saga.kiosk.checkin` (마켓 `saga.booking.*`와 충돌 X)
+- [x] **관리 subject 네임스페이스 분리**: 매니저는 `manager.saga.list/get/retry/resolve/stats` (마켓 `saga.*` 라운드로빈 충돌 회피)
+- [x] `manager_saga_db` — platform postgres `databases` 추가 + manager 차트 서비스 등록(values/dev/prod) + `cd-services`(목록·제품매핑·root 컨텍스트)·`ci`(자동발견) 등록
+- [x] 검증: 서비스 tsc · helm 렌더(Deployment+`manager-saga-service-db` ExternalSecret+postgres-init `manager_saga_db`) · Docker 빌드(레포 루트) · 컨테이너 런타임 green
+- [~] **런타임 desk-booking 흐름**: frontdesk·payment(수납) 미존재 → 계약 수준. 두 서비스 구현(G3) 후 통합테스트로 완결
 
 ## 계약 (포트 인터페이스)
 

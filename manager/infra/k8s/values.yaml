@@ -36,3 +36,5 @@ services:
   - name: club-service
     db: club_db
   - name: manager-bff
+  - name: manager-saga-service
+    db: manager_saga_db
