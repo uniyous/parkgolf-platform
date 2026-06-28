@@ -28,6 +28,7 @@ export const KioskCheckinSaga: SagaDefinition = {
         bookingId: response.bookingId,
         bookingNumber: response.bookingNumber,
         totalPrice: response.totalPrice,
+        pricingSnapshot: response.pricingSnapshot, // frontdesk 산정 근거 → COLLECT_PAYMENT로 전달 (UNI-129)
       }),
     },
     {
@@ -51,7 +52,9 @@ export const KioskCheckinSaga: SagaDefinition = {
       targetService: 'PAYMENT_SERVICE',
       buildRequest: (payload) => ({
         bookingId: payload.bookingId,
+        clubId: payload.clubId, // 일마감·정산 클럽 식별 (키오스크 트리거 payload.clubId)
         amount: payload.totalPrice,
+        pricingSnapshot: payload.pricingSnapshot, // 산정 근거 (정산 대사) — UNI-129
         method: payload.paymentMethod, // CARD (키오스크 무인)
         kioskId: payload.kioskId,
       }),

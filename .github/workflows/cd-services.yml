@@ -54,7 +54,7 @@ jobs:
         run: |
           INPUT="${{ github.event.inputs.services }}"
           if [ "$INPUT" = "all" ] || [ -z "$INPUT" ]; then
-            SERVICES="iam-service,club-service,booking-service,billing-service,chat-service,notify-service,marketplace-saga-service,partner-service,manager-bff,consumer-bff,chat-gateway,weather-service,location-service,job-service,concierge-service,manager-saga-service"
+            SERVICES="iam-service,club-service,booking-service,billing-service,chat-service,notify-service,marketplace-saga-service,partner-service,manager-bff,consumer-bff,chat-gateway,weather-service,location-service,job-service,concierge-service,manager-saga-service,payment-service"
           else
             SERVICES="$INPUT"
           fi
@@ -91,7 +91,7 @@ jobs:
           case "$SERVICE" in
             marketplace-saga-service|booking-service|billing-service|consumer-bff|concierge-service|chat-service|chat-gateway|partner-service)
               PRODUCT="marketplace" ;;
-            manager-bff|club-service|manager-saga-service)
+            manager-bff|club-service|manager-saga-service|payment-service)
               PRODUCT="manager" ;;
             iam-service|notify-service|location-service|weather-service|job-service)
               PRODUCT="platform" ;;
@@ -117,7 +117,7 @@ jobs:
           IMAGE_NAME="$SERVICE"
           # shared/packages(file: 의존) 포함 서비스는 레포 루트를 빌드 컨텍스트로 (Dockerfile 주석 참조)
           case "$SERVICE" in
-            marketplace-saga-service|manager-saga-service) CONTEXT="." ;;
+            marketplace-saga-service|manager-saga-service|payment-service) CONTEXT="." ;;
             *) CONTEXT="$SVC_DIR" ;;
           esac
 
@@ -155,7 +155,7 @@ jobs:
           product_of() {
             case "$1" in
               marketplace-saga-service|booking-service|billing-service|consumer-bff|concierge-service|chat-service|chat-gateway|partner-service) echo marketplace ;;
-              manager-bff|club-service|manager-saga-service) echo manager ;;
+              manager-bff|club-service|manager-saga-service|payment-service) echo manager ;;
               iam-service|notify-service|location-service|weather-service|job-service) echo platform ;;
               *) echo "" ;;
             esac
