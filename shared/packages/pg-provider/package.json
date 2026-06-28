@@ -1,0 +1,17 @@
+{
+  "name": "@uniyous/pg-provider",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Park Golf 공유: PG 어댑터 포트 + TossAdapter (멀티 PG · 자격증명 per-call · 정규화 에러 · 배포 안 됨 · file: 의존)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist tsconfig.tsbuildinfo"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.7.3"
+  }
+}
