@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { eq, and, gte, lt, count, sum, type SQL } from 'drizzle-orm';
+import { eq, and, gte, lt, isNull, count, sum, type SQL } from 'drizzle-orm';
 import { NatsResponse } from '@uniyous/nats-common';
 import { DrizzleService } from '../db/drizzle.service';
+import { isUniqueViolation } from '../common/db/db-error';
 import { payments, paymentCloses } from '../db/schema';
 
 interface CollectInput {
@@ -49,21 +50,40 @@ export class PaymentService {
     }
 
     const receiptId = `RCP-${input.bookingId}-${Date.now()}`;
-    const [created] = await this.db
-      .insert(payments)
-      .values({
-        bookingId: input.bookingId,
-        clubId: input.clubId,
-        companyId: input.companyId,
-        amount: input.amount,
-        method: input.method,
-        channel: input.channel ?? 'DESK',
-        status: 'COLLECTED',
-        receiptId,
-        staffId: input.staffId,
-        kioskId: input.kioskId,
-      })
-      .returning();
+    let created: typeof payments.$inferSelect;
+    try {
+      [created] = await this.db
+        .insert(payments)
+        .values({
+          bookingId: input.bookingId,
+          clubId: input.clubId,
+          companyId: input.companyId,
+          amount: input.amount,
+          method: input.method,
+          channel: input.channel ?? 'DESK',
+          status: 'COLLECTED',
+          receiptId,
+          staffId: input.staffId,
+          kioskId: input.kioskId,
+        })
+        .returning();
+    } catch (e) {
+      // 동시 재시도(select 통과 후 둘 다 insert) — unique(booking_id) 위반은 멱등 재조회로 흡수
+      if (isUniqueViolation(e)) {
+        const [row] = await this.db.select().from(payments).where(eq(payments.bookingId, input.bookingId)).limit(1);
+        if (row) {
+          this.logger.warn(`[Payment] concurrent collect resolved idempotently: bookingId=${input.bookingId}`);
+          return NatsResponse.success({
+            paymentId: row.id,
+            receiptId: row.receiptId,
+            status: row.status,
+            amount: row.amount,
+            duplicate: true,
+          });
+        }
+      }
+      throw e;
+    }
 
     this.logger.log(`[Payment] collected: bookingId=${input.bookingId}, amount=${input.amount}, receipt=${receiptId}`);
     return NatsResponse.success({
@@ -119,7 +139,8 @@ export class PaymentService {
 
   /** 일마감 — 당일·클럽별 COLLECTED 집계 + payment_closes 레코드(date+club 멱등) */
   async dailyClose(input: { closeDate: string; clubId?: number; closedBy?: number; companyId?: number }) {
-    const start = new Date(`${input.closeDate}T00:00:00.000Z`);
+    // 일경계는 KST(영업일) 기준 — closeDate 00:00 KST(=전일 15:00 UTC)부터 24h
+    const start = new Date(`${input.closeDate}T00:00:00+09:00`);
     const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
 
     const conds: SQL[] = [
@@ -128,6 +149,7 @@ export class PaymentService {
       lt(payments.collectedAt, end),
     ];
     if (input.clubId) conds.push(eq(payments.clubId, input.clubId));
+    if (input.companyId) conds.push(eq(payments.companyId, input.companyId)); // 테넌시 격리
 
     const [agg] = await this.db
       .select({ total: sum(payments.amount), cnt: count() })
@@ -140,7 +162,7 @@ export class PaymentService {
     const [existing] = await this.db
       .select()
       .from(paymentCloses)
-      .where(and(eq(paymentCloses.closeDate, input.closeDate), input.clubId ? eq(paymentCloses.clubId, input.clubId) : undefined))
+      .where(and(eq(paymentCloses.closeDate, input.closeDate), input.clubId ? eq(paymentCloses.clubId, input.clubId) : isNull(paymentCloses.clubId)))
       .limit(1);
 
     if (existing) {

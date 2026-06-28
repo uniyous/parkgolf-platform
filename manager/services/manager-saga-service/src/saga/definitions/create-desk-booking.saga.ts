@@ -56,6 +56,7 @@ export const CreateDeskBookingSaga: SagaDefinition = {
       targetService: 'PAYMENT_SERVICE',
       buildRequest: (payload) => ({
         bookingId: payload.bookingId,
+        clubId: payload.clubId, // 일마감·정산 클럽 식별 (CREATE_DESK_BOOKING_RECORD에서 hoist됨)
         amount: payload.totalPrice,
         method: payload.paymentMethod, // CASH | CARD (현장)
         staffId: payload.staffId,
