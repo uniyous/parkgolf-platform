@@ -8,6 +8,7 @@ import { pgTable, pgEnum, serial, integer, text, timestamp, index, uniqueIndex }
 export const bookingChannelEnum = pgEnum('BookingChannel', ['DESK', 'PHONE', 'WALK_IN', 'KIOSK']);
 export const bookingStatusEnum = pgEnum('BookingStatus', ['PENDING', 'CONFIRMED', 'CANCELLED', 'FAILED']);
 export const playerPaymentStatusEnum = pgEnum('PlayerPaymentStatus', ['UNPAID', 'PAID', 'REFUNDED']);
+export const chargeLineTypeEnum = pgEnum('ChargeLineType', ['BASE', 'DISCOUNT', 'SURCHARGE']);
 
 export const bookings = pgTable(
   'bookings',
@@ -54,4 +55,22 @@ export const bookingPlayers = pgTable(
     uniqueIndex('booking_players_booking_player_key').on(t.bookingId, t.playerNo),
     index('booking_players_booking_idx').on(t.bookingId),
   ],
+);
+
+// 예약 원장 항목별 계산 내역 (UNI-132) — club pricing.quote 결과를 부킹 시 동결. BASE/DISCOUNT.
+export const bookingChargeLines = pgTable(
+  'booking_charge_lines',
+  {
+    id: serial('id').primaryKey(),
+    bookingId: integer('booking_id').notNull(),
+    type: chargeLineTypeEnum('type').notNull(),
+    label: text('label').notNull(),
+    qty: integer('qty').notNull().default(1),
+    unitAmount: integer('unit_amount').notNull(), // 부호 포함(할인은 음수)
+    amount: integer('amount').notNull(), // qty 반영 합(부호 포함)
+    source: text('source'), // POLICY · PROMOTION · EVENT · MEMBER · MANUAL
+    sourceRef: integer('source_ref'), // discount_rules.id 등
+    createdAt: timestamp('created_at', { precision: 3 }).notNull().defaultNow(),
+  },
+  (t) => [index('booking_charge_lines_booking_idx').on(t.bookingId)],
 );
