@@ -1,0 +1,2 @@
+ALTER TABLE "booking_charge_lines" ADD COLUMN "booking_player_id" integer NOT NULL;--> statement-breakpoint
+CREATE INDEX "booking_charge_lines_player_idx" ON "booking_charge_lines" USING btree ("booking_player_id");

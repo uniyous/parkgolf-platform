@@ -62,7 +62,8 @@ export const bookingChargeLines = pgTable(
   'booking_charge_lines',
   {
     id: serial('id').primaryKey(),
-    bookingId: integer('booking_id').notNull(),
+    bookingId: integer('booking_id').notNull(), // booking 롤업
+    bookingPlayerId: integer('booking_player_id').notNull(), // 플레이어별 항목 (UNI-135)
     type: chargeLineTypeEnum('type').notNull(),
     label: text('label').notNull(),
     qty: integer('qty').notNull().default(1),
@@ -72,5 +73,8 @@ export const bookingChargeLines = pgTable(
     sourceRef: integer('source_ref'), // discount_rules.id 등
     createdAt: timestamp('created_at', { precision: 3 }).notNull().defaultNow(),
   },
-  (t) => [index('booking_charge_lines_booking_idx').on(t.bookingId)],
+  (t) => [
+    index('booking_charge_lines_booking_idx').on(t.bookingId),
+    index('booking_charge_lines_player_idx').on(t.bookingPlayerId),
+  ],
 );

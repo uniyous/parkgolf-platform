@@ -16,12 +16,12 @@ export class PricingNatsController {
   async quote(@Payload() data: {
     clubId: number;
     gameTimeSlotId: number;
-    playerCount: number;
     companyId?: number;
-    memberContext?: Record<string, unknown>;
     asOf?: string;
+    players?: Array<{ memberContext?: Record<string, unknown>; surcharges?: Array<{ label: string; amount: number }> }>;
+    playerCount?: number;
   }) {
-    this.logger.log(`[pricing.quote] club=${data.clubId} slot=${data.gameTimeSlotId} players=${data.playerCount}`);
+    this.logger.log(`[pricing.quote] club=${data.clubId} slot=${data.gameTimeSlotId} players=${data.players?.length ?? data.playerCount}`);
     return this.pricing.quote(data);
   }
 
