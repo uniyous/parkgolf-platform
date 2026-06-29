@@ -168,7 +168,12 @@ export class BookingService {
       throw new AppException(Errors.External.UNAVAILABLE, `pricing.quote 실패: ${msg}`);
     }
     const data = res?.data;
-    if (!data || typeof data.total !== 'number' || !Array.isArray(data.players)) {
+    if (
+      !data ||
+      typeof data.total !== 'number' ||
+      !Array.isArray(data.players) ||
+      !data.players.every((p) => Number.isInteger(p?.playerNo) && Array.isArray(p?.lines))
+    ) {
       throw new AppException(Errors.External.UNAVAILABLE, 'pricing.quote 응답 오류');
     }
     return data;
@@ -218,10 +223,14 @@ export class BookingService {
     const playerIdByNo = new Map(insertedPlayers.map((p) => [p.playerNo, p.id]));
 
     // 플레이어별 원장 항목 동결
-    const lineRows = quote.players.flatMap((p) =>
-      p.lines.map((l) => ({
+    const lineRows = quote.players.flatMap((p) => {
+      const bookingPlayerId = playerIdByNo.get(p.playerNo);
+      if (bookingPlayerId == null) {
+        throw new AppException(Errors.External.UNAVAILABLE, `quote player 매핑 오류: playerNo=${p.playerNo}`);
+      }
+      return p.lines.map((l) => ({
         bookingId: created.id,
-        bookingPlayerId: playerIdByNo.get(p.playerNo)!,
+        bookingPlayerId,
         type: l.type,
         label: l.label,
         qty: l.qty,
@@ -229,8 +238,8 @@ export class BookingService {
         amount: l.amount,
         source: l.source,
         sourceRef: l.sourceRef,
-      })),
-    );
+      }));
+    });
     if (lineRows.length) await this.db.insert(bookingChargeLines).values(lineRows);
 
     this.logger.log(
