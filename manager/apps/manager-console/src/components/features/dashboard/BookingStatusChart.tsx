@@ -75,7 +75,7 @@ export const BookingStatusChart: React.FC<BookingStatusChartProps> = ({ overview
                     color: '#fff',
                     fontSize: 13,
                   }}
-                  formatter={(value: number | undefined, name: string | undefined) => [`${value ?? 0}건`, name]}
+                  formatter={(value, name) => [`${value ?? 0}건`, name]}
                 />
               </PieChart>
             </ResponsiveContainer>

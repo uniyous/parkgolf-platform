@@ -21,6 +21,7 @@ import { GameDetailPage } from './pages/game/GameDetailPage';
 import { PaymentManagementPage } from './pages/payment/PaymentManagementPage';
 import { NotificationManagementPage } from './pages/notification/NotificationManagementPage';
 import { SelectCompanyPage } from './pages/SelectCompanyPage';
+import { FrontdeskPage } from './pages/frontdesk/FrontdeskPage';
 import { useAuthInitialize } from './hooks/useAuth';
 
 function App() {
@@ -69,6 +70,7 @@ function App() {
           <Route path="/club/clubs/:clubId" element={<ClubDetailPage />} />
           <Route path="/club/clubs/:clubId/timeslots" element={<Navigate to="/games" replace />} />
 
+          <Route path="/frontdesk" element={<FrontdeskPage />} />
           <Route path="/bookings" element={<BookingManagementPage />} />
           <Route path="/bookings/cancellations" element={<CancellationManagementPage />} />
           <Route path="/payments" element={<PaymentManagementPage />} />

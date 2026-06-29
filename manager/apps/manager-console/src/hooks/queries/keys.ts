@@ -168,3 +168,14 @@ export const policyKeys = {
   operatingResolve: (companyId?: number | null, clubId?: number) => [...policyKeys.operating(companyId), 'resolve', clubId] as const,
   operatingDetail: (companyId?: number | null, id?: number) => [...policyKeys.operating(companyId), 'detail', id] as const,
 };
+
+// Frontdesk Keys (UNI-138)
+export const frontdeskKeys = {
+  all: ['frontdesk'] as const,
+  lists: () => [...frontdeskKeys.all, 'list'] as const,
+  list: (filters?: Record<string, unknown>, page?: number, limit?: number) =>
+    [...frontdeskKeys.lists(), filters, page, limit] as const,
+  details: () => [...frontdeskKeys.all, 'detail'] as const,
+  detail: (id: number) => [...frontdeskKeys.details(), id] as const,
+  checkout: (bookingId: number) => [...frontdeskKeys.all, 'checkout', bookingId] as const,
+};
