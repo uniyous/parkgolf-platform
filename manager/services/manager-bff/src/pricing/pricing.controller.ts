@@ -27,7 +27,7 @@ export class PricingController {
       clubId: clubId ? Number(clubId) : undefined,
       companyId: companyId ? Number(companyId) : undefined,
       kind,
-      active: active != null ? active === 'true' : undefined,
+      active: active != null ? active.toLowerCase() === 'true' : undefined,
     });
   }
 

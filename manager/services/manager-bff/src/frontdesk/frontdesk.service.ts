@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { NatsClientService, NATS_TIMEOUTS } from '../common/nats';
 import { ApiResponse } from '../common/types';
 import { AdminContextData } from '../common';
@@ -17,7 +17,8 @@ export class FrontdeskService {
   // ===== 부킹 =====
 
   /** 데스크 부킹 생성 — saga.deskbooking.create → 표준 {success,data,saga} 정규화 */
-  async createBooking(dto: CreateDeskBookingDto, ctx: AdminContextData): Promise<ApiResponse<unknown>> {
+  async createBooking(dto: CreateDeskBookingDto, ctx: AdminContextData | null): Promise<ApiResponse<unknown>> {
+    if (!ctx) throw new UnauthorizedException();
     const result = await this.natsClient.send<ApiResponse<Record<string, unknown>>>('saga.deskbooking.create', {
       ...dto,
       staffId: ctx.adminId,
@@ -54,7 +55,8 @@ export class FrontdeskService {
     return this.natsClient.send('frontdesk.checkout.checkin', dto);
   }
 
-  async pay(dto: PayDto, ctx: AdminContextData): Promise<ApiResponse<unknown>> {
+  async pay(dto: PayDto, ctx: AdminContextData | null): Promise<ApiResponse<unknown>> {
+    if (!ctx) throw new UnauthorizedException();
     return this.natsClient.send('frontdesk.checkout.pay', { ...dto, staffId: ctx.adminId });
   }
 

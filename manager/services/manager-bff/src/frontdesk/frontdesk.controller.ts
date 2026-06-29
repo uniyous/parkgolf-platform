@@ -16,7 +16,7 @@ export class FrontdeskController {
 
   @Post('bookings')
   @ApiOperation({ summary: '데스크 부킹 생성 (saga)' })
-  async createBooking(@AdminContext() ctx: AdminContextData, @Body() dto: CreateDeskBookingDto) {
+  async createBooking(@AdminContext() ctx: AdminContextData | null, @Body() dto: CreateDeskBookingDto) {
     return this.frontdesk.createBooking(dto, ctx);
   }
 
@@ -54,7 +54,7 @@ export class FrontdeskController {
 
   @Post('checkout/pay')
   @ApiOperation({ summary: '수납 — 선택 플레이어(모두/개별/N명분 1인)' })
-  async pay(@AdminContext() ctx: AdminContextData, @Body() dto: PayDto) {
+  async pay(@AdminContext() ctx: AdminContextData | null, @Body() dto: PayDto) {
     return this.frontdesk.pay(dto, ctx);
   }
 
