@@ -6,14 +6,28 @@ import { NatsResponse } from '../../common/types/response.types';
 
 type DiscountRule = typeof discountRules.$inferSelect;
 
+interface PlayerQuoteInput {
+  memberContext?: Record<string, unknown>; // 개인 할인 자격(국가유공자 등)
+  surcharges?: Array<{ label: string; amount: number }>; // 부가항목(카트·식음료)
+}
 interface QuoteInput {
   clubId: number;
   gameTimeSlotId: number;
-  playerCount: number;
   companyId?: number;
-  memberContext?: Record<string, unknown>;
   asOf?: string;
+  players?: PlayerQuoteInput[]; // 플레이어별(개인차) — 우선
+  playerCount?: number; // players 미지정 시 균일 N명(BASE만)
 }
+
+type QuoteLine = {
+  type: 'BASE' | 'DISCOUNT' | 'SURCHARGE';
+  label: string;
+  qty: number;
+  unitAmount: number;
+  amount: number;
+  source: string;
+  sourceRef: number | null;
+};
 
 interface UpsertDiscountInput {
   id?: number;
@@ -49,67 +63,77 @@ export class PricingService {
     return this.drizzle.db;
   }
 
-  /** 항목별 요금 견적 — 부킹 시 frontdesk가 호출, 결과를 원장에 동결 */
+  /** 플레이어별 항목 견적 — 부킹 시 frontdesk가 호출, 플레이어별 원장으로 동결 (UNI-135) */
   async quote(input: QuoteInput) {
     const clubId = Number(input.clubId);
     const gameTimeSlotId = Number(input.gameTimeSlotId);
-    const playerCount = Number(input.playerCount);
     if (!Number.isInteger(gameTimeSlotId) || gameTimeSlotId <= 0) {
       throw new BadRequestException(`gameTimeSlotId 오류: ${input.gameTimeSlotId}`);
     }
-    if (!Number.isInteger(playerCount) || playerCount < 1) {
-      throw new BadRequestException(`playerCount 오류: ${input.playerCount}`);
-    }
     if (!Number.isInteger(clubId) || clubId <= 0) {
-      // clubId 누락 시 0으로 coerce되어 CLUB 스코프 할인이 조용히 누락되는 것 방지
       throw new BadRequestException(`clubId 오류: ${input.clubId}`);
+    }
+    // players 우선, 없으면 playerCount만큼 균일(BASE만)
+    const playerInputs: PlayerQuoteInput[] =
+      input.players?.length ? input.players : Array.from({ length: Number(input.playerCount ?? 0) }, () => ({}));
+    if (!playerInputs.length) {
+      throw new BadRequestException('players 또는 playerCount 필요');
     }
 
     const [slot] = await this.db.select().from(gameTimeSlots).where(eq(gameTimeSlots.id, gameTimeSlotId)).limit(1);
     if (!slot) throw new NotFoundException(`타임슬롯 없음: ${gameTimeSlotId}`);
-
     const unitPrice = slot.price;
-    const baseAmount = unitPrice * playerCount;
-    const lines: Array<{
-      type: 'BASE' | 'DISCOUNT';
-      label: string;
-      qty: number;
-      unitAmount: number;
-      amount: number;
-      source: string;
-      sourceRef: number | null;
-    }> = [
-      { type: 'BASE', label: '그린피', qty: playerCount, unitAmount: unitPrice, amount: baseAmount, source: 'POLICY', sourceRef: null },
-    ];
 
     const asOf = input.asOf ? new Date(input.asOf) : new Date();
-    const candidates = (await this.applicableRules(clubId, input.companyId, asOf))
-      .filter((r) => this.matchEligibility(r, input.memberContext))
-      .sort((a, b) => a.priority - b.priority);
+    const rules = (await this.applicableRules(clubId, input.companyId, asOf)).sort((a, b) => a.priority - b.priority);
 
-    let discountTotal = 0;
+    const players = playerInputs.map((p, i) => this.quotePlayer(i + 1, unitPrice, rules, p));
+    const total = players.reduce((s, p) => s + p.total, 0);
+
+    // payment-service PricingSnapshot(UNI-129) shape — frontdesk가 COLLECT_PAYMENT로 전달
+    const snapshot = {
+      gameTimeSlotId,
+      playerCount: players.length,
+      unitPrice,
+      total,
+      players: players.map((p) => ({ playerNo: p.playerNo, total: p.total, discounts: p.discounts, surcharges: p.surcharges })),
+      calculatedAt: asOf.toISOString(),
+    };
+
+    this.logger.log(`[Pricing] quote club=${clubId} slot=${gameTimeSlotId} players=${players.length} total=${total}`);
+    return NatsResponse.success({ clubId, gameTimeSlotId, playerCount: players.length, unitPrice, total, players, snapshot });
+  }
+
+  /** 1인 견적 — BASE(슬롯단가) + 개인할인(자격) + 부가항목 */
+  private quotePlayer(playerNo: number, unitPrice: number, rules: DiscountRule[], p: PlayerQuoteInput) {
+    const lines: QuoteLine[] = [
+      { type: 'BASE', label: '그린피', qty: 1, unitAmount: unitPrice, amount: unitPrice, source: 'POLICY', sourceRef: null },
+    ];
     const discounts: Array<{ type: string; label: string; amount: number }> = [];
-    for (const r of candidates) {
-      const remaining = baseAmount - discountTotal;
+    let discountTotal = 0;
+    for (const r of rules.filter((r) => this.matchEligibility(r, p.memberContext))) {
+      const remaining = unitPrice - discountTotal;
       if (remaining <= 0) break;
-      // 비중첩 규칙은 이미 적용된 할인 위에 쌓지 않음(단독일 때만 적용)
-      if (!r.stackable && discounts.length > 0) continue;
-      const raw = r.amountType === 'RATE' ? Math.floor((baseAmount * r.amountValue) / 10000) : r.amountValue;
+      if (!r.stackable && discounts.length > 0) continue; // 비중첩: 단독일 때만
+      const raw = r.amountType === 'RATE' ? Math.floor((unitPrice * r.amountValue) / 10000) : r.amountValue;
       const capped = r.maxDiscountAmount != null ? Math.min(raw, r.maxDiscountAmount) : raw;
       const amount = Math.max(0, Math.min(capped, remaining));
       if (amount <= 0) continue;
       lines.push({ type: 'DISCOUNT', label: r.label, qty: 1, unitAmount: -amount, amount: -amount, source: r.kind, sourceRef: r.id });
       discounts.push({ type: r.kind, label: r.label, amount });
       discountTotal += amount;
-      if (!r.stackable) break; // 비중첩: 적용 후 추가 할인 중단
+      if (!r.stackable) break;
     }
-
-    const total = baseAmount - discountTotal;
-    // payment-service PricingSnapshot(UNI-129)와 동일 shape — frontdesk가 그대로 전달
-    const snapshot = { gameTimeSlotId, playerCount, unitPrice, baseAmount, discounts, total, calculatedAt: asOf.toISOString() };
-
-    this.logger.log(`[Pricing] quote club=${clubId} slot=${gameTimeSlotId} players=${playerCount} base=${baseAmount} discount=${discountTotal} total=${total}`);
-    return NatsResponse.success({ clubId, gameTimeSlotId, playerCount, unitPrice, baseAmount, discountTotal, total, lines, snapshot });
+    const surcharges: Array<{ label: string; amount: number }> = [];
+    let surchargeTotal = 0;
+    for (const s of p.surcharges ?? []) {
+      const amt = Number(s.amount);
+      if (!Number.isFinite(amt) || amt <= 0) continue;
+      lines.push({ type: 'SURCHARGE', label: s.label, qty: 1, unitAmount: amt, amount: amt, source: 'MANUAL', sourceRef: null });
+      surcharges.push({ label: s.label, amount: amt });
+      surchargeTotal += amt;
+    }
+    return { playerNo, unitPrice, lines, discounts, surcharges, total: unitPrice - discountTotal + surchargeTotal };
   }
 
   /** 유효·활성 할인 규칙 중 해당 클럽에 적용 가능한 것(Platform/Company/Club stack) */
