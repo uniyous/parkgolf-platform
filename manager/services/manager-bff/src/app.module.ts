@@ -18,6 +18,8 @@ import { PoliciesModule } from './policies/policies.module';
 import { MenusModule } from './menus/menus.module';
 import { CompanyMembersModule } from './company-members/company-members.module';
 import { PartnersModule } from './partners/partners.module';
+import { FrontdeskModule } from './frontdesk/frontdesk.module';
+import { PricingModule } from './pricing/pricing.module';
 
 @Module({
   imports: [
@@ -45,6 +47,8 @@ import { PartnersModule } from './partners/partners.module';
     MenusModule,
     CompanyMembersModule,
     PartnersModule,
+    FrontdeskModule,
+    PricingModule,
   ],
   controllers: [],
   providers: [
