@@ -57,6 +57,13 @@ export const menuConfig: MenuGroup[] = [
     name: '예약',
     items: [
       {
+        name: '데스크 부킹',
+        href: '/frontdesk',
+        icon: '🏌️',
+        description: '데스크 부킹·체크아웃·수납',
+        permission: 'BOOKINGS'
+      },
+      {
         name: '예약 현황',
         href: '/bookings',
         icon: '📅',

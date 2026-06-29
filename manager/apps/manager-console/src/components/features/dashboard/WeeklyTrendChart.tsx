@@ -98,8 +98,8 @@ export const WeeklyTrendChart: React.FC<WeeklyTrendChartProps> = ({ trendData, i
                 color: '#fff',
                 fontSize: 13,
               }}
-              formatter={(value: number | undefined, name: string | undefined) => {
-                const v = value ?? 0;
+              formatter={(value, name) => {
+                const v = Number(value ?? 0);
                 if (name === '매출') return [v.toLocaleString() + '원', name];
                 return [v + '건', name];
               }}
